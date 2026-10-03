@@ -6,6 +6,8 @@
 #include "databasemanager.h"
 #include "itemdefinitionmanager.h"
 #include "noticemanager.h"
+#include "packet_shopmanager.h"
+#include "packet_updateinfomanager.h"
 #include "serverconfig.h"
 #include <sstream>
 #include <unordered_set>
@@ -445,7 +447,9 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 
 	if (cmdLower != "/additem" && cmdLower != "/addallitem" && cmdLower != "/resetinv" && cmdLower != "/resetitem" &&
 		cmdLower != "/notice" && cmdLower != "/msg" && cmdLower != "/gm" && cmdLower != "/dialog" &&
-		cmdLower != "/banner" && cmdLower != "/yell" && cmdLower != "/reloadnotice") {
+		cmdLower != "/banner" && cmdLower != "/yell" && cmdLower != "/reloadnotice" &&
+		cmdLower != "/addpoints" && cmdLower != "/points" && cmdLower != "/addcash" && cmdLower != "/cash" &&
+		cmdLower != "/reloadshop") {
 		return false;
 	}
 
@@ -461,9 +465,16 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		SendClientNotice(connection, chatType, msg);
 	};
 
-	if (cmdLower == "/additem" || cmdLower == "/addallitem" || cmdLower == "/resetinv" || cmdLower == "/resetitem") {
+	if (cmdLower == "/additem" || cmdLower == "/addallitem" || cmdLower == "/resetinv" || cmdLower == "/resetitem" ||
+		cmdLower == "/addpoints" || cmdLower == "/points" || cmdLower == "/addcash" || cmdLower == "/cash") {
 		if (!serverConfig.permissions.allowPlayerItemCommands && !isGM) {
-			SendNotice("權限不足：物品測試指令已被管理員停用！");
+			SendNotice("權限不足：測試指令已被管理員停用！");
+			return true;
+		}
+	}
+	else if (cmdLower == "/reloadshop") {
+		if (!isGM) {
+			SendNotice("權限不足：商城配置重載指令僅限 GM 使用！");
 			return true;
 		}
 	}
@@ -966,6 +977,62 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 	else if (cmdLower == "/reloadnotice") {
 		noticeManager.Reload();
 		SendNotice("公告配置 configs/notice.json 已成功重新載入！");
+		return true;
+	}
+	else if (cmdLower == "/addpoints" || cmdLower == "/points") {
+		string amountStr;
+		unsigned long long amount = 100000;
+		if (ss >> amountStr) {
+			try {
+				amount = stoull(amountStr);
+			}
+			catch (...) {
+				SendNotice("[系統] 金額格式錯誤！用法：/addpoints <數量>");
+				return true;
+			}
+		}
+
+		if (databaseManager.AddUserFunds(userID, true, amount)) {
+			auto charResult = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
+			packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, charResult.userCharacter });
+			SendNotice(format("[系統] 成功增加 Points: +{}！當前 Points: {}。", amount, charResult.userCharacter.points));
+		}
+		else {
+			SendNotice("[系統] 增加 Points 失敗，數據庫寫入錯誤！");
+		}
+		return true;
+	}
+	else if (cmdLower == "/addcash" || cmdLower == "/cash") {
+		string amountStr;
+		unsigned long long amount = 100000;
+		if (ss >> amountStr) {
+			try {
+				amount = stoull(amountStr);
+			}
+			catch (...) {
+				SendNotice("[系統] 金額格式錯誤！用法：/addcash <數量>");
+				return true;
+			}
+		}
+
+		if (databaseManager.AddUserFunds(userID, false, amount)) {
+			auto charResult = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
+			packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, charResult.userCharacter });
+			SendNotice(format("[系統] 成功增加 GASH/Cash: +{}！當前 Cash: {}。", amount, charResult.userCharacter.cash));
+		}
+		else {
+			SendNotice("[系統] 增加 Cash 失敗，數據庫寫入錯誤！");
+		}
+		return true;
+	}
+	else if (cmdLower == "/reloadshop") {
+		if (packet_ShopManager.LoadShopConfig()) {
+			SendNotice(format("[系統] 商城配置已重新加載！共 {} 件商品，{} 種方案。",
+				packet_ShopManager.GetProductCount(), packet_ShopManager.GetOfferCount()));
+		}
+		else {
+			SendNotice("[系統] 加載商城配置失敗，請檢查 configs/shop.json！");
+		}
 		return true;
 	}
 

@@ -52,6 +52,8 @@ public:
 	bool UpdateUserInventoryExpiration(unsigned long userID, unsigned short itemID, unsigned long newExpirationTime);
 	bool ResetUserInventory(unsigned long userID);
 	bool SaveUserBattleResult(unsigned long userID, unsigned long long addedExp, unsigned long long addedPoints, unsigned short addedFrags, unsigned short addedDeaths, bool isWin, unsigned char newLevel, bool recordStats = true);
+	bool DeductUserFunds(unsigned long userID, bool isPoints, unsigned long long amount);
+	bool AddUserFunds(unsigned long userID, bool isPoints, unsigned long long amount);
 
 private:
 	MYSQL* _connection;

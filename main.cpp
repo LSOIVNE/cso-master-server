@@ -8,6 +8,7 @@
 #include "serverconsole.h"
 #include "itemdefinitionmanager.h"
 #include "noticemanager.h"
+#include "packet_shopmanager.h"
 
 HANDLE hMutex;
 
@@ -55,6 +56,7 @@ int main() {
 	}
 
 	noticeManager.Init();
+	packet_ShopManager.Init();
 
 	hMutex = CreateMutexA(NULL, FALSE, format("cso-master-server-{}-{}", serverConfig.serverID, serverConfig.channelID).c_str());
 	if (hMutex) {

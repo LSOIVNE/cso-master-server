@@ -936,7 +936,7 @@ bool DatabaseManager::ConsumeUserInventoryItem(unsigned long userID, unsigned sh
         return false;
     }
 
-    string query = format("SELECT slotID, count FROM user_inventory WHERE userID = {} AND itemID = {} LIMIT 1;", userID, itemID);
+    string query = format("SELECT slotID, count FROM user_inventory WHERE userID = {} AND itemID = {} ORDER BY count DESC LIMIT 1;", userID, itemID);
     if (mysql_query(_connection, query.c_str())) {
         serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on ConsumeUserInventoryItem SELECT: {}\n", mysql_error(_connection)));
         return false;
@@ -1032,6 +1032,62 @@ bool DatabaseManager::SaveUserBattleResult(unsigned long userID, unsigned long l
     serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Updated battle result for userID {}: +{} exp, +{} points, recordStats: {}, +{} frags, +{} deaths, win: {}, level: {}\n",
         userID, addedExp, addedPoints, recordStats ? 1 : 0, recordStats ? addedFrags : 0, recordStats ? addedDeaths : 0, (recordStats && isWin) ? 1 : 0, newLevel));
 
+    return true;
+}
+
+bool DatabaseManager::DeductUserFunds(unsigned long userID, bool isPoints, unsigned long long amount) {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    if (amount == 0) {
+        return true;
+    }
+
+    string col = isPoints ? "points" : "cash";
+    string query = format("UPDATE user_characters SET {} = {} - {} WHERE userID = {} AND {} >= {};",
+        col, col, amount, userID, col, amount);
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on DeductUserFunds: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    my_ulonglong affected = mysql_affected_rows(_connection);
+    if (affected == 0) {
+        return false;
+    }
+
+    serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Deducted {} {} for userID {}\n",
+        amount, isPoints ? "points" : "cash", userID));
+    return true;
+}
+
+bool DatabaseManager::AddUserFunds(unsigned long userID, bool isPoints, unsigned long long amount) {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    if (amount == 0) {
+        return true;
+    }
+
+    string col = isPoints ? "points" : "cash";
+    string query = format("UPDATE user_characters SET {} = {} + {} WHERE userID = {};",
+        col, col, amount, userID);
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on AddUserFunds: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    my_ulonglong affected = mysql_affected_rows(_connection);
+    if (affected == 0) {
+        return false;
+    }
+
+    serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Added {} {} for userID {}\n",
+        amount, isPoints ? "points" : "cash", userID));
     return true;
 }
 

@@ -9,6 +9,7 @@
 #include "packet_updateinfomanager.h"
 #include "packet_itemmanager.h"
 #include <set>
+#include <map>
 #include <algorithm>
 
 Packet_HostManager packet_HostManager;
@@ -833,18 +834,24 @@ void Packet_HostManager::SendPacket_Host_UserWeapons(TCPConnection::pointer conn
 	packet->WriteUInt8(Packet_HostType::UserWeapons);
 	packet->WriteUInt32_LE(targetUserID);
 
-	set<unsigned short> allowedWeapons;
+	struct AllowedWeaponInfo {
+		unsigned short itemID = 0;
+		unsigned short count = 1;
+		unsigned long enhanceBits = 0;
+	};
+
+	map<unsigned short, AllowedWeaponInfo> allowedWeapons;
 
 	// 1. Standard CS weapons and equipment (1 to 31)
 	for (unsigned short id = 1; id <= 31; ++id) {
-		allowedWeapons.insert(id);
+		allowedWeapons[id] = { id, 1, 0 };
 	}
 
 	// 2. Default Buy Menu items from server config
 	for (const auto& bm : serverConfig.defaultBuyMenus) {
 		for (unsigned short id : bm.items) {
 			if (id > 0) {
-				allowedWeapons.insert(id);
+				allowedWeapons[id] = { id, 1, 0 };
 			}
 		}
 	}
@@ -852,7 +859,7 @@ void Packet_HostManager::SendPacket_Host_UserWeapons(TCPConnection::pointer conn
 	// 3. Default Inventory items from server config
 	for (unsigned short id : serverConfig.defaultInventory) {
 		if (id > 0 && !IsTattooItem(id)) {
-			allowedWeapons.insert(id);
+			allowedWeapons[id] = { id, 1, 0 };
 		}
 	}
 
@@ -869,20 +876,37 @@ void Packet_HostManager::SendPacket_Host_UserWeapons(TCPConnection::pointer conn
 					}
 				}
 				else {
-					allowedWeapons.insert(item.itemID);
+					unsigned short realCount = item.count > 0 ? item.count : 1;
+					auto it = allowedWeapons.find(item.itemID);
+					if (it != allowedWeapons.end()) {
+						// For consumable tickets (258, 259, 260, 300, 334, etc.)
+						// or if multiple stacks exist in inventory, sum count
+						if (item.itemID == 258 || item.itemID == 259 || item.itemID == 260 || item.itemID == 300 || item.itemID == 334) {
+							it->second.count += realCount;
+						}
+						else {
+							it->second.count = max(it->second.count, realCount);
+						}
+						if (item.enhanceBits > 0) {
+							it->second.enhanceBits = item.enhanceBits;
+						}
+					}
+					else {
+						allowedWeapons[item.itemID] = { item.itemID, realCount, item.enhanceBits };
+					}
 				}
 			}
 		}
 		if (equippedTattooID > 0) {
-			allowedWeapons.insert(equippedTattooID);
+			allowedWeapons[equippedTattooID] = { equippedTattooID, 1, 0 };
 		}
 	}
 
 	packet->WriteUInt16_LE((unsigned short)allowedWeapons.size());
-	for (unsigned short itemID : allowedWeapons) {
-		packet->WriteUInt16_LE(itemID); // weaponID / itemID
-		packet->WriteUInt16_LE(1);      // count
-		packet->WriteUInt32_LE(0);      // unk
+	for (const auto& [id, weapon] : allowedWeapons) {
+		packet->WriteUInt16_LE(weapon.itemID);      // weaponID / itemID
+		packet->WriteUInt16_LE(weapon.count);       // count (consumables match uses)
+		packet->WriteUInt32_LE(weapon.enhanceBits); // weapon enhance value / flags
 	}
 
 	packet->Send();
@@ -909,17 +933,7 @@ void Packet_HostManager::parsePacket_Host_ItemConsumed(User* user, TCPConnection
 	bool deleted = false;
 	bool consumed = databaseManager.ConsumeUserInventoryItem(user->GetUserID(), itemID, count, slotID, deleted);
 
-	if (consumed) {
-		vector<unsigned short> deletedSlots;
-		if (deleted && slotID > 0) {
-			deletedSlots.push_back(slotID);
-		}
-		auto conn = user->GetConnection();
-		if (conn != NULL) {
-			packetManager.SendPacket_Inventory(conn, user->GetUserInventory(), deletedSlots);
-		}
-	}
-	else {
+	if (!consumed) {
 		serverConsole.Print(PrefixType::Warn, format("[ Packet_HostManager ] User ({}) attempted to consume item ID {}, but item was not found in inventory!\n",
 			user->GetUserLogName(), itemID));
 	}
