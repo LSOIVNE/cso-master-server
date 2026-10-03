@@ -469,7 +469,7 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		}
 	}
 	else if (cmdLower == "/notice" || cmdLower == "/msg" || cmdLower == "/gm" || cmdLower == "/dialog" ||
-			cmdLower == "/banner" || cmdLower == "/reloadnotice") {
+			cmdLower == "/banner" || cmdLower == "/bulletin" || cmdLower == "/reloadnotice") {
 		if (!serverConfig.permissions.allowPlayerNotice && !isGM) {
 			SendNotice("權限不足：全服廣播與管理指令僅限 GM 使用！");
 			return true;
@@ -924,6 +924,7 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 			SendNotice("/notice <公告內容> : 全服廣播頂部跑馬燈公告/大廳公告");
 			SendNotice("/msg <內容> : 全服發送GM伺服器訊息彈窗");
 			SendNotice("/banner <內容> : 全服廣播頂部即時跑馬燈");
+			SendNotice("/bulletin <標題> | <內容> : 全服發布並更新大廳頂部公告欄");
 			SendNotice("/yell <內容> : 全服喇叭廣播");
 			SendNotice("/reloadnotice : 重新載入公告配置文件");
 		}
@@ -963,6 +964,34 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		BroadcastRollingBanner(bannerText);
 		serverConsole.Print(PrefixType::Info, format("[ Admin Command ] User ({}) broadcast RollingBanner: {}\n", user->GetUserLogName(), bannerText));
 		SendNotice("跑馬燈已向全服發送！");
+		return true;
+	}
+	else if (cmdLower == "/bulletin") {
+		string fullText;
+		getline(ss >> ws, fullText);
+		if (fullText.empty()) {
+			SendNotice("用法：/bulletin <內容> 或 /bulletin <標題> | <內容>");
+			return true;
+		}
+
+		string title = "伺服器公告";
+		string content = fullText;
+		size_t sep = fullText.find('|');
+		if (sep != string::npos) {
+			title = fullText.substr(0, sep);
+			content = fullText.substr(sep + 1);
+			title.erase(0, title.find_first_not_of(" \t"));
+			title.erase(title.find_last_not_of(" \t") + 1);
+			content.erase(0, content.find_first_not_of(" \t"));
+			content.erase(content.find_last_not_of(" \t") + 1);
+		}
+
+		BroadcastBulletinNotice(1, 2, title, content);
+		noticeManager.GetConfig().serverBulletin.title = title;
+		noticeManager.GetConfig().serverBulletin.content = content;
+
+		serverConsole.Print(PrefixType::Info, format("[ Admin Command ] User ({}) broadcast BulletinNotice: {} - {}\n", user->GetUserLogName(), title, content));
+		SendNotice("公告欄已更新並廣播至全服！");
 		return true;
 	}
 	else if (cmdLower == "/yell") {

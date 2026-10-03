@@ -1,10 +1,16 @@
 {
-    "WelcomeNotice": {
+    "ServerBulletin": {
         "Enabled": true,
-        "Type": "Bulletin",
+        "NoticeID": 1,
+        "Category": 2,
         "Title": "CSO 2013 伺服器公告",
         "Content": "歡迎來到 CSO 2013 懷舊伺服器！祝您遊戲愉快！\n\n本伺服器為 2013 懷舊測試服，如有任何問題請聯繫管理員。\n輸入 /help 可查看聊天指令列表；輸入 /resetinv 可重置官方預設裝備。",
-        "Message": "歡迎來到 CSO 2013 懷舊伺服器！祝您遊戲愉快！"
+        "SendOnLogin": true
+    },
+    "WelcomeNotice": {
+        "Enabled": true,
+        "Type": "ServerMessage",
+        "Message": "歡迎來到 CSO 2013 懷舊測試服，祝您遊戲愉快！"
     },
     "PeriodicAnnouncements": {
         "Enabled": true,

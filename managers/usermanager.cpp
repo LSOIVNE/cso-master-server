@@ -205,6 +205,8 @@ bool UserManager::SendLoginPackets(User* user, Packet_ReplyType reply) {
 
 		auto userItemSet = user->GetUserItemSet();
 		packet_FavoriteManager.SendPacket_Favorite_UserItemSet(connection, userItemSet);
+
+		noticeManager.SendServerBulletin(user);
 	}
 	else {
 		user->SetUserStatus(UserStatus::InLobby);
@@ -212,6 +214,7 @@ bool UserManager::SendLoginPackets(User* user, Packet_ReplyType reply) {
 		SendAddUserPacketToAll(user);
 		SendFullUserListPacket(connection);
 		roomManager.SendFullRoomListPacket(connection);
+		noticeManager.SendServerBulletin(user);
 		noticeManager.SendWelcomeNotice(user);
 	}
 
