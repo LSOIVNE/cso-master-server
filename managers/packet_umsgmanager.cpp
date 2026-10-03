@@ -6,6 +6,7 @@
 #include "databasemanager.h"
 #include "itemdefinitionmanager.h"
 #include "noticemanager.h"
+#include "serverconfig.h"
 #include <sstream>
 #include <unordered_set>
 #include <algorithm>
@@ -133,6 +134,10 @@ void Packet_UMsgManager::SendPacket_UMsg_ServerMessageText(TCPConnection::pointe
 }
 
 void Packet_UMsgManager::SendPacket_UMsg_RollingBanner(TCPConnection::pointer connection, const string& text) {
+	SendPacket_UMsg_PublicNotice(connection, text);
+}
+
+void Packet_UMsgManager::SendPacket_UMsg_BulletinNotice(TCPConnection::pointer connection, unsigned short noticeID, unsigned char flags, const string& title, const string& content) {
 	if (connection == NULL) {
 		return;
 	}
@@ -142,9 +147,11 @@ void Packet_UMsgManager::SendPacket_UMsg_RollingBanner(TCPConnection::pointer co
 		return;
 	}
 
-	packet->WriteUInt8(Packet_UMsgType::RollingBanner);
-	packet->WriteString(Utf8ToCp950(text));
-	packet->WriteUInt8(0);
+	packet->WriteUInt8(Packet_UMsgType::BulletinNotice);
+	packet->WriteUInt16_LE(noticeID);
+	packet->WriteUInt8(flags);
+	packet->WriteString(Utf8ToCp950(title));
+	packet->WriteString(Utf8ToCp950(content));
 
 	packet->Send();
 }
@@ -222,6 +229,15 @@ void Packet_UMsgManager::BroadcastServerYell(const string& senderNickName, const
 	for (auto& u : users) {
 		if (u != NULL && u->GetConnection() != NULL && userManager.IsUserLoggedIn(u) && u->GetUserStatus() != UserStatus::InServerList) {
 			SendPacket_UMsg_ServerYell(u->GetConnection(), senderNickName, text);
+		}
+	}
+}
+
+void Packet_UMsgManager::BroadcastBulletinNotice(unsigned short noticeID, unsigned char flags, const string& title, const string& content) {
+	vector<User*> users = userManager.GetUsers();
+	for (auto& u : users) {
+		if (u != NULL && u->GetConnection() != NULL && userManager.IsUserLoggedIn(u) && u->GetUserStatus() != UserStatus::InServerList) {
+			SendPacket_UMsg_BulletinNotice(u->GetConnection(), noticeID, flags, title, content);
 		}
 	}
 }
@@ -440,10 +456,31 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 	SendPacket_UMsg_Chat(connection, chatType, senderNick, rawText);
 
 	unsigned long userID = user->GetUserID();
+	bool isGM = userManager.IsUserGM(user);
 
 	auto SendNotice = [&](const string& msg) {
 		SendClientNotice(connection, chatType, msg);
 	};
+
+	if (cmdLower == "/additem" || cmdLower == "/addallitem" || cmdLower == "/resetinv" || cmdLower == "/resetitem") {
+		if (!serverConfig.permissions.allowPlayerItemCommands && !isGM) {
+			SendNotice("權限不足：物品測試指令已被管理員停用！");
+			return true;
+		}
+	}
+	else if (cmdLower == "/notice" || cmdLower == "/msg" || cmdLower == "/gm" || cmdLower == "/dialog" ||
+			cmdLower == "/banner" || cmdLower == "/reloadnotice") {
+		if (!serverConfig.permissions.allowPlayerNotice && !isGM) {
+			SendNotice("權限不足：全服廣播與管理指令僅限 GM 使用！");
+			return true;
+		}
+	}
+	else if (cmdLower == "/yell") {
+		if (!serverConfig.permissions.allowPlayerNotice && !isGM) {
+			SendNotice("權限不足：全服喇叭廣播指令僅限 GM 使用！");
+			return true;
+		}
+	}
 
 	if (cmdLower == "/additem") {
 		string itemIDStr;
@@ -879,15 +916,17 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		return true;
 	}
 	else if (cmdLower == "/help" || cmdLower == "/?") {
-		SendNotice("=== CSO 伺服器指令列表 ===");
+		SendNotice(format("=== CSO 伺服器指令列表 [{}] ===", isGM ? "管理員 GM" : "一般玩家"));
 		SendNotice("/additem <ID> [天數/數量] : 添加指定道具 (0為永久)");
 		SendNotice("/addallitem <分類ID> [天數] : 批量添加道具 (1:手槍 2:散彈 3:衝鋒 4:步槍 5:機槍 6:裝備 7:人物 8:刀 9:殭屍 10:手榴彈 11:服飾)");
 		SendNotice("/resetinv : 重置個人倉庫為官方初始預設裝備");
-		SendNotice("/notice <公告內容> : 全服廣播頂部跑馬燈公告/大廳公告");
-		SendNotice("/msg <內容> : 全服發送GM伺服器訊息彈窗");
-		SendNotice("/banner <內容> : 全服廣播頂部即時跑馬燈");
-		SendNotice("/yell <內容> : 全服喇叭廣播");
-		SendNotice("/reloadnotice : 重新載入公告配置文件");
+		if (isGM || serverConfig.permissions.allowPlayerNotice) {
+			SendNotice("/notice <公告內容> : 全服廣播頂部跑馬燈公告/大廳公告");
+			SendNotice("/msg <內容> : 全服發送GM伺服器訊息彈窗");
+			SendNotice("/banner <內容> : 全服廣播頂部即時跑馬燈");
+			SendNotice("/yell <內容> : 全服喇叭廣播");
+			SendNotice("/reloadnotice : 重新載入公告配置文件");
+		}
 		return true;
 	}
 	else if (cmdLower == "/notice") {

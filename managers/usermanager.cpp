@@ -289,3 +289,22 @@ void UserManager::UpdateChannelNumPlayers() {
 void UserManager::OnMinuteTick() {
 	databaseManager.RemoveOldUserTransfers();
 }
+
+bool UserManager::IsUserGM(User* user) const noexcept {
+	if (user == NULL) {
+		return false;
+	}
+
+	string userName = user->GetUserName();
+	transform(userName.begin(), userName.end(), userName.begin(), [](unsigned char c) { return (char)tolower(c); });
+
+	for (const auto& gm : serverConfig.permissions.gmList) {
+		string gmLower = gm;
+		transform(gmLower.begin(), gmLower.end(), gmLower.begin(), [](unsigned char c) { return (char)tolower(c); });
+		if (userName == gmLower) {
+			return true;
+		}
+	}
+
+	return false;
+}

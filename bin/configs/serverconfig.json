@@ -216,5 +216,13 @@
 		},
 		"ExcludedCategories": [],
 		"IncludedCategories": []
+	},
+	"Permissions": {
+		"GMList": [
+			"test",
+			"admin"
+		],
+		"AllowPlayerItemCommands": true,
+		"AllowPlayerNotice": false
 	}
 }

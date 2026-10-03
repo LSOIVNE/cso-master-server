@@ -1,5 +1,6 @@
 #include "noticemanager.h"
 #include "packet_umsgmanager.h"
+#include "usermanager.h"
 #include "serverconsole.h"
 #include "nlohmann/json.hpp"
 #include <fstream>
@@ -28,6 +29,8 @@ void NoticeManager::saveDefaultConfig(const string& path) {
 	j["WelcomeNotice"] = {
 		{ "Enabled", _config.welcomeEnabled },
 		{ "Type", _config.welcomeType },
+		{ "Title", _config.bulletinTitle },
+		{ "Content", _config.bulletinContent },
 		{ "Message", _config.welcomeMessage }
 	};
 	j["PeriodicAnnouncements"] = {
@@ -72,6 +75,12 @@ bool NoticeManager::LoadConfig() {
 			}
 			if (wn.contains("Type") && wn["Type"].is_string()) {
 				_config.welcomeType = wn["Type"].get<string>();
+			}
+			if (wn.contains("Title") && wn["Title"].is_string()) {
+				_config.bulletinTitle = wn["Title"].get<string>();
+			}
+			if (wn.contains("Content") && wn["Content"].is_string()) {
+				_config.bulletinContent = wn["Content"].get<string>();
 			}
 			if (wn.contains("Message") && wn["Message"].is_string()) {
 				_config.welcomeMessage = wn["Message"].get<string>();
@@ -142,7 +151,24 @@ void NoticeManager::OnSecondTick() {
 	const string& msg = _config.periodicMessages[_currentMessageIndex];
 	_currentMessageIndex = (_currentMessageIndex + 1) % _config.periodicMessages.size();
 
-	if (_config.periodicType == "RollingBanner") {
+	if (_config.periodicType == "Chat") {
+		// Non-intrusive: send Chat to lobby/room users, PublicNotice to in-game users
+		vector<User*> users = userManager.GetUsers();
+		for (auto& u : users) {
+			if (u != NULL && u->GetConnection() != NULL && userManager.IsUserLoggedIn(u)) {
+				if (u->GetUserStatus() == UserStatus::InLobby) {
+					packet_UMsgManager.SendPacket_UMsg_Chat(u->GetConnection(), Packet_UMsgType::ChannelChat, Utf8ToCp950("系統"), Utf8ToCp950(msg));
+				}
+				else if (u->GetUserStatus() == UserStatus::InGame) {
+					packet_UMsgManager.SendPacket_UMsg_PublicNotice(u->GetConnection(), msg);
+				}
+				else if (u->GetUserStatus() == UserStatus::InRoom) {
+					packet_UMsgManager.SendPacket_UMsg_Chat(u->GetConnection(), Packet_UMsgType::RoomChat, Utf8ToCp950("系統"), Utf8ToCp950(msg));
+				}
+			}
+		}
+	}
+	else if (_config.periodicType == "RollingBanner") {
 		packet_UMsgManager.BroadcastRollingBanner(msg);
 	}
 	else if (_config.periodicType == "ServerYell") {
@@ -164,11 +190,14 @@ void NoticeManager::SendWelcomeNotice(User* user) {
 		return;
 	}
 
-	if (!_config.welcomeEnabled || _config.welcomeMessage.empty()) {
+	if (!_config.welcomeEnabled) {
 		return;
 	}
 
-	if (_config.welcomeType == "ServerMessage") {
+	if (_config.welcomeType == "Bulletin") {
+		packet_UMsgManager.SendPacket_UMsg_BulletinNotice(user->GetConnection(), 1, 0, _config.bulletinTitle, _config.bulletinContent);
+	}
+	else if (_config.welcomeType == "ServerMessage") {
 		packet_UMsgManager.SendPacket_UMsg_ServerMessageText(user->GetConnection(), _config.welcomeMessage);
 	}
 	else if (_config.welcomeType == "ServerYell") {
@@ -179,7 +208,9 @@ void NoticeManager::SendWelcomeNotice(User* user) {
 	}
 	else {
 		// Default: PublicNotice
-		packet_UMsgManager.SendPacket_UMsg_PublicNotice(user->GetConnection(), _config.welcomeMessage);
+		if (!_config.welcomeMessage.empty()) {
+			packet_UMsgManager.SendPacket_UMsg_PublicNotice(user->GetConnection(), _config.welcomeMessage);
+		}
 	}
 
 	serverConsole.Print(PrefixType::Info, format("[ NoticeManager ] Welcome notice sent to user ({})\n", user->GetUserLogName()));

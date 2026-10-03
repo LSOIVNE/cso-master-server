@@ -47,6 +47,12 @@ struct ItemCommandConfig {
 	unordered_set<unsigned char> includedCategories;
 };
 
+struct PermissionConfig {
+	vector<string> gmList = { "test", "admin" };
+	bool allowPlayerItemCommands = true;
+	bool allowPlayerNotice = false;
+};
+
 class ServerConfig {
 public:
 	ServerConfig();
@@ -75,6 +81,7 @@ public:
 	vector<BuyMenu> defaultBuyMenus;
 	vector<unsigned short> defaultInventory;
 	ItemCommandConfig itemCommands;
+	PermissionConfig permissions;
 };
 
 extern ServerConfig serverConfig;

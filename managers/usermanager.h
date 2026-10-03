@@ -23,6 +23,7 @@ public:
 	void SendRemoveUserPacketToAll(User* user) const noexcept;
 	void UpdateChannelNumPlayers();
 	void OnMinuteTick();
+	bool IsUserGM(User* user) const noexcept;
 
 private:
 	vector<User*> _users;

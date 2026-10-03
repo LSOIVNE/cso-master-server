@@ -365,6 +365,24 @@ bool ServerConfig::Load() {
 			}
 		}
 
+		if (config.contains("Permissions") && config["Permissions"].is_object()) {
+			const auto& p = config["Permissions"];
+			if (p.contains("GMList") && p["GMList"].is_array()) {
+				permissions.gmList.clear();
+				for (const auto& gm : p["GMList"]) {
+					if (gm.is_string() && !gm.get<string>().empty()) {
+						permissions.gmList.push_back(gm.get<string>());
+					}
+				}
+			}
+			if (p.contains("AllowPlayerItemCommands") && p["AllowPlayerItemCommands"].is_boolean()) {
+				permissions.allowPlayerItemCommands = p["AllowPlayerItemCommands"].get<bool>();
+			}
+			if (p.contains("AllowPlayerNotice") && p["AllowPlayerNotice"].is_boolean()) {
+				permissions.allowPlayerNotice = p["AllowPlayerNotice"].get<bool>();
+			}
+		}
+
 		serverConsole.Print(PrefixType::Info, "[ ServerConfig ] Loaded server configs!\n");
 	}
 	catch (json::parse_error& e) {
