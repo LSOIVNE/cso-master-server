@@ -5,6 +5,7 @@
 #include "serverconsole.h"
 #include "serverconfig.h"
 #include "databasemanager.h"
+#include "packetmanager.h"
 #include "packet_updateinfomanager.h"
 #include "packet_itemmanager.h"
 #include <set>
@@ -75,6 +76,10 @@ void Packet_HostManager::ParsePacket_Host(TCPConnection::Packet::pointer packet)
 		}
 		case Packet_HostType::UserWeapons: {
 			parsePacket_Host_UserWeapons(user, packet);
+			break;
+		}
+		case Packet_HostType::ItemConsumed: {
+			parsePacket_Host_ItemConsumed(user, packet);
 			break;
 		}
 		case Packet_HostType::PlayerPosition: {
@@ -883,4 +888,80 @@ void Packet_HostManager::SendPacket_Host_UserWeapons(TCPConnection::pointer conn
 	packet->Send();
 
 	serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] Sent Packet_Host UserWeapons for userID {} ({} weapons)\n", targetUserID, allowedWeapons.size()));
+}
+
+void Packet_HostManager::parsePacket_Host_ItemConsumed(User* user, TCPConnection::Packet::pointer packet) {
+	if (user == NULL || packet == NULL) {
+		return;
+	}
+
+	unsigned long targetUserID = packet->ReadUInt32_LE();
+	unsigned short itemID = packet->ReadUInt16_LE();
+	unsigned short count = packet->ReadUInt16_LE();
+	if (count == 0) {
+		count = 1;
+	}
+
+	serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] User ({}) consumed item ID {} (count: {}, targetUserID: {})\n",
+		user->GetUserLogName(), itemID, count, targetUserID));
+
+	unsigned short slotID = 0;
+	bool deleted = false;
+	bool consumed = databaseManager.ConsumeUserInventoryItem(user->GetUserID(), itemID, count, slotID, deleted);
+
+	if (consumed) {
+		vector<unsigned short> deletedSlots;
+		if (deleted && slotID > 0) {
+			deletedSlots.push_back(slotID);
+		}
+		auto conn = user->GetConnection();
+		if (conn != NULL) {
+			packetManager.SendPacket_Inventory(conn, user->GetUserInventory(), deletedSlots);
+		}
+	}
+	else {
+		serverConsole.Print(PrefixType::Warn, format("[ Packet_HostManager ] User ({}) attempted to consume item ID {}, but item was not found in inventory!\n",
+			user->GetUserLogName(), itemID));
+	}
+
+	unsigned char resultFlag = consumed ? 1 : 0;
+	unsigned long effectUserID = targetUserID > 0 ? targetUserID : user->GetUserID();
+
+	// Broadcast Packet 68 Type 100 to all players in the room (including host and consumer)
+	Room* room = roomManager.GetRoomByRoomID(user->GetCurrentRoomID());
+	if (room != NULL) {
+		vector<User*> roomUsers = room->GetRoomUsers();
+		for (auto& u : roomUsers) {
+			if (u != NULL && u->GetConnection() != NULL && userManager.IsUserLoggedIn(u)) {
+				SendPacket_Host_ItemConsumed(u->GetConnection(), effectUserID, itemID, resultFlag);
+			}
+		}
+	}
+	else {
+		auto conn = user->GetConnection();
+		if (conn != NULL) {
+			SendPacket_Host_ItemConsumed(conn, effectUserID, itemID, resultFlag);
+		}
+	}
+}
+
+void Packet_HostManager::SendPacket_Host_ItemConsumed(TCPConnection::pointer connection, unsigned long targetUserID, unsigned short itemID, unsigned char result) {
+	if (connection == NULL) {
+		return;
+	}
+
+	auto packet = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::Host });
+	if (packet == NULL) {
+		return;
+	}
+
+	packet->WriteUInt8(Packet_HostType::ItemConsumed);
+	packet->WriteUInt32_LE(targetUserID);
+	packet->WriteUInt16_LE(itemID);
+	packet->WriteUInt8(result);
+
+	packet->Send();
+
+	serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] Sent Packet_Host ItemConsumed - targetUserID: {}, itemID: {}, result: {}\n",
+		targetUserID, itemID, (int)result));
 }

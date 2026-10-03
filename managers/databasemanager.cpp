@@ -929,6 +929,59 @@ bool DatabaseManager::UpdateUserInventoryItemCount(unsigned long userID, unsigne
     return true;
 }
 
+bool DatabaseManager::ConsumeUserInventoryItem(unsigned long userID, unsigned short itemID, unsigned short count, unsigned short& outSlotID, bool& outDeleted) {
+    outSlotID = 0;
+    outDeleted = false;
+    if (_connection == NULL) {
+        return false;
+    }
+
+    string query = format("SELECT slotID, count FROM user_inventory WHERE userID = {} AND itemID = {} LIMIT 1;", userID, itemID);
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on ConsumeUserInventoryItem SELECT: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    MYSQL_RES* res = mysql_store_result(_connection);
+    if (res == NULL) {
+        return false;
+    }
+
+    MYSQL_ROW row = mysql_fetch_row(res);
+    if (row == NULL) {
+        mysql_free_result(res);
+        return false;
+    }
+
+    outSlotID = (unsigned short)atoi(row[0]);
+    unsigned short currentCount = (unsigned short)atoi(row[1]);
+    mysql_free_result(res);
+
+    if (currentCount <= count) {
+        // Completely consumed: delete the row
+        string delQuery = format("DELETE FROM user_inventory WHERE userID = {} AND slotID = {};", userID, outSlotID);
+        if (mysql_query(_connection, delQuery.c_str())) {
+            serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on ConsumeUserInventoryItem DELETE: {}\n", mysql_error(_connection)));
+            return false;
+        }
+        outDeleted = true;
+        serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] ItemID {} (slotID {}) completely consumed and deleted for userID {}\n", itemID, outSlotID, userID));
+    }
+    else {
+        // Partially consumed: decrement count
+        string updateQuery = format("UPDATE user_inventory SET count = count - {} WHERE userID = {} AND slotID = {};", count, userID, outSlotID);
+        if (mysql_query(_connection, updateQuery.c_str())) {
+            serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on ConsumeUserInventoryItem UPDATE: {}\n", mysql_error(_connection)));
+            return false;
+        }
+        outDeleted = false;
+        serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] ItemID {} (slotID {}) count decremented by {} (remaining: {}) for userID {}\n",
+            itemID, outSlotID, count, currentCount - count, userID));
+    }
+
+    return true;
+}
+
 bool DatabaseManager::UpdateUserInventoryExpiration(unsigned long userID, unsigned short itemID, unsigned long newExpirationTime) {
     if (_connection == NULL) {
         return false;
