@@ -73,6 +73,9 @@
     <ClCompile Include="managers\roommanager.cpp">
       <Filter>managers</Filter>
     </ClCompile>
+    <ClCompile Include="managers\noticemanager.cpp">
+      <Filter>managers</Filter>
+    </ClCompile>
     <ClCompile Include="networking\tcp_connection.cpp">
       <Filter>networking</Filter>
     </ClCompile>
@@ -177,6 +180,9 @@
       <Filter>managers</Filter>
     </ClInclude>
     <ClInclude Include="managers\roommanager.h">
+      <Filter>managers</Filter>
+    </ClInclude>
+    <ClInclude Include="managers\noticemanager.h">
       <Filter>managers</Filter>
     </ClInclude>
     <ClInclude Include="networking\tcp_connection.h">

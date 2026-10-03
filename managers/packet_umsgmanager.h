@@ -1,5 +1,7 @@
 #pragma once
 #include "user.h"
+#include <string>
+#include <vector>
 
 enum Packet_UMsgType {
 	WhisperChat = 0,
@@ -7,18 +9,39 @@ enum Packet_UMsgType {
 	RoomChat = 2,
 	ClanChat = 3,
 	TeamChat = 4,
-	NoticeMessage = 4,
 	InfoMessage = 5,
 	ServerYell = 6,
-	WarningMessage = 6
+	PublicNotice = 10,
+	ServerMessage = 11,
+	SystemDialog = 20,
+	WarningMessage = 20,
+	RollingBanner = 30,
+	GMMessage = 40,
+	GMWhisper = 41,
+	DisconnectWarning = 50,
+	ItemAwardNotice = 60
 };
+
+std::string Utf8ToCp950(const std::string& utf8Str);
+std::string Cp950ToUtf8(const std::string& cp950Str);
 
 class Packet_UMsgManager {
 public:
 	void ParsePacket_UMsg(TCPConnection::Packet::pointer packet);
+
+	void SendPacket_UMsg_PublicNotice(TCPConnection::pointer connection, const string& text);
+	void SendPacket_UMsg_ServerMessageText(TCPConnection::pointer connection, const string& text);
+	void SendPacket_UMsg_RollingBanner(TCPConnection::pointer connection, const string& text);
+	void SendPacket_UMsg_ServerYell(TCPConnection::pointer connection, const string& senderNickName, const string& text);
 	void SendPacket_UMsg_NoticeMessage(TCPConnection::pointer connection, const string& text);
 	void SendPacket_UMsg_ServerMessage(TCPConnection::pointer connection, Packet_UMsgType type, const string& text, const vector<string>& additionalText = {});
 	void SendPacket_UMsg_Chat(TCPConnection::pointer connection, Packet_UMsgType type, const string& senderNickName, const string& text);
+
+	void BroadcastPublicNotice(const string& text);
+	void BroadcastServerMessage(const string& text);
+	void BroadcastRollingBanner(const string& text);
+	void BroadcastServerYell(const string& senderNickName, const string& text);
+
 	bool HandleChatCommand(User* user, TCPConnection::pointer connection, const string& rawText, Packet_UMsgType chatType);
 
 private:

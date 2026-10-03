@@ -9,6 +9,7 @@
 #include "roommanager.h"
 #include "udp_server.h"
 #include "libbcrypt/bcrypt.h"
+#include "noticemanager.h"
 
 Packet_TransferManager packet_TransferManager;
 
@@ -122,6 +123,7 @@ void Packet_TransferManager::ParsePacket_RequestTransfer(TCPConnection::Packet::
 			roomManager.SendFullRoomListPacket(connection);
 
 			packet_UpdateInfoManager.SendPacket_UserUpdateInfo_ChatCount(connection, user->GetUserID(), 255);
+			noticeManager.SendWelcomeNotice(user);
 		}
 	}
 	else {

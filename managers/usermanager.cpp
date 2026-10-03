@@ -12,6 +12,7 @@
 #include "packet_messengermanager.h"
 #include "udp_server.h"
 #include "serverconfig.h"
+#include "noticemanager.h"
 
 UserManager userManager;
 
@@ -211,6 +212,7 @@ bool UserManager::SendLoginPackets(User* user, Packet_ReplyType reply) {
 		SendAddUserPacketToAll(user);
 		SendFullUserListPacket(connection);
 		roomManager.SendFullRoomListPacket(connection);
+		noticeManager.SendWelcomeNotice(user);
 	}
 
 	return true;

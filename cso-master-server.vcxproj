@@ -185,6 +185,7 @@ copy /Y "$(TargetDir)$(ProjectName).pdb" "$(SolutionDir)bin\$(ProjectName).pdb"<
     <ClCompile Include="managers\usermanager.cpp" />
     <ClCompile Include="managers\databasemanager.cpp" />
     <ClCompile Include="managers\roommanager.cpp" />
+    <ClCompile Include="managers\noticemanager.cpp" />
     <ClCompile Include="networking\tcp_connection.cpp" />
     <ClCompile Include="networking\tcp_server.cpp" />
     <ClCompile Include="networking\udp_server.cpp" />
@@ -223,6 +224,7 @@ copy /Y "$(TargetDir)$(ProjectName).pdb" "$(SolutionDir)bin\$(ProjectName).pdb"<
     <ClInclude Include="managers\usermanager.h" />
     <ClInclude Include="managers\databasemanager.h" />
     <ClInclude Include="managers\roommanager.h" />
+    <ClInclude Include="managers\noticemanager.h" />
     <ClInclude Include="networking\tcp_connection.h" />
     <ClInclude Include="networking\tcp_server.h" />
     <ClInclude Include="networking\udp_server.h" />

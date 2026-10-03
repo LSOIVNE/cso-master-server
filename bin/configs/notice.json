@@ -1,0 +1,17 @@
+{
+    "WelcomeNotice": {
+        "Enabled": true,
+        "Type": "PublicNotice",
+        "Message": "歡迎來到 CSO 2013 懷舊伺服器！祝您遊戲愉快！"
+    },
+    "PeriodicAnnouncements": {
+        "Enabled": true,
+        "IntervalSeconds": 300,
+        "Type": "PublicNotice",
+        "Messages": [
+            "本伺服器為 2013 懷舊測試服，祝您遊戲愉快！",
+            "輸入 /help 可查看聊天指令列表；輸入 /resetinv 可重置官方預設裝備。",
+            "歡迎使用 /additem <ID> 測試各種經典武器與裝備！"
+        ]
+    }
+}

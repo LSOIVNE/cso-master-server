@@ -2,7 +2,10 @@
 #include "tcp_server.h"
 #include "usermanager.h"
 #include "udp_server.h"
+#include "noticemanager.h"
+#include "packet_umsgmanager.h"
 #include <iostream>
+#include <sstream>
 #include <mutex>
 
 ServerConsole serverConsole;
@@ -172,8 +175,37 @@ void ServerConsole::StartRead() {
 			}
 			continue;
 		}
+		else if (command.rfind("notice ", 0) == 0) {
+			string text = command.substr(7);
+			packet_UMsgManager.BroadcastPublicNotice(text);
+			Print(PrefixType::Info, format("[ ServerConsole ] Broadcast notice: {}\n", text));
+			continue;
+		}
+		else if (command.rfind("yell ", 0) == 0) {
+			string text = command.substr(5);
+			packet_UMsgManager.BroadcastServerYell("[伺服器]", text);
+			Print(PrefixType::Info, format("[ ServerConsole ] Broadcast yell: {}\n", text));
+			continue;
+		}
+		else if (command.rfind("msg ", 0) == 0) {
+			string text = command.substr(4);
+			packet_UMsgManager.BroadcastServerMessage(text);
+			Print(PrefixType::Info, format("[ ServerConsole ] Broadcast message: {}\n", text));
+			continue;
+		}
+		else if (command.rfind("banner ", 0) == 0) {
+			string text = command.substr(7);
+			packet_UMsgManager.BroadcastRollingBanner(text);
+			Print(PrefixType::Info, format("[ ServerConsole ] Broadcast rolling banner: {}\n", text));
+			continue;
+		}
+		else if (command == "reloadnotice") {
+			noticeManager.Reload();
+			Print(PrefixType::Info, "[ ServerConsole ] Reloaded notice configuration.\n");
+			continue;
+		}
 		else {
-			Print(PrefixType::Info, "[ ServerConsole ] Available commands: stop, status, users\n");
+			Print(PrefixType::Info, "[ ServerConsole ] Available commands: stop, status, users, notice <text>, yell <text>, msg <text>, banner <text>, reloadnotice\n");
 			continue;
 		}
 	}
@@ -227,6 +259,7 @@ void ServerConsole::onSecondTick() {
 	_currentTimeStr = time_buf;
 
 	udpServer.OnSecondTick();
+	noticeManager.OnSecondTick();
 
 	_secondCount++;
 

@@ -5,6 +5,7 @@
 #include "serverconsole.h"
 #include "databasemanager.h"
 #include "itemdefinitionmanager.h"
+#include "noticemanager.h"
 #include <sstream>
 #include <unordered_set>
 #include <algorithm>
@@ -12,7 +13,7 @@
 
 Packet_UMsgManager packet_UMsgManager;
 
-static std::string Utf8ToCp950(const std::string& utf8Str) {
+std::string Utf8ToCp950(const std::string& utf8Str) {
 	if (utf8Str.empty()) return "";
 	int wlen = MultiByteToWideChar(CP_UTF8, 0, utf8Str.c_str(), -1, NULL, 0);
 	if (wlen <= 0) return utf8Str;
@@ -25,7 +26,7 @@ static std::string Utf8ToCp950(const std::string& utf8Str) {
 	return result;
 }
 
-static std::string Cp950ToUtf8(const std::string& cp950Str) {
+std::string Cp950ToUtf8(const std::string& cp950Str) {
 	if (cp950Str.empty()) return "";
 	int wlen = MultiByteToWideChar(950, 0, cp950Str.c_str(), -1, NULL, 0);
 	if (wlen <= 0) return cp950Str;
@@ -99,7 +100,7 @@ void Packet_UMsgManager::ParsePacket_UMsg(TCPConnection::Packet::pointer packet)
 	}
 }
 
-void Packet_UMsgManager::SendPacket_UMsg_NoticeMessage(TCPConnection::pointer connection, const string& text) {
+void Packet_UMsgManager::SendPacket_UMsg_PublicNotice(TCPConnection::pointer connection, const string& text) {
 	if (connection == NULL) {
 		return;
 	}
@@ -109,10 +110,64 @@ void Packet_UMsgManager::SendPacket_UMsg_NoticeMessage(TCPConnection::pointer co
 		return;
 	}
 
-	packet->WriteUInt8(Packet_UMsgType::NoticeMessage);
-	packet->WriteString(text);
+	packet->WriteUInt8(Packet_UMsgType::PublicNotice);
+	packet->WriteString(Utf8ToCp950(text));
 
 	packet->Send();
+}
+
+void Packet_UMsgManager::SendPacket_UMsg_ServerMessageText(TCPConnection::pointer connection, const string& text) {
+	if (connection == NULL) {
+		return;
+	}
+
+	auto packet = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::UMsg });
+	if (packet == NULL) {
+		return;
+	}
+
+	packet->WriteUInt8(Packet_UMsgType::ServerMessage);
+	packet->WriteString(Utf8ToCp950(text));
+
+	packet->Send();
+}
+
+void Packet_UMsgManager::SendPacket_UMsg_RollingBanner(TCPConnection::pointer connection, const string& text) {
+	if (connection == NULL) {
+		return;
+	}
+
+	auto packet = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::UMsg });
+	if (packet == NULL) {
+		return;
+	}
+
+	packet->WriteUInt8(Packet_UMsgType::RollingBanner);
+	packet->WriteString(Utf8ToCp950(text));
+	packet->WriteUInt8(0);
+
+	packet->Send();
+}
+
+void Packet_UMsgManager::SendPacket_UMsg_ServerYell(TCPConnection::pointer connection, const string& senderNickName, const string& text) {
+	if (connection == NULL) {
+		return;
+	}
+
+	auto packet = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::UMsg });
+	if (packet == NULL) {
+		return;
+	}
+
+	packet->WriteUInt8(Packet_UMsgType::ServerYell);
+	packet->WriteString(Utf8ToCp950(senderNickName));
+	packet->WriteString(Utf8ToCp950(text));
+
+	packet->Send();
+}
+
+void Packet_UMsgManager::SendPacket_UMsg_NoticeMessage(TCPConnection::pointer connection, const string& text) {
+	SendPacket_UMsg_PublicNotice(connection, text);
 }
 
 void Packet_UMsgManager::SendPacket_UMsg_ServerMessage(TCPConnection::pointer connection, Packet_UMsgType type, const string& text, const vector<string>& additionalText) {
@@ -128,11 +183,47 @@ void Packet_UMsgManager::SendPacket_UMsg_ServerMessage(TCPConnection::pointer co
 	packet->WriteUInt8(type);
 	packet->WriteString(text);
 	packet->WriteUInt8((unsigned char)additionalText.size());
-	for (auto& text : additionalText) {
-		packet->WriteString(text);
+	for (auto& t : additionalText) {
+		packet->WriteString(t);
 	}
 
 	packet->Send();
+}
+
+void Packet_UMsgManager::BroadcastPublicNotice(const string& text) {
+	vector<User*> users = userManager.GetUsers();
+	for (auto& u : users) {
+		if (u != NULL && u->GetConnection() != NULL && userManager.IsUserLoggedIn(u) && u->GetUserStatus() != UserStatus::InServerList) {
+			SendPacket_UMsg_PublicNotice(u->GetConnection(), text);
+		}
+	}
+}
+
+void Packet_UMsgManager::BroadcastServerMessage(const string& text) {
+	vector<User*> users = userManager.GetUsers();
+	for (auto& u : users) {
+		if (u != NULL && u->GetConnection() != NULL && userManager.IsUserLoggedIn(u) && u->GetUserStatus() != UserStatus::InServerList) {
+			SendPacket_UMsg_ServerMessageText(u->GetConnection(), text);
+		}
+	}
+}
+
+void Packet_UMsgManager::BroadcastRollingBanner(const string& text) {
+	vector<User*> users = userManager.GetUsers();
+	for (auto& u : users) {
+		if (u != NULL && u->GetConnection() != NULL && userManager.IsUserLoggedIn(u) && u->GetUserStatus() != UserStatus::InServerList) {
+			SendPacket_UMsg_RollingBanner(u->GetConnection(), text);
+		}
+	}
+}
+
+void Packet_UMsgManager::BroadcastServerYell(const string& senderNickName, const string& text) {
+	vector<User*> users = userManager.GetUsers();
+	for (auto& u : users) {
+		if (u != NULL && u->GetConnection() != NULL && userManager.IsUserLoggedIn(u) && u->GetUserStatus() != UserStatus::InServerList) {
+			SendPacket_UMsg_ServerYell(u->GetConnection(), senderNickName, text);
+		}
+	}
 }
 
 void Packet_UMsgManager::parsePacket_UMsg_WhisperChat(User* user, TCPConnection::Packet::pointer packet) {
@@ -336,7 +427,10 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 	string cmdLower = cmd;
 	transform(cmdLower.begin(), cmdLower.end(), cmdLower.begin(), [](unsigned char c) { return (char)tolower(c); });
 
-	if (cmdLower != "/additem" && cmdLower != "/addallitem" && cmdLower != "/resetinv" && cmdLower != "/resetitem") {
+	if (cmdLower != "/additem" && cmdLower != "/addallitem" && cmdLower != "/resetinv" && cmdLower != "/resetitem" &&
+		cmdLower != "/help" && cmdLower != "/?" &&
+		cmdLower != "/notice" && cmdLower != "/msg" && cmdLower != "/gm" && cmdLower != "/dialog" &&
+		cmdLower != "/banner" && cmdLower != "/yell" && cmdLower != "/reloadnotice") {
 		return false;
 	}
 
@@ -782,6 +876,71 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		else {
 			SendNotice("重置個人倉庫失敗，數據庫寫入錯誤！");
 		}
+		return true;
+	}
+	else if (cmdLower == "/help" || cmdLower == "/?") {
+		SendNotice("=== CSO 伺服器指令列表 ===");
+		SendNotice("/additem <ID> [天數/數量] : 添加指定道具 (0為永久)");
+		SendNotice("/addallitem <分類ID> [天數] : 批量添加道具 (1:手槍 2:散彈 3:衝鋒 4:步槍 5:機槍 6:裝備 7:人物 8:刀 9:殭屍 10:手榴彈 11:服飾)");
+		SendNotice("/resetinv : 重置個人倉庫為官方初始預設裝備");
+		SendNotice("/notice <公告內容> : 全服廣播頂部跑馬燈公告/大廳公告");
+		SendNotice("/msg <內容> : 全服發送GM伺服器訊息彈窗");
+		SendNotice("/banner <內容> : 全服廣播頂部即時跑馬燈");
+		SendNotice("/yell <內容> : 全服喇叭廣播");
+		SendNotice("/reloadnotice : 重新載入公告配置文件");
+		return true;
+	}
+	else if (cmdLower == "/notice") {
+		string noticeText;
+		getline(ss >> ws, noticeText);
+		if (noticeText.empty()) {
+			SendNotice("用法：/notice <公告內容> (向全服廣播頂部跑馬燈及大廳公告)");
+			return true;
+		}
+		BroadcastPublicNotice(noticeText);
+		serverConsole.Print(PrefixType::Info, format("[ Admin Command ] User ({}) broadcast PublicNotice: {}\n", user->GetUserLogName(), noticeText));
+		SendNotice("公告已成功向全服廣播！");
+		return true;
+	}
+	else if (cmdLower == "/msg" || cmdLower == "/gm" || cmdLower == "/dialog") {
+		string msgText;
+		getline(ss >> ws, msgText);
+		if (msgText.empty()) {
+			SendNotice("用法：/msg <訊息內容> (向全服發送GM伺服器訊息彈窗)");
+			return true;
+		}
+		BroadcastServerMessage(msgText);
+		serverConsole.Print(PrefixType::Info, format("[ Admin Command ] User ({}) broadcast ServerMessage: {}\n", user->GetUserLogName(), msgText));
+		SendNotice("伺服器訊息已向全服發送！");
+		return true;
+	}
+	else if (cmdLower == "/banner") {
+		string bannerText;
+		getline(ss >> ws, bannerText);
+		if (bannerText.empty()) {
+			SendNotice("用法：/banner <內容> (向全服廣播頂部即時跑馬燈)");
+			return true;
+		}
+		BroadcastRollingBanner(bannerText);
+		serverConsole.Print(PrefixType::Info, format("[ Admin Command ] User ({}) broadcast RollingBanner: {}\n", user->GetUserLogName(), bannerText));
+		SendNotice("跑馬燈已向全服發送！");
+		return true;
+	}
+	else if (cmdLower == "/yell") {
+		string yellText;
+		getline(ss >> ws, yellText);
+		if (yellText.empty()) {
+			SendNotice("用法：/yell <內容> (以全服喇叭向全服廣播)");
+			return true;
+		}
+		BroadcastServerYell("管理員", yellText);
+		serverConsole.Print(PrefixType::Info, format("[ Admin Command ] User ({}) broadcast ServerYell: {}\n", user->GetUserLogName(), yellText));
+		SendNotice("全服喇叭已成功廣播！");
+		return true;
+	}
+	else if (cmdLower == "/reloadnotice") {
+		noticeManager.Reload();
+		SendNotice("公告配置 configs/notice.json 已成功重新載入！");
 		return true;
 	}
 
