@@ -27,13 +27,19 @@ bool NoticeManager::SaveConfig(const string& path) {
 	std::filesystem::create_directories("configs");
 
 	json j;
+	json bulletinsJson = json::array();
+	for (const auto& b : _config.serverBulletin.bulletins) {
+		bulletinsJson.push_back({
+			{ "NoticeID", b.noticeID },
+			{ "Category", b.category },
+			{ "Title", b.title },
+			{ "Content", b.content }
+		});
+	}
 	j["ServerBulletin"] = {
 		{ "Enabled", _config.serverBulletin.enabled },
-		{ "NoticeID", _config.serverBulletin.noticeID },
-		{ "Category", _config.serverBulletin.category },
-		{ "Title", _config.serverBulletin.title },
-		{ "Content", _config.serverBulletin.content },
-		{ "SendOnLogin", _config.serverBulletin.sendOnLogin }
+		{ "SendOnLogin", _config.serverBulletin.sendOnLogin },
+		{ "Bulletins", bulletinsJson }
 	};
 
 	j["WelcomeNotice"] = {
@@ -84,20 +90,44 @@ bool NoticeManager::LoadConfig() {
 			if (sb.contains("Enabled") && sb["Enabled"].is_boolean()) {
 				_config.serverBulletin.enabled = sb["Enabled"].get<bool>();
 			}
-			if (sb.contains("NoticeID") && sb["NoticeID"].is_number()) {
-				_config.serverBulletin.noticeID = sb["NoticeID"].get<unsigned short>();
-			}
-			if (sb.contains("Category") && sb["Category"].is_number()) {
-				_config.serverBulletin.category = sb["Category"].get<unsigned char>();
-			}
-			if (sb.contains("Title") && sb["Title"].is_string()) {
-				_config.serverBulletin.title = sb["Title"].get<string>();
-			}
-			if (sb.contains("Content") && sb["Content"].is_string()) {
-				_config.serverBulletin.content = sb["Content"].get<string>();
-			}
 			if (sb.contains("SendOnLogin") && sb["SendOnLogin"].is_boolean()) {
 				_config.serverBulletin.sendOnLogin = sb["SendOnLogin"].get<bool>();
+			}
+			if (sb.contains("Bulletins") && sb["Bulletins"].is_array()) {
+				_config.serverBulletin.bulletins.clear();
+				for (const auto& item : sb["Bulletins"]) {
+					if (item.is_object()) {
+						BulletinItem b;
+						if (item.contains("NoticeID") && item["NoticeID"].is_number()) {
+							b.noticeID = item["NoticeID"].get<unsigned short>();
+						}
+						if (item.contains("Category") && item["Category"].is_number()) {
+							b.category = item["Category"].get<unsigned char>();
+						}
+						if (item.contains("Title") && item["Title"].is_string()) {
+							b.title = item["Title"].get<string>();
+						}
+						if (item.contains("Content") && item["Content"].is_string()) {
+							b.content = item["Content"].get<string>();
+						}
+						_config.serverBulletin.bulletins.push_back(b);
+					}
+				}
+			}
+			else if (sb.contains("Title") && sb["Title"].is_string()) {
+				// Legacy single bulletin format compatibility
+				BulletinItem b;
+				if (sb.contains("NoticeID") && sb["NoticeID"].is_number()) {
+					b.noticeID = sb["NoticeID"].get<unsigned short>();
+				}
+				if (sb.contains("Category") && sb["Category"].is_number()) {
+					b.category = sb["Category"].get<unsigned char>();
+				}
+				b.title = sb["Title"].get<string>();
+				if (sb.contains("Content") && sb["Content"].is_string()) {
+					b.content = sb["Content"].get<string>();
+				}
+				_config.serverBulletin.bulletins = { b };
 			}
 		}
 
@@ -122,10 +152,12 @@ bool NoticeManager::LoadConfig() {
 			}
 			// Legacy fallback: if old config had Title/Content inside WelcomeNotice, use them for ServerBulletin if not already set
 			if (wn.contains("Title") && wn["Title"].is_string() && !j.contains("ServerBulletin")) {
-				_config.serverBulletin.title = wn["Title"].get<string>();
-			}
-			if (wn.contains("Content") && wn["Content"].is_string() && !j.contains("ServerBulletin")) {
-				_config.serverBulletin.content = wn["Content"].get<string>();
+				BulletinItem b;
+				b.title = wn["Title"].get<string>();
+				if (wn.contains("Content") && wn["Content"].is_string()) {
+					b.content = wn["Content"].get<string>();
+				}
+				_config.serverBulletin.bulletins = { b };
 			}
 		}
 
@@ -155,7 +187,7 @@ bool NoticeManager::LoadConfig() {
 		}
 
 		serverConsole.Print(PrefixType::Info, format("[ NoticeManager ] Config loaded! ServerBulletin: {}, WelcomeNotice: {}, PeriodicAnnouncements: {} (Interval: {}s, Count: {})\n",
-			_config.serverBulletin.enabled ? "ON" : "OFF",
+			_config.serverBulletin.enabled ? format("ON ({} bulletins)", _config.serverBulletin.bulletins.size()) : "OFF",
 			_config.welcomeNotice.enabled ? _config.welcomeNotice.type : "OFF",
 			_config.periodicAnnouncements.enabled ? "ON" : "OFF",
 			_config.periodicAnnouncements.intervalSeconds,
@@ -239,15 +271,17 @@ void NoticeManager::SendServerBulletin(User* user) {
 		return;
 	}
 
-	packet_UMsgManager.SendPacket_UMsg_BulletinNotice(
-		user->GetConnection(),
-		_config.serverBulletin.noticeID,
-		_config.serverBulletin.category,
-		_config.serverBulletin.title,
-		_config.serverBulletin.content
-	);
+	for (const auto& b : _config.serverBulletin.bulletins) {
+		packet_UMsgManager.SendPacket_UMsg_BulletinNotice(
+			user->GetConnection(),
+			b.noticeID,
+			b.category,
+			b.title,
+			b.content
+		);
+	}
 
-	serverConsole.Print(PrefixType::Info, format("[ NoticeManager ] Server bulletin sent to user ({})\n", user->GetUserLogName()));
+	serverConsole.Print(PrefixType::Info, format("[ NoticeManager ] Sent {} server bulletin(s) to user ({})\n", _config.serverBulletin.bulletins.size(), user->GetUserLogName()));
 }
 
 void NoticeManager::BroadcastServerBulletin() {
@@ -255,14 +289,16 @@ void NoticeManager::BroadcastServerBulletin() {
 		return;
 	}
 
-	packet_UMsgManager.BroadcastBulletinNotice(
-		_config.serverBulletin.noticeID,
-		_config.serverBulletin.category,
-		_config.serverBulletin.title,
-		_config.serverBulletin.content
-	);
+	for (const auto& b : _config.serverBulletin.bulletins) {
+		packet_UMsgManager.BroadcastBulletinNotice(
+			b.noticeID,
+			b.category,
+			b.title,
+			b.content
+		);
+	}
 
-	serverConsole.Print(PrefixType::Info, format("[ NoticeManager ] Server bulletin broadcast to all users: {}\n", _config.serverBulletin.title));
+	serverConsole.Print(PrefixType::Info, format("[ NoticeManager ] Broadcast {} server bulletin(s) to all users\n", _config.serverBulletin.bulletins.size()));
 }
 
 void NoticeManager::SendWelcomeNotice(User* user) {

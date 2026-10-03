@@ -445,7 +445,7 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 
 	if (cmdLower != "/additem" && cmdLower != "/addallitem" && cmdLower != "/resetinv" && cmdLower != "/resetitem" &&
 		cmdLower != "/notice" && cmdLower != "/msg" && cmdLower != "/gm" && cmdLower != "/dialog" &&
-		cmdLower != "/banner" && cmdLower != "/bulletin" && cmdLower != "/yell" && cmdLower != "/reloadnotice") {
+		cmdLower != "/banner" && cmdLower != "/yell" && cmdLower != "/reloadnotice") {
 		return false;
 	}
 
@@ -468,7 +468,7 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		}
 	}
 	else if (cmdLower == "/notice" || cmdLower == "/msg" || cmdLower == "/gm" || cmdLower == "/dialog" ||
-			cmdLower == "/banner" || cmdLower == "/bulletin" || cmdLower == "/reloadnotice") {
+			cmdLower == "/banner" || cmdLower == "/reloadnotice") {
 		if (!serverConfig.permissions.allowPlayerNotice && !isGM) {
 			SendNotice("權限不足：全服廣播與管理指令僅限 GM 使用！");
 			return true;
@@ -931,12 +931,12 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		string msgText;
 		getline(ss >> ws, msgText);
 		if (msgText.empty()) {
-			SendNotice("用法：/msg <訊息內容> (向全服發送GM系統訊息彈窗)");
+			SendNotice("用法：/msg <訊息內容> (向全服發送伺服器文字訊息)");
 			return true;
 		}
 		BroadcastServerMessage(msgText);
 		serverConsole.Print(PrefixType::Info, format("[ Admin Command ] User ({}) broadcast ServerMessage: {}\n", user->GetUserLogName(), msgText));
-		SendNotice("系統訊息已向全服發送！");
+		SendNotice("訊息已向全服發送！");
 		return true;
 	}
 	else if (cmdLower == "/banner") {
@@ -949,36 +949,6 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		BroadcastRollingBanner(bannerText);
 		serverConsole.Print(PrefixType::Info, format("[ Admin Command ] User ({}) broadcast RollingBanner: {}\n", user->GetUserLogName(), bannerText));
 		SendNotice("跑馬燈已向全服發送！");
-		return true;
-	}
-	else if (cmdLower == "/bulletin") {
-		string fullText;
-		getline(ss >> ws, fullText);
-		if (fullText.empty()) {
-			SendNotice("用法：/bulletin <內容> 或 /bulletin <標題> | <內容>");
-			return true;
-		}
-
-		string title = "測試服公告";
-		string content = fullText;
-		size_t sep = fullText.find('|');
-		if (sep != string::npos) {
-			title = fullText.substr(0, sep);
-			content = fullText.substr(sep + 1);
-			title.erase(0, title.find_first_not_of(" \t"));
-			title.erase(title.find_last_not_of(" \t") + 1);
-			content.erase(0, content.find_first_not_of(" \t"));
-			content.erase(content.find_last_not_of(" \t") + 1);
-		}
-
-		noticeManager.GetConfig().serverBulletin.title = title;
-		noticeManager.GetConfig().serverBulletin.content = content;
-		noticeManager.SaveConfig();
-
-		BroadcastBulletinNotice(noticeManager.GetConfig().serverBulletin.noticeID, noticeManager.GetConfig().serverBulletin.category, title, content);
-
-		serverConsole.Print(PrefixType::Info, format("[ Admin Command ] User ({}) updated BulletinNotice: {} - {}\n", user->GetUserLogName(), title, content));
-		SendNotice("公告欄已更新並保存至配置文件！(客戶端在登入時載入)");
 		return true;
 	}
 	else if (cmdLower == "/yell") {

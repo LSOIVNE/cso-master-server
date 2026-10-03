@@ -5,13 +5,19 @@
 
 using namespace std;
 
-struct ServerBulletinConfig {
-	bool enabled = true;
+struct BulletinItem {
 	unsigned short noticeID = 1;
 	unsigned char category = 2; // 0: Etc, 1: Hot, 2: Notice, 3: Event
 	string title = "CSO 2013 測試服公告";
 	string content = "歡迎來到 CSO 2013 懷舊測試服！祝您遊戲愉快！\n\n本測試服為 2013 懷舊版本，如有任何問題請聯繫管理員。\n輸入 /resetinv 可重置官方預設裝備。";
+};
+
+struct ServerBulletinConfig {
+	bool enabled = true;
 	bool sendOnLogin = true;
+	vector<BulletinItem> bulletins = {
+		{ 1, 2, "CSO 2013 測試服公告", "歡迎來到 CSO 2013 懷舊測試服！祝您遊戲愉快！\n\n本測試服為 2013 懷舊版本，如有任何問題請聯繫管理員。\n輸入 /resetinv 可重置官方預設裝備。" }
+	};
 };
 
 struct WelcomeNoticeConfig {

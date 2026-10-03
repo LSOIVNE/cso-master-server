@@ -1,11 +1,27 @@
 {
     "ServerBulletin": {
         "Enabled": true,
-        "NoticeID": 1,
-        "Category": 2,
-        "Title": "CSO 2013 測試服公告",
-        "Content": "歡迎來到 CSO 2013 懷舊測試服！祝您遊戲愉快！\n\n本測試服為 2013 懷舊版本，如有任何問題請聯繫管理員。\n輸入 /resetinv 可重置官方預設裝備。",
-        "SendOnLogin": true
+        "SendOnLogin": true,
+        "Bulletins": [
+            {
+                "NoticeID": 1,
+                "Category": 2,
+                "Title": "CSO 2013 伺服器公告",
+                "Content": "歡迎來到 CSO 2013 懷舊測試服！祝您遊戲愉快！\n\n本伺服器為 2013 經典懷舊架構，如有任何問題請聯繫管理員。\n輸入 /resetinv 可重置官方預設裝備倉庫。"
+            },
+            {
+                "NoticeID": 2,
+                "Category": 1,
+                "Title": "武器裝備測試說明",
+                "Content": "目前伺服器開放全武器道具自由測試！\n使用指令：\n- /additem <ID> [天數/數量]：獲取指定道具\n- /addallitem [分類] [天數]：批量獲取各類經典裝備\n- /resetinv：還原官方初始預設倉庫"
+            },
+            {
+                "NoticeID": 3,
+                "Category": 3,
+                "Title": "最新功能更新日誌",
+                "Content": "【系統更新】\n1. 修復了服飾/裝備卸下與穿戴功能\n2. 新增了大廳頂部多頁公告面板與跑馬燈廣播\n3. 優化了道具數據庫存檔與個人倉庫同步"
+            }
+        ]
     },
     "WelcomeNotice": {
         "Enabled": true,
