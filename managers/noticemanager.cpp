@@ -22,7 +22,8 @@ bool NoticeManager::Init() {
 	return LoadConfig();
 }
 
-void NoticeManager::saveDefaultConfig(const string& path) {
+bool NoticeManager::SaveConfig(const string& path) {
+	string targetPath = path.empty() ? NOTICE_CONFIG_PATH : path;
 	std::filesystem::create_directories("configs");
 
 	json j;
@@ -48,20 +49,22 @@ void NoticeManager::saveDefaultConfig(const string& path) {
 		{ "Messages", _config.periodicAnnouncements.messages }
 	};
 
-	ofstream file(path);
+	ofstream file(targetPath);
 	if (file.is_open()) {
 		file << j.dump(4);
-		serverConsole.Print(PrefixType::Info, format("[ NoticeManager ] Created default config at {}\n", path));
+		serverConsole.Print(PrefixType::Info, format("[ NoticeManager ] Saved config to {}\n", targetPath));
+		return true;
 	}
 	else {
-		serverConsole.Print(PrefixType::Error, format("[ NoticeManager ] Failed to create default config file: {}\n", path));
+		serverConsole.Print(PrefixType::Error, format("[ NoticeManager ] Failed to save config file: {}\n", targetPath));
+		return false;
 	}
 }
 
 bool NoticeManager::LoadConfig() {
 	if (!std::filesystem::exists(NOTICE_CONFIG_PATH)) {
 		serverConsole.Print(PrefixType::Warn, format("[ NoticeManager ] Config file {} not found. Generating default...\n", NOTICE_CONFIG_PATH));
-		saveDefaultConfig(NOTICE_CONFIG_PATH);
+		SaveConfig(NOTICE_CONFIG_PATH);
 		return true;
 	}
 

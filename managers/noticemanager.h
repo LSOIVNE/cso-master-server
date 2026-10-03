@@ -43,6 +43,7 @@ public:
 
 	bool Init();
 	bool LoadConfig();
+	bool SaveConfig(const string& path = "");
 	void Reload();
 
 	void OnSecondTick();
@@ -54,8 +55,6 @@ public:
 	NoticeConfig& GetConfig() noexcept { return _config; }
 
 private:
-	void saveDefaultConfig(const string& path);
-
 	NoticeConfig _config;
 	unsigned int _secondCounter;
 	size_t _currentMessageIndex;

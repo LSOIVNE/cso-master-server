@@ -444,7 +444,6 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 	transform(cmdLower.begin(), cmdLower.end(), cmdLower.begin(), [](unsigned char c) { return (char)tolower(c); });
 
 	if (cmdLower != "/additem" && cmdLower != "/addallitem" && cmdLower != "/resetinv" && cmdLower != "/resetitem" &&
-		cmdLower != "/?" &&
 		cmdLower != "/notice" && cmdLower != "/msg" && cmdLower != "/gm" && cmdLower != "/dialog" &&
 		cmdLower != "/banner" && cmdLower != "/bulletin" && cmdLower != "/yell" && cmdLower != "/reloadnotice") {
 		return false;
@@ -915,21 +914,7 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		}
 		return true;
 	}
-	else if (cmdLower == "/?") {
-		SendNotice(format("=== CSO 指令列表 [{}] ===", isGM ? "管理員 GM" : "一般玩家"));
-		SendNotice("/additem <ID> [天數/數量] : 添加指定道具 (0為永久)");
-		SendNotice("/addallitem <分類ID> [天數] : 批量添加道具 (1:手槍 2:散彈 3:衝鋒 4:步槍 5:機槍 6:裝備 7:人物 8:刀 9:殭屍 10:手榴彈 11:服飾)");
-		SendNotice("/resetinv : 重置個人倉庫為官方初始預設裝備");
-		if (isGM || serverConfig.permissions.allowPlayerNotice) {
-			SendNotice("/notice <公告內容> : 全服廣播頂部跑馬燈公告/大廳公告");
-			SendNotice("/msg <內容> : 全服發送GM系統訊息彈窗");
-			SendNotice("/banner <內容> : 全服廣播頂部即時跑馬燈");
-			SendNotice("/bulletin <標題> | <內容> : 全服發布並更新大廳頂部公告欄");
-			SendNotice("/yell <內容> : 全服喇叭廣播");
-			SendNotice("/reloadnotice : 重新載入公告配置文件");
-		}
-		return true;
-	}
+
 	else if (cmdLower == "/notice") {
 		string noticeText;
 		getline(ss >> ws, noticeText);
@@ -986,12 +971,14 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 			content.erase(content.find_last_not_of(" \t") + 1);
 		}
 
-		BroadcastBulletinNotice(1, 2, title, content);
 		noticeManager.GetConfig().serverBulletin.title = title;
 		noticeManager.GetConfig().serverBulletin.content = content;
+		noticeManager.SaveConfig();
 
-		serverConsole.Print(PrefixType::Info, format("[ Admin Command ] User ({}) broadcast BulletinNotice: {} - {}\n", user->GetUserLogName(), title, content));
-		SendNotice("公告欄已更新並廣播至全服！");
+		BroadcastBulletinNotice(noticeManager.GetConfig().serverBulletin.noticeID, noticeManager.GetConfig().serverBulletin.category, title, content);
+
+		serverConsole.Print(PrefixType::Info, format("[ Admin Command ] User ({}) updated BulletinNotice: {} - {}\n", user->GetUserLogName(), title, content));
+		SendNotice("公告欄已更新並保存至配置文件！(客戶端在登入時載入)");
 		return true;
 	}
 	else if (cmdLower == "/yell") {
