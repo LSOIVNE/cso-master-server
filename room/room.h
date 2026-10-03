@@ -38,7 +38,18 @@ constexpr auto ROOMSETTINGS_LFLAG_ALL =				0xFFFFFFFF;
 
 constexpr auto ROOMSETTINGS_HFLAG_UNK1 =			0x1;
 constexpr auto ROOMSETTINGS_HFLAG_UNK2 =			0x2;
-constexpr auto ROOMSETTINGS_HFLAG_ALL =				0xFF;
+constexpr auto ROOMSETTINGS_HFLAG_UNK4 =			0x4;
+constexpr auto ROOMSETTINGS_HFLAG_UNK8 =			0x8;
+constexpr auto ROOMSETTINGS_HFLAG_UNK10 =			0x10;
+constexpr auto ROOMSETTINGS_HFLAG_UNK20 =			0x20;
+constexpr auto ROOMSETTINGS_HFLAG_UNK40 =			0x40;
+constexpr auto ROOMSETTINGS_HFLAG_UNK80 =			0x80;
+constexpr auto ROOMSETTINGS_HFLAG_UNK100 =			0x100;
+constexpr auto ROOMSETTINGS_HFLAG_UNK200 =			0x200;
+constexpr auto ROOMSETTINGS_HFLAG_UNK400 =			0x400;
+constexpr auto ROOMSETTINGS_HFLAG_UNK800 =			0x800;
+constexpr auto ROOMSETTINGS_HFLAG_UNK1000 =			0x1000;
+constexpr auto ROOMSETTINGS_HFLAG_ALL =				0x3;
 
 enum class RoomState {
 	Waiting = 0,
@@ -59,7 +70,7 @@ struct unk80000000_vec {
 
 struct RoomSettings {
 	unsigned long lowFlag = 0;
-	unsigned char highFlag = 0;
+	unsigned long highFlag = 0;
 	string roomName = "";
 	unsigned char unk2 = 0;
 	unsigned char unk4_1 = 0;
@@ -102,6 +113,36 @@ struct RoomSettings {
 	unsigned char unkh1_4 = 0;
 	unsigned char unkh1_5 = 0;
 	unsigned char unkh2 = 0;
+	unsigned char unkh4_1 = 0;
+	unsigned char unkh4_2 = 0;
+	unsigned char unkh4_3 = 0;
+	unsigned char unkh4_4 = 0;
+	unsigned char unkh8 = 0;
+	unsigned short unkh10 = 0;
+	unsigned char unkh20 = 0;
+	unsigned char unkh40 = 0;
+	unsigned char unkh80 = 0;
+	unsigned char unkh100 = 0;
+	vector<pair<unsigned char, unsigned char>> unkh200;
+	unsigned char unkh400 = 0;
+	unsigned char unkh800 = 0;
+	unsigned char unkh1000 = 0;
+};
+
+namespace RoomTeam {
+	enum : unsigned char {
+		None = 0,
+		Terrorist = 1,
+		CounterTerrorist = 2,
+		Spectator = 3
+	};
+}
+
+struct RoomUser {
+	User* user = nullptr;
+	unsigned char team = RoomTeam::Terrorist;
+	unsigned char status = 0; // 0 = Waiting, 2 = Ready
+	unsigned char slot = 0;
 };
 
 class Room {
@@ -124,8 +165,21 @@ public:
 		_roomSettings = roomSettings;
 	}
 
-	const vector<User*>& GetRoomUsers() const noexcept {
+	const vector<RoomUser>& GetRoomUsersData() const noexcept {
 		return _roomUsers;
+	}
+
+	vector<RoomUser>& GetRoomUsersData() noexcept {
+		return _roomUsers;
+	}
+
+	vector<User*> GetRoomUsers() const {
+		vector<User*> users;
+		users.reserve(_roomUsers.size());
+		for (const auto& ru : _roomUsers) {
+			if (ru.user) users.push_back(ru.user);
+		}
+		return users;
 	}
 
 	GameMatch* GetGameMatch() const noexcept {
@@ -136,15 +190,20 @@ public:
 		_gameMatch = gameMatch;
 	}
 
-	char AddRoomUser(User* user);
+	char AddRoomUser(User* user, unsigned char team = 0);
 	void RemoveRoomUser(User* user);
 	void UpdateRoomHostUser(User* user);
 	void UpdateRoomSettings(const RoomSettings& roomSettings);
+
+	RoomUser* GetRoomUser(User* user);
+	RoomUser* GetRoomUserByUserID(unsigned long userID);
+	bool SetUserTeam(User* user, unsigned char team);
+	bool SetUserReady(User* user, unsigned char ready);
 
 private:
 	unsigned short _roomID;
 	User* _roomHostUser;
 	RoomSettings _roomSettings;
-	vector<User*> _roomUsers;
+	vector<RoomUser> _roomUsers;
 	GameMatch* _gameMatch;
 };

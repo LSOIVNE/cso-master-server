@@ -20,10 +20,11 @@ constexpr auto USERCHARACTER_FLAG_LOCATION =	0x200;
 constexpr auto USERCHARACTER_FLAG_UNK400 =		0x400;
 constexpr auto USERCHARACTER_FLAG_UNK800 =		0x800;
 constexpr auto USERCHARACTER_FLAG_CLAN =		0x1000;
-constexpr auto USERCHARACTER_FLAG_ALL =			0xFFFF;
+constexpr auto USERCHARACTER_FLAG_CHATCOUNT =	0x200000;
+constexpr auto USERCHARACTER_FLAG_ALL =			0x1FFF | USERCHARACTER_FLAG_CHATCOUNT;
 
 struct UserCharacter {
-	unsigned short flag = 0;
+	unsigned long flag = 0;
 	unsigned char unk1 = 0;
 	string nickName = "";
 	string unk4_1 = "";
@@ -39,6 +40,8 @@ struct UserCharacter {
 	unsigned long wins = 0;
 	unsigned long frags = 0;
 	unsigned long deaths = 0;
+	unsigned long battleStats4 = 0;
+	unsigned long battleStats5 = 0;
 	unsigned short city = 0;
 	unsigned short county = 0;
 	unsigned short neighborhood = 0;
@@ -51,6 +54,7 @@ struct UserCharacter {
 	unsigned char clanUnk4 = 0;
 	unsigned char clanUnk5 = 0;
 	unsigned char clanUnk6 = 0;
+	unsigned char chatRemainCount = 255;
 };
 
 struct UserCharacterResult {
@@ -131,7 +135,7 @@ public:
 	}
 
 	char CreateUserCharacter(const string& nickName) const noexcept;
-	UserCharacterResult GetUserCharacter(unsigned short flag) const noexcept;
+	UserCharacterResult GetUserCharacter(unsigned long flag) const noexcept;
 	char CreateUserBuymenus() const noexcept;
 	char CreateUserBookmarks() const noexcept;
 	char CreateUserInventory() const noexcept;
@@ -142,11 +146,14 @@ public:
 	char IsUserCharacterExists() const noexcept;
 	bool SaveUserOption(const vector<unsigned char>& userOption) const noexcept;
 	const vector<unsigned char> GetUserOption() const noexcept;
-	bool SaveUserBuyMenu(unsigned char categoryID, unsigned char slotID, unsigned char itemID) const noexcept;
+	bool SaveUserBuyMenu(unsigned char categoryID, unsigned char slotID, unsigned short itemID) const noexcept;
 	const vector<BuyMenu> GetUserBuyMenus() const noexcept;
+	bool SaveUserItemSetSlot(unsigned char slotID, unsigned short itemID) const noexcept;
+	ItemSet GetUserItemSet() const noexcept;
 	bool SaveUserBookMark(const BookMark& userBookMark) const noexcept;
 	const vector<BookMark> GetUserBookMarks() const noexcept;
 	const vector<InventoryItem> GetUserInventory() const noexcept;
+	static unsigned char CalculateLevel(unsigned long long exp);
 
 private:
 	TCPConnection::pointer _connection;

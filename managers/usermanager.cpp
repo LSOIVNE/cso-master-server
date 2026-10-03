@@ -9,6 +9,7 @@
 #include "packet_userstartmanager.h"
 #include "packet_optionmanager.h"
 #include "packet_favoritemanager.h"
+#include "packet_messengermanager.h"
 #include "udp_server.h"
 #include "serverconfig.h"
 
@@ -176,6 +177,11 @@ bool UserManager::SendLoginPackets(User* user, Packet_ReplyType reply) {
 
 	packet_ClientCheckManager.SendPacket_ClientCheck(connection);
 
+	// Send initial lobby chat count to client (255 = unlimited)
+	// This prevents the client-side chat restriction for players below level 8
+	packet_UpdateInfoManager.SendPacket_UserUpdateInfo_ChatCount(connection, user->GetUserID(), 255);
+	packet_MessengerManager.SendPacket_Messenger_ChatCount(connection, 255);
+
 	if (reply != Packet_ReplyType::NoReply) {
 		user->SetUserStatus(UserStatus::InServerList);
 
@@ -195,6 +201,9 @@ bool UserManager::SendLoginPackets(User* user, Packet_ReplyType reply) {
 		if (!userBookMarks.empty()) {
 			packet_FavoriteManager.SendPacket_Favorite_UserBookMark(connection, userBookMarks);
 		}
+
+		auto userItemSet = user->GetUserItemSet();
+		packet_FavoriteManager.SendPacket_Favorite_UserItemSet(connection, userItemSet);
 	}
 	else {
 		user->SetUserStatus(UserStatus::InLobby);

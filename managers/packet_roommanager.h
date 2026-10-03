@@ -31,8 +31,11 @@ enum Packet_RoomType {
 	UpdateRoomSettings = 5,
 	ResultConfirm = 6,
 	GameResult = 6,
+	ChangeTeam_Old = 9,
 	LeaveRoomInGame = 10,
-	ReturnToRoom = 11
+	ReturnToRoom = 11,
+	TeamChange = 13,
+	ChangeTeam = 17
 };
 
 enum Packet_RoomListType {
@@ -62,22 +65,27 @@ public:
 	void SendPacket_RoomList_UpdateRoom(TCPConnection::pointer connection, Room* room, unsigned short flag);
 	void SendPacket_Room_UserLeave(TCPConnection::pointer connection, unsigned long userID);
 	void SendPacket_Room_ReplyUpdateRoomSettings(TCPConnection::pointer connection, const RoomSettings& roomSettings);
-	void SendPacket_Room_GameResult(TCPConnection::pointer connection);
+	void SendPacket_Room_GameResult(TCPConnection::pointer connection, Room* room = NULL, GameMatch* gameMatch = NULL, unsigned char winTeam = 0, unsigned char terWins = 0, unsigned char ctWins = 0);
+	void SendPacket_Room_TeamChange(TCPConnection::pointer connection, unsigned long userID, unsigned char team);
+	void SendPacket_Room_UserReady(TCPConnection::pointer connection, unsigned long userID, unsigned char ready);
 
 private:
 	void parsePacket_Room_CreateRoom(User* user, TCPConnection::Packet::pointer packet);
 	void parsePacket_Room_JoinRoom(User* user, TCPConnection::Packet::pointer packet);
 	void parsePacket_Room_LeaveRoom(User* user, TCPConnection::Packet::pointer packet);
+	void parsePacket_Room_UserReady(User* user, TCPConnection::Packet::pointer packet);
 	void parsePacket_Room_StartGame(User* user);
 	void parsePacket_Room_UpdateRoomSettings(User* user, TCPConnection::Packet::pointer packet);
 	void parsePacket_Room_ResultConfirm(User* user, TCPConnection::Packet::pointer packet);
+	void parsePacket_Room_ChangeTeam(User* user, TCPConnection::Packet::pointer packet);
 	void parsePacket_Room_ReturnToRoom(User* user);
 	void buildRoomInfo(TCPConnection::Packet::pointer packet, Room* room, unsigned short flag);
 	void buildRoomSettings(TCPConnection::Packet::pointer packet, const RoomSettings& roomSettings);
-	void buildRoomUserInfo(TCPConnection::Packet::pointer packet, const GameUser& gameUser);
+	void buildRoomUserInfo(TCPConnection::Packet::pointer packet, const GameUser& gameUser, unsigned char team = 1, unsigned char status = 0, unsigned char slot = 0);
 	void sendPacket_Room_ReplyCreateAndJoin(TCPConnection::pointer connection, Room* room, const vector<GameUser>& gameUsers);
-	void sendPacket_Room_UserJoin(TCPConnection::pointer connection, const GameUser& gameUser);
+	void sendPacket_Room_UserJoin(TCPConnection::pointer connection, const GameUser& gameUser, unsigned char team = 1, unsigned char status = 0, unsigned char slot = 0);
 	void sendPacket_Room_UserReady(TCPConnection::pointer connection, unsigned long userID, unsigned char ready);
+	void sendPacket_Room_TeamChange(TCPConnection::pointer connection, unsigned long userID, unsigned char team);
 	void sendPacket_Room_LeaveRoomInGame(TCPConnection::pointer connection);
 };
 

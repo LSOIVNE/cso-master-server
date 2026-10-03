@@ -32,7 +32,12 @@ void Packet_LoginManager::ParsePacket_Login(TCPConnection::Packet::pointer packe
 	serverConsole.Print(PrefixType::Info, format("[ Packet_LoginManager ] Parsing Packet_Login from client ({})\n", connection->GetLogEndpoint()));
 
 	const string& userName = packet->ReadString();
-	const string& password = packet->ReadString();
+	unsigned short passwordLength = packet->ReadUInt16_LE();
+	vector<unsigned char> passwordBytes = packet->ReadArray_UInt8(passwordLength);
+	string password(passwordBytes.begin(), passwordBytes.end());
+	if (!password.empty() && password[password.size() - 1] == '\0') {
+		password.resize(password.size() - 1);
+	}
 	const vector<unsigned char>& hardwareID = packet->ReadArray_UInt8(HARDWARE_ID_SIZE);
 	unsigned long pcBang = packet->ReadUInt32_LE();
 

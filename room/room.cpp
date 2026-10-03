@@ -14,17 +14,49 @@ Room::Room(unsigned short roomID, User* roomHostUser) : _roomID(roomID), _roomHo
 	SetGameMatch(NULL);
 }
 
-char Room::AddRoomUser(User* user) {
+char Room::AddRoomUser(User* user, unsigned char team) {
 	if (user == NULL) {
 		return -1;
 	}
 
-	auto it = find_if(_roomUsers.begin(), _roomUsers.end(), [&user](User*& roomUser) { return roomUser == user; });
+	auto it = find_if(_roomUsers.begin(), _roomUsers.end(), [user](const RoomUser& ru) { return ru.user == user; });
 	if (it != _roomUsers.end()) {
 		return 0;
 	}
 
-	_roomUsers.push_back(user);
+	if (team == 0) {
+		if (user == _roomHostUser) {
+			team = RoomTeam::Terrorist;
+		}
+		else {
+			int trCount = 0, ctCount = 0;
+			for (const auto& ru : _roomUsers) {
+				if (ru.team == RoomTeam::Terrorist) trCount++;
+				else if (ru.team == RoomTeam::CounterTerrorist) ctCount++;
+			}
+			team = (trCount <= ctCount) ? RoomTeam::Terrorist : RoomTeam::CounterTerrorist;
+		}
+	}
+
+	unsigned char slot = 0;
+	while (slot < 32) {
+		bool used = false;
+		for (const auto& ru : _roomUsers) {
+			if (ru.slot == slot) {
+				used = true;
+				break;
+			}
+		}
+		if (!used) break;
+		slot++;
+	}
+
+	RoomUser ru;
+	ru.user = user;
+	ru.team = team;
+	ru.status = 0;
+	ru.slot = slot;
+	_roomUsers.push_back(ru);
 
 	user->SetUserStatus(UserStatus::InRoom);
 	user->SetCurrentRoomID(_roomID);
@@ -44,7 +76,10 @@ void Room::RemoveRoomUser(User* user) {
 		}
 	}
 
-	_roomUsers.erase(find(_roomUsers.begin(), _roomUsers.end(), user));
+	auto it = find_if(_roomUsers.begin(), _roomUsers.end(), [user](const RoomUser& ru) { return ru.user == user; });
+	if (it != _roomUsers.end()) {
+		_roomUsers.erase(it);
+	}
 
 	roomManager.SendUpdateRoomPacketToAll(this, ROOMLIST_FLAG_CURRENTPLAYERS);
 
@@ -55,7 +90,7 @@ void Room::RemoveRoomUser(User* user) {
 		roomManager.RemoveRoom(this);
 	}
 	else {
-		vector<User*> roomUsers = _roomUsers;
+		vector<User*> roomUsers = GetRoomUsers();
 
 		roomUsers.erase(remove_if(roomUsers.begin(), roomUsers.end(), [](User* u) {
 			return (u == NULL || u->GetConnection() == NULL);
@@ -91,7 +126,7 @@ void Room::RemoveRoomUser(User* user) {
 						roomManager.SendUpdateRoomPacket(u->GetConnection(), this, ROOMLIST_FLAG_ROOMSTATE);
 					}
 
-					UpdateRoomHostUser(_roomUsers[0]);
+					UpdateRoomHostUser(_roomUsers[0].user);
 				}
 				else {
 					User* newRoomHostUser = gameMatchUsers[0]->GetUser();
@@ -118,7 +153,7 @@ void Room::RemoveRoomUser(User* user) {
 				}
 			}
 			else {
-				UpdateRoomHostUser(_roomUsers[0]);
+				UpdateRoomHostUser(_roomUsers[0].user);
 			}
 		}
 	}
@@ -131,7 +166,7 @@ void Room::UpdateRoomHostUser(User* user) {
 
 	_roomHostUser = user;
 
-	vector<User*> roomUsers = _roomUsers;
+	vector<User*> roomUsers = GetRoomUsers();
 
 	roomUsers.erase(remove_if(roomUsers.begin(), roomUsers.end(), [](User* u) {
 		return (u == NULL || u->GetConnection() == NULL);
@@ -263,4 +298,70 @@ void Room::UpdateRoomSettings(const RoomSettings& roomSettings) {
 	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK2) {
 		_roomSettings.unkh2 = roomSettings.unkh2;
 	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK4) {
+		_roomSettings.unkh4_1 = roomSettings.unkh4_1;
+		_roomSettings.unkh4_2 = roomSettings.unkh4_2;
+		_roomSettings.unkh4_3 = roomSettings.unkh4_3;
+		_roomSettings.unkh4_4 = roomSettings.unkh4_4;
+	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK8) {
+		_roomSettings.unkh8 = roomSettings.unkh8;
+	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK10) {
+		_roomSettings.unkh10 = roomSettings.unkh10;
+	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK20) {
+		_roomSettings.unk20 = roomSettings.unk20;
+	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK40) {
+		_roomSettings.unkh40 = roomSettings.unkh40;
+	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK80) {
+		_roomSettings.unkh80 = roomSettings.unkh80;
+	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK100) {
+		_roomSettings.unkh100 = roomSettings.unkh100;
+	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK200) {
+		_roomSettings.unkh200 = roomSettings.unkh200;
+	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK400) {
+		_roomSettings.unkh400 = roomSettings.unkh400;
+	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK800) {
+		_roomSettings.unkh800 = roomSettings.unkh800;
+	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK1000) {
+		_roomSettings.unkh1000 = roomSettings.unkh1000;
+	}
+	_roomSettings.highFlag |= (roomSettings.highFlag & 0x1FFF);
+}
+
+RoomUser* Room::GetRoomUser(User* user) {
+	if (!user) return nullptr;
+	for (auto& ru : _roomUsers) {
+		if (ru.user == user) return &ru;
+	}
+	return nullptr;
+}
+
+RoomUser* Room::GetRoomUserByUserID(unsigned long userID) {
+	for (auto& ru : _roomUsers) {
+		if (ru.user && ru.user->GetUserID() == userID) return &ru;
+	}
+	return nullptr;
+}
+
+bool Room::SetUserTeam(User* user, unsigned char team) {
+	RoomUser* ru = GetRoomUser(user);
+	if (!ru) return false;
+	ru->team = team;
+	return true;
+}
+
+bool Room::SetUserReady(User* user, unsigned char ready) {
+	RoomUser* ru = GetRoomUser(user);
+	if (!ru) return false;
+	ru->status = ready;
+	return true;
 }

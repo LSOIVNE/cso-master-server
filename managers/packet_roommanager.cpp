@@ -1,4 +1,4 @@
-﻿#include "packet_roommanager.h"
+#include "packet_roommanager.h"
 #include "packet_umsgmanager.h"
 #include "packet_hostmanager.h"
 #include "packetmanager.h"
@@ -6,6 +6,7 @@
 #include "roommanager.h"
 #include "serverconsole.h"
 #include "serverconfig.h"
+#include "packet_updateinfomanager.h"
 
 Packet_RoomManager packet_RoomManager;
 
@@ -42,6 +43,10 @@ void Packet_RoomManager::ParsePacket_Room(TCPConnection::Packet::pointer packet)
 			parsePacket_Room_LeaveRoom(user, packet);
 			break;
 		}
+		case Packet_RoomType::UserReady: {
+			parsePacket_Room_UserReady(user, packet);
+			break;
+		}
 		case Packet_RoomType::StartGame: {
 			parsePacket_Room_StartGame(user);
 			break;
@@ -52,6 +57,11 @@ void Packet_RoomManager::ParsePacket_Room(TCPConnection::Packet::pointer packet)
 		}
 		case Packet_RoomType::ResultConfirm: {
 			parsePacket_Room_ResultConfirm(user, packet);
+			break;
+		}
+		case Packet_RoomType::ChangeTeam_Old:
+		case Packet_RoomType::ChangeTeam: {
+			parsePacket_Room_ChangeTeam(user, packet);
 			break;
 		}
 		case Packet_RoomType::ReturnToRoom: {
@@ -169,7 +179,7 @@ void Packet_RoomManager::SendPacket_Room_ReplyUpdateRoomSettings(TCPConnection::
 	packet->Send();
 }
 
-void Packet_RoomManager::SendPacket_Room_GameResult(TCPConnection::pointer connection) {
+void Packet_RoomManager::SendPacket_Room_GameResult(TCPConnection::pointer connection, Room* room, GameMatch* gameMatch, unsigned char winTeam, unsigned char terWins, unsigned char ctWins) {
 	if (connection == NULL) {
 		return;
 	}
@@ -182,97 +192,178 @@ void Packet_RoomManager::SendPacket_Room_GameResult(TCPConnection::pointer conne
 	packet->WriteUInt8(Packet_RoomType::GameResult);
 	packet->WriteBool(false); // false - normal match, true - clan battle
 
-	if (true) { // normal match
-		packet->WriteUInt8(0); // win team; 1 - tr, 2 - ct, any other value - no team
-		packet->WriteUInt8(0); // num of players
+	unsigned char gameModeID = room ? room->GetRoomSettings().gameModeID : 0;
 
-		for (unsigned char unk3 = 0; unk3 < 0; unk3++) {
-			packet->WriteUInt32_LE(0); // userID
-			packet->WriteUInt8(0); // team; 1 - tr, 2 - ct
-			packet->WriteUInt16_LE(0); // kills
-			packet->WriteUInt16_LE(0); // deaths
-			packet->WriteUInt8(0); // wins
-			packet->WriteUInt8(0); // losses
-			packet->WriteUInt16_LE(0); // exp
-			packet->WriteUInt16_LE(0); // bonus exp?
-			packet->WriteUInt16_LE(0); // point
-			packet->WriteUInt16_LE(0); // bonus point?
-			packet->WriteUInt8(0); // rank; 1 - 1st, 2 - 2nd, 3 - 3rd, 4 - 4th, 5 and beyond - visual bugs
-			packet->WriteBool(false); // level up
-		}
+	// Extract players
+	vector<GameMatchUser*> players;
+	if (gameMatch) {
+		players = gameMatch->GetGameMatchUsers();
+		players.erase(remove_if(players.begin(), players.end(), [](GameMatchUser* gmu) {
+			return (gmu == NULL || gmu->GetUser() == NULL);
+		}), players.end());
 	}
-	else { // clan battle
-		packet->WriteUInt8(0); // unk2
-		packet->WriteUInt8(0); // unk3
-		packet->WriteUInt8(0); // unk4
-		packet->WriteUInt8(0); // unk5
-		packet->WriteUInt8(0); // unk6
 
-		for (unsigned char i = 0; i < 2; i++) {
-			packet->WriteUInt32_LE(0); // unk7
-			packet->WriteUInt32_LE(0); // unk8
-			packet->WriteString(""); // unk9
-			packet->WriteString(""); // unk10
-			packet->WriteUInt8(0); // unk11
-			packet->WriteUInt8(0); // unk12
-			packet->WriteUInt8(0); // unk13
-			packet->WriteString(""); // unk14
-			packet->WriteUInt16_LE(0); // unk15
-			packet->WriteUInt16_LE(0); // unk16
-			packet->WriteUInt16_LE(0); // unk17
+	// Fallback if players list is empty: ensure at least local user is included
+	User* localUser = userManager.GetUserByConnection(connection);
+	unique_ptr<GameMatchUser> fallbackUser;
+	if (players.empty() && localUser) {
+		fallbackUser = make_unique<GameMatchUser>(localUser);
+		RoomUser* ru = room ? room->GetRoomUser(localUser) : NULL;
+		if (ru) {
+			fallbackUser->SetTeam((Team)ru->team);
+		}
+		players.push_back(fallbackUser.get());
+	}
+
+	unsigned char playerCount = (unsigned char)players.size();
+
+	packet->WriteUInt8(winTeam);    // 1 - tr, 2 - ct, 0 - draw/none
+	packet->WriteUInt8(terWins);    // TER score
+	packet->WriteUInt8(ctWins);     // CT score
+	packet->WriteUInt8(playerCount);// num of players
+	packet->WriteUInt8(gameModeID); // gameModeID (e.g. 26 for Bot Mode)
+
+	for (unsigned char i = 0; i < playerCount; ++i) {
+		GameMatchUser* gmu = players[i];
+		User* u = gmu->GetUser();
+
+		unsigned long userID = u->GetUserID();
+		unsigned char team = (unsigned char)gmu->GetTeam();
+		if (team != 1 && team != 2) {
+			RoomUser* ru = room ? room->GetRoomUser(u) : NULL;
+			team = ru ? ru->team : 1;
 		}
 
-		packet->WriteUInt8(0); // unk18
-
-		for (unsigned char unk18 = 0; unk18 < 0; unk18++) {
-			packet->WriteUInt32_LE(0); // unk19
-			packet->WriteString(""); // unk20
-			packet->WriteUInt8(0); // unk21
-			packet->WriteUInt8(0); // unk22
-			packet->WriteUInt8(0); // unk23
-			packet->WriteUInt16_LE(0); // unk24
-			packet->WriteUInt16_LE(0); // unk25
+		unsigned short kills = gmu->GetKills();
+		unsigned short deaths = gmu->GetDeaths();
+		unsigned char rank = gmu->GetRank();
+		unsigned char isWin = (winTeam != 0 && team == winTeam) ? 1 : 0;
+		unsigned char isLoss = (winTeam != 0 && team != winTeam) ? 1 : 0;
+		if (gameModeID == 1 || gameModeID == 22) {
+			isWin = (rank == 1) ? 1 : 0;
+			isLoss = (rank != 1) ? 1 : 0;
 		}
 
-		for (unsigned char unk5 = 0; unk5 < 0; unk5++) {
-			packet->WriteUInt8(0); // unk26
-			packet->WriteUInt8(0); // unk27
+		unsigned short earnedExp = gmu->GetExp();
+		unsigned short bonusExp = 0;
+		unsigned short earnedPoints = gmu->GetPoints();
+		unsigned short bonusPoints = 0;
+		unsigned char levelUp = gmu->GetLevelUp();
 
-			for (unsigned char i = 0; i < 2; i++) {
-				packet->WriteUInt8(0); // unk28
-				packet->WriteUInt8(0); // unk29
-				packet->WriteUInt8(0); // unk30
+		// 54 bytes common player block
+		packet->WriteUInt32_LE(userID);
+		packet->WriteUInt8(team);
+		packet->WriteUInt16_LE(kills);
+		packet->WriteUInt16_LE(deaths);
+		packet->WriteUInt8(isWin);
+		packet->WriteUInt8(isLoss);
+		packet->WriteUInt16_LE(earnedExp);
+		packet->WriteUInt16_LE(bonusExp);
+		packet->WriteUInt16_LE(earnedPoints);
+		packet->WriteUInt16_LE(bonusPoints);
+		packet->WriteUInt8(rank);
+		packet->WriteUInt8(levelUp);
 
-				for (unsigned char unk30 = 0; unk30 < 0; unk30++) {
-					packet->WriteUInt32_LE(0); // unk31
-					packet->WriteUInt8(0); // unk32
-					packet->WriteUInt16_LE(0); // unk33
-					packet->WriteUInt16_LE(0); // unk34
-					packet->WriteUInt8(0); // unk35
-					packet->WriteUInt8(0); // unk36
-					packet->WriteUInt16_LE(0); // unk37
-					packet->WriteUInt16_LE(0); // unk38
-					packet->WriteUInt16_LE(0); // unk39
-					packet->WriteUInt16_LE(0); // unk40
-					packet->WriteUInt8(0); // unk41
-					packet->WriteUInt8(0); // unk42
-					packet->WriteUInt8(0); // unk43
-					packet->WriteUInt8(0); // unk44
-				}
-			}
+		for (int b = 0; b < 14; ++b) {
+			packet->WriteUInt16_LE(0); // 14 x UInt16_LE bonus percentages
 		}
 
-		if (false) { // if (unk2)
-			for (unsigned char i = 0; i < 0; i++) {
-				packet->WriteUInt16_LE(0); // unk45
-				packet->WriteUInt8(0); // unk46
-				packet->WriteUInt8(0); // unk47
-				packet->WriteUInt8(0); // unk48
-			}
+		packet->WriteUInt8(0); // headshots
+		packet->WriteUInt8(0); // grenadeKills
+		packet->WriteUInt8(0); // knifeKills
+		packet->WriteUInt8(0); // miscKills
+		packet->WriteUInt16_LE(0); // clanBonusExp
+
+		// Mode-specific extra bytes
+		switch (gameModeID) {
+			case 0: // Original
+			case 3: // Bot
+			case 6: // Official
+			case 7: // Official_TieBreak
+				packet->WriteUInt8(0);
+				packet->WriteUInt8(0);
+				packet->WriteUInt8(0);
+				packet->WriteUInt8(0);
+				packet->WriteUInt8(0);
+				break;
+			case 8:
+			case 9:
+			case 14:
+			case 20:
+			case 24:
+				packet->WriteUInt8(0);
+				packet->WriteUInt8(0);
+				packet->WriteUInt8(0);
+				packet->WriteUInt8(0);
+				break;
+			case 10:
+				packet->WriteUInt16_LE(0);
+				packet->WriteUInt16_LE(0);
+				break;
+			case 11:
+			case 13:
+				packet->WriteUInt32_LE(0);
+				packet->WriteUInt16_LE(0);
+				packet->WriteUInt16_LE(0);
+				break;
+			case 12:
+				packet->WriteUInt32_LE(0);
+				packet->WriteUInt16_LE(0);
+				break;
+			case 15:
+			case 17:
+				packet->WriteUInt32_LE(0);
+				packet->WriteUInt32_LE(0);
+				packet->WriteUInt16_LE(0);
+				break;
+			case 16:
+				packet->WriteUInt16_LE(0);
+				packet->WriteUInt16_LE(0);
+				packet->WriteUInt16_LE(0);
+				packet->WriteUInt16_LE(0);
+				packet->WriteUInt32_LE(0);
+				packet->WriteUInt32_LE(0);
+				packet->WriteUInt32_LE(0);
+				packet->WriteUInt32_LE(0);
+				break;
+			case 18:
+				packet->WriteUInt32_LE(0);
+				packet->WriteUInt16_LE(0);
+				packet->WriteUInt16_LE(0);
+				packet->WriteUInt16_LE(0);
+				break;
+			case 21:
+				packet->WriteUInt16_LE(0);
+				packet->WriteUInt8(0);
+				break;
+			case 23:
+				packet->WriteUInt8(0);
+				packet->WriteUInt8(0);
+				packet->WriteUInt8(0);
+				packet->WriteUInt8(0);
+				packet->WriteUInt8(0);
+				packet->WriteUInt16_LE(0);
+				break;
+			case 25:
+				packet->WriteUInt16_LE(0);
+				packet->WriteUInt32_LE(0);
+				break;
+			case 26: // Bot Mode (0x1A)
+				packet->WriteUInt16_LE(0);
+				packet->WriteUInt8(0);
+				packet->WriteUInt8(0);
+				packet->WriteUInt8(0);
+				packet->WriteUInt8(0);
+				packet->WriteUInt8(0);
+				break;
+			default:
+				break;
 		}
 	}
 
 	packet->Send();
+	serverConsole.Print(PrefixType::Info, format("[ Packet_RoomManager ] Sent Packet_Room GameResult - winTeam: {}, terWins: {}, ctWins: {}, players: {}, gameModeID: {}\n",
+		winTeam, terWins, ctWins, playerCount, gameModeID));
 }
 
 void Packet_RoomManager::parsePacket_Room_CreateRoom(User* user, TCPConnection::Packet::pointer packet) {
@@ -442,6 +533,10 @@ void Packet_RoomManager::parsePacket_Room_JoinRoom(User* user, TCPConnection::Pa
 	vector<GameUser> gameUsers;
 	UserCharacterResult uCharacterResult;
 	unsigned long userID = user->GetUserID();
+	RoomUser* ru = room->GetRoomUser(user);
+	unsigned char joinTeam = ru ? ru->team : RoomTeam::Terrorist;
+	unsigned char joinStatus = ru ? ru->status : 0;
+	unsigned char joinSlot = ru ? ru->slot : 0;
 
 	for (auto& u : roomUsers) {
 		uCharacterResult = u->GetUserCharacter(USERCHARACTER_FLAG_ALL);
@@ -449,13 +544,13 @@ void Packet_RoomManager::parsePacket_Room_JoinRoom(User* user, TCPConnection::Pa
 			gameUsers.push_back({ u, uCharacterResult.userCharacter });
 		}
 
-		sendPacket_Room_UserJoin(u->GetConnection(), { user, userCharacterResult.userCharacter });
-		sendPacket_Room_UserReady(u->GetConnection(), userID, 0);
+		sendPacket_Room_UserJoin(u->GetConnection(), { user, userCharacterResult.userCharacter }, joinTeam, joinStatus, joinSlot);
+		sendPacket_Room_UserReady(u->GetConnection(), userID, joinStatus);
 	}
 
 	gameUsers.push_back({ user, userCharacterResult.userCharacter });
 	sendPacket_Room_ReplyCreateAndJoin(connection, room, gameUsers);
-	sendPacket_Room_UserReady(connection, userID, 0);
+	sendPacket_Room_UserReady(connection, userID, joinStatus);
 }
 
 void Packet_RoomManager::parsePacket_Room_LeaveRoom(User* user, TCPConnection::Packet::pointer packet) {
@@ -490,6 +585,11 @@ void Packet_RoomManager::parsePacket_Room_LeaveRoom(User* user, TCPConnection::P
 
 	userManager.SendFullUserListPacket(connection);
 	roomManager.SendFullRoomListPacket(connection);
+
+	const UserCharacterResult& ucr = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
+	if (ucr.result) {
+		packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, ucr.userCharacter });
+	}
 }
 
 void Packet_RoomManager::parsePacket_Room_StartGame(User* user) {
@@ -553,7 +653,7 @@ void Packet_RoomManager::parsePacket_Room_UpdateRoomSettings(User* user, TCPConn
 
 	RoomSettings roomSettings;
 	roomSettings.lowFlag = packet->ReadUInt32_LE();
-	roomSettings.highFlag = packet->ReadUInt8();
+	roomSettings.highFlag = packet->ReadUInt32_LE();
 
 	unsigned char roomListFlag = 0;
 
@@ -685,6 +785,47 @@ void Packet_RoomManager::parsePacket_Room_UpdateRoomSettings(User* user, TCPConn
 	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK2) {
 		roomSettings.unkh2 = packet->ReadUInt8();
 	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK4) {
+		roomSettings.unkh4_1 = packet->ReadUInt8();
+		roomSettings.unkh4_2 = packet->ReadUInt8();
+		roomSettings.unkh4_3 = packet->ReadUInt8();
+		roomSettings.unkh4_4 = packet->ReadUInt8();
+	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK8) {
+		roomSettings.unkh8 = packet->ReadUInt8();
+	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK10) {
+		roomSettings.unkh10 = packet->ReadUInt16_LE();
+	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK20) {
+		roomSettings.unk20 = packet->ReadUInt8();
+	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK40) {
+		roomSettings.unkh40 = packet->ReadUInt8();
+	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK80) {
+		roomSettings.unkh80 = packet->ReadUInt8();
+	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK100) {
+		roomSettings.unkh100 = packet->ReadUInt8();
+	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK200) {
+		unsigned char count = packet->ReadUInt8();
+		for (unsigned char i = 0; i < count; i++) {
+			unsigned char a = packet->ReadUInt8();
+			unsigned char b = packet->ReadUInt8();
+			roomSettings.unkh200.push_back({ a, b });
+		}
+	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK400) {
+		roomSettings.unkh400 = packet->ReadUInt8();
+	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK800) {
+		roomSettings.unkh800 = packet->ReadUInt8();
+	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK1000) {
+		roomSettings.unkh1000 = packet->ReadUInt8();
+	}
 
 	room->UpdateRoomSettings(roomSettings);
 
@@ -711,10 +852,12 @@ void Packet_RoomManager::parsePacket_Room_ResultConfirm(User* user, TCPConnectio
 		return;
 	}
 
-	if (user->GetUserStatus() != UserStatus::InRoom) {
+	if (user->GetUserStatus() != UserStatus::InRoom && user->GetUserStatus() != UserStatus::InGame) {
 		serverConsole.Print(PrefixType::Warn, format("[ Packet_RoomManager ] User ({}) has sent Packet_Room ResultConfirm, but it's not in a room!\n", user->GetUserLogName()));
 		return;
 	}
+
+	user->SetUserStatus(UserStatus::InRoom);
 
 	Room* room = roomManager.GetRoomByRoomID(user->GetCurrentRoomID());
 	if (room == NULL) {
@@ -727,6 +870,12 @@ void Packet_RoomManager::parsePacket_Room_ResultConfirm(User* user, TCPConnectio
 	serverConsole.Print(PrefixType::Info, format("[ Packet_RoomManager ] User ({}) has sent Packet_Room ResultConfirm - unk: {}\n", user->GetUserLogName(), unk));
 
 	packet_HostManager.SendPacket_Host_ResultClose(connection);
+	SendPacket_Room_ReplyUpdateRoomSettings(connection, room->GetRoomSettings());
+
+	const UserCharacterResult& ucr = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
+	if (ucr.result) {
+		packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, ucr.userCharacter });
+	}
 }
 
 void Packet_RoomManager::parsePacket_Room_ReturnToRoom(User* user) {
@@ -752,7 +901,8 @@ void Packet_RoomManager::parsePacket_Room_ReturnToRoom(User* user) {
 
 	GameMatch* gameMatch = room->GetGameMatch();
 	if (gameMatch == NULL) {
-		serverConsole.Print(PrefixType::Warn, format("[ Packet_RoomManager ] User ({}) has sent Packet_Room ReturnToRoom, but its room doesn't have a gameMatch!\n", user->GetUserLogName()));
+		user->SetUserStatus(UserStatus::InRoom);
+		serverConsole.Print(PrefixType::Info, format("[ Packet_RoomManager ] User ({}) has sent Packet_Room ReturnToRoom (room match already ended)\n", user->GetUserLogName()));
 		return;
 	}
 
@@ -818,6 +968,80 @@ void Packet_RoomManager::parsePacket_Room_ReturnToRoom(User* user) {
 	}
 
 	user->SetUserStatus(UserStatus::InRoom);
+}
+
+void Packet_RoomManager::parsePacket_Room_UserReady(User* user, TCPConnection::Packet::pointer packet) {
+	if (user == NULL || packet == NULL) {
+		return;
+	}
+
+	auto& connection = user->GetConnection();
+	if (connection == NULL) {
+		return;
+	}
+
+	if (user->GetUserStatus() != UserStatus::InRoom) {
+		serverConsole.Print(PrefixType::Warn, format("[ Packet_RoomManager ] User ({}) has sent Packet_Room UserReady, but it's not in a room!\n", user->GetUserLogName()));
+		return;
+	}
+
+	Room* room = roomManager.GetRoomByRoomID(user->GetCurrentRoomID());
+	if (room == NULL) {
+		serverConsole.Print(PrefixType::Warn, format("[ Packet_RoomManager ] User ({}) has sent Packet_Room UserReady, but its room is NULL!\n", user->GetUserLogName()));
+		return;
+	}
+
+	unsigned char ready = packet->ReadUInt8();
+	serverConsole.Print(PrefixType::Info, format("[ Packet_RoomManager ] User ({}) has sent Packet_Room UserReady: {}\n", user->GetUserLogName(), ready));
+
+	room->SetUserReady(user, ready);
+
+	unsigned long userID = user->GetUserID();
+	vector<User*> roomUsers = room->GetRoomUsers();
+	for (auto& u : roomUsers) {
+		if (u && u->GetConnection()) {
+			SendPacket_Room_UserReady(u->GetConnection(), userID, ready);
+		}
+	}
+}
+
+void Packet_RoomManager::parsePacket_Room_ChangeTeam(User* user, TCPConnection::Packet::pointer packet) {
+	if (user == NULL || packet == NULL) {
+		return;
+	}
+
+	auto& connection = user->GetConnection();
+	if (connection == NULL) {
+		return;
+	}
+
+	if (user->GetUserStatus() != UserStatus::InRoom) {
+		serverConsole.Print(PrefixType::Warn, format("[ Packet_RoomManager ] User ({}) has sent Packet_Room ChangeTeam, but it's not in a room!\n", user->GetUserLogName()));
+		return;
+	}
+
+	Room* room = roomManager.GetRoomByRoomID(user->GetCurrentRoomID());
+	if (room == NULL) {
+		serverConsole.Print(PrefixType::Warn, format("[ Packet_RoomManager ] User ({}) has sent Packet_Room ChangeTeam, but its room is NULL!\n", user->GetUserLogName()));
+		return;
+	}
+
+	unsigned char targetTeam = packet->ReadUInt8();
+	serverConsole.Print(PrefixType::Info, format("[ Packet_RoomManager ] User ({}) has sent Packet_Room ChangeTeam to {}\n", user->GetUserLogName(), targetTeam));
+
+	if (targetTeam != RoomTeam::Terrorist && targetTeam != RoomTeam::CounterTerrorist && targetTeam != RoomTeam::Spectator) {
+		targetTeam = RoomTeam::Terrorist;
+	}
+
+	room->SetUserTeam(user, targetTeam);
+
+	unsigned long userID = user->GetUserID();
+	vector<User*> roomUsers = room->GetRoomUsers();
+	for (auto& u : roomUsers) {
+		if (u && u->GetConnection()) {
+			SendPacket_Room_TeamChange(u->GetConnection(), userID, targetTeam);
+		}
+	}
 }
 
 void Packet_RoomManager::buildRoomInfo(TCPConnection::Packet::pointer packet, Room* room, unsigned short flag) {
@@ -889,7 +1113,7 @@ void Packet_RoomManager::buildRoomSettings(TCPConnection::Packet::pointer packet
 	}
 
 	packet->WriteUInt32_LE(roomSettings.lowFlag);
-	packet->WriteUInt8(roomSettings.highFlag);
+	packet->WriteUInt32_LE(roomSettings.highFlag);
 
 	if (roomSettings.lowFlag & ROOMSETTINGS_LFLAG_ROOMNAME) {
 		packet->WriteString(roomSettings.roomName);
@@ -1011,16 +1235,57 @@ void Packet_RoomManager::buildRoomSettings(TCPConnection::Packet::pointer packet
 	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK2) {
 		packet->WriteUInt8(roomSettings.unkh2); // unk
 	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK4) {
+		packet->WriteUInt8(roomSettings.unkh4_1);
+		packet->WriteUInt8(roomSettings.unkh4_2);
+		packet->WriteUInt8(roomSettings.unkh4_3);
+		packet->WriteUInt8(roomSettings.unkh4_4);
+	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK8) {
+		packet->WriteUInt8(roomSettings.unkh8);
+	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK10) {
+		packet->WriteUInt16_LE(roomSettings.unkh10);
+	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK20) {
+		packet->WriteUInt8(roomSettings.unkh20);
+	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK40) {
+		packet->WriteUInt8(roomSettings.unkh40);
+	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK80) {
+		packet->WriteUInt8(roomSettings.unkh80);
+	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK100) {
+		packet->WriteUInt8(roomSettings.unkh100);
+	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK200) {
+		packet->WriteUInt8((unsigned char)roomSettings.unkh200.size());
+		for (const auto& item : roomSettings.unkh200) {
+			packet->WriteUInt8(item.first);
+			packet->WriteUInt8(item.second);
+		}
+	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK400) {
+		packet->WriteUInt8(roomSettings.unkh400);
+	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK800) {
+		packet->WriteUInt8(roomSettings.unkh800);
+	}
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK1000) {
+		packet->WriteUInt8(roomSettings.unkh1000);
+	}
 }
 
-void Packet_RoomManager::buildRoomUserInfo(TCPConnection::Packet::pointer packet, const GameUser& gameUser) {
+void Packet_RoomManager::buildRoomUserInfo(TCPConnection::Packet::pointer packet, const GameUser& gameUser, unsigned char team, unsigned char status, unsigned char slot) {
 	if (packet == NULL || gameUser.user == NULL) {
 		return;
 	}
 
 	packet->WriteUInt32_LE(gameUser.user->GetUserID());
-	packet->WriteUInt8(0); // unk
-	packet->WriteUInt8(0); // unk
+	packet->WriteUInt8(team); // team: 1 = TR, 2 = CT, 3 = Spectator
+	packet->WriteUInt8(status); // status: 0 = not ready, 2 = ready
+	packet->WriteUInt8(slot); // slot (0..31)
 
 	const UserNetwork& userNetwork = gameUser.user->GetUserNetwork();
 
@@ -1059,13 +1324,17 @@ void Packet_RoomManager::sendPacket_Room_ReplyCreateAndJoin(TCPConnection::point
 	packet->WriteUInt8((unsigned char)gameUsers.size());
 
 	for (auto& gameUser : gameUsers) {
-		buildRoomUserInfo(packet, gameUser);
+		RoomUser* ru = room->GetRoomUser(gameUser.user);
+		unsigned char team = ru ? ru->team : RoomTeam::Terrorist;
+		unsigned char status = ru ? ru->status : 0;
+		unsigned char slot = ru ? ru->slot : 0;
+		buildRoomUserInfo(packet, gameUser, team, status, slot);
 	}
 
 	packet->Send();
 }
 
-void Packet_RoomManager::sendPacket_Room_UserJoin(TCPConnection::pointer connection, const GameUser& gameUser) {
+void Packet_RoomManager::sendPacket_Room_UserJoin(TCPConnection::pointer connection, const GameUser& gameUser, unsigned char team, unsigned char status, unsigned char slot) {
 	if (connection == NULL) {
 		return;
 	}
@@ -1076,9 +1345,13 @@ void Packet_RoomManager::sendPacket_Room_UserJoin(TCPConnection::pointer connect
 	}
 
 	packet->WriteUInt8(Packet_RoomType::UserJoin);
-	buildRoomUserInfo(packet, gameUser);
+	buildRoomUserInfo(packet, gameUser, team, status, slot);
 
 	packet->Send();
+}
+
+void Packet_RoomManager::SendPacket_Room_UserReady(TCPConnection::pointer connection, unsigned long userID, unsigned char ready) {
+	sendPacket_Room_UserReady(connection, userID, ready);
 }
 
 void Packet_RoomManager::sendPacket_Room_UserReady(TCPConnection::pointer connection, unsigned long userID, unsigned char ready) {
@@ -1094,6 +1367,27 @@ void Packet_RoomManager::sendPacket_Room_UserReady(TCPConnection::pointer connec
 	packet->WriteUInt8(Packet_RoomType::UserReady);
 	packet->WriteUInt32_LE(userID);
 	packet->WriteUInt8(ready);
+
+	packet->Send();
+}
+
+void Packet_RoomManager::SendPacket_Room_TeamChange(TCPConnection::pointer connection, unsigned long userID, unsigned char team) {
+	sendPacket_Room_TeamChange(connection, userID, team);
+}
+
+void Packet_RoomManager::sendPacket_Room_TeamChange(TCPConnection::pointer connection, unsigned long userID, unsigned char team) {
+	if (connection == NULL) {
+		return;
+	}
+
+	auto packet = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::Room });
+	if (packet == NULL) {
+		return;
+	}
+
+	packet->WriteUInt8(Packet_RoomType::TeamChange);
+	packet->WriteUInt32_LE(userID);
+	packet->WriteUInt8(team);
 
 	packet->Send();
 }

@@ -3,6 +3,12 @@
 #include "roommanager.h"
 #include "packet_roommanager.h"
 #include "serverconsole.h"
+#include "serverconfig.h"
+#include "databasemanager.h"
+#include "packet_updateinfomanager.h"
+#include "packet_itemmanager.h"
+#include <set>
+#include <algorithm>
 
 Packet_HostManager packet_HostManager;
 
@@ -65,6 +71,23 @@ void Packet_HostManager::ParsePacket_Host(TCPConnection::Packet::pointer packet)
 		}
 		case Packet_HostType::SelectTeam: {
 			parsePacket_Host_SelectTeam(user, packet);
+			break;
+		}
+		case Packet_HostType::UserWeapons: {
+			parsePacket_Host_UserWeapons(user, packet);
+			break;
+		}
+		case Packet_HostType::PlayerPosition: {
+			packet->ReadUInt32_LE();
+			packet->ReadBytes<float>();
+			packet->ReadBytes<float>();
+			packet->ReadBytes<float>();
+			break;
+		}
+		case Packet_HostType::PlayerBuyItem: {
+			packet->ReadUInt32_LE();
+			packet->ReadUInt16_LE();
+			packet->ReadUInt8();
 			break;
 		}
 		default: {
@@ -206,6 +229,10 @@ void Packet_HostManager::parsePacket_Host_ServerIsActivated(User* user) {
 		for (auto& u : roomUsers) {
 			packet_RoomManager.SendPacket_Room_ReplyUpdateRoomSettings(u->GetConnection(), roomSettings);
 			roomManager.SendUpdateRoomPacket(u->GetConnection(), room, ROOMLIST_FLAG_ROOMSTATE);
+			if (u != user) {
+				SendPacket_Host_HostJoin(u->GetConnection(), user->GetUserID());
+			}
+			SendPacket_Host_UserWeapons(user->GetConnection(), u->GetUserID());
 		}
 	}
 }
@@ -310,6 +337,10 @@ void Packet_HostManager::parsePacket_Host_SendUserStatus(User* user, TCPConnecti
 	serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] User ({}) has sent Packet_Host SendUserStatus - userID: {}, status: {}\n", user->GetUserLogName(), userID, status));
 
 	GameMatchUser* gameMatchUser = new GameMatchUser(targetUser);
+	RoomUser* ru = room->GetRoomUser(targetUser);
+	if (ru) {
+		gameMatchUser->SetTeam((Team)ru->team);
+	}
 	if (!gameMatch->AddGameMatchUser(gameMatchUser)) {
 		return;
 	}
@@ -398,9 +429,25 @@ void Packet_HostManager::parsePacket_Host_EndGame(User* user, TCPConnection::Pac
 		return;
 	}
 
-	unsigned long unk = packet->ReadUInt32_LE();
+	unsigned char winTeam = packet->ReadUInt8();
+	unsigned short terWins = packet->ReadUInt16_LE();
+	unsigned char ctWins = packet->ReadUInt8();
+	unsigned long matchDuration = packet->ReadUInt32_LE();
 
-	serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] User ({}) has sent Packet_Host EndGame - unk: {}\n", user->GetUserLogName(), unk));
+	if (winTeam == 0 && gameMatch->GetWinTeam() != 0) {
+		winTeam = gameMatch->GetWinTeam();
+	}
+	if (terWins == 0 && ctWins == 0) {
+		terWins = gameMatch->GetTerWins();
+		ctWins = gameMatch->GetCtWins();
+	}
+	if (winTeam == 0) {
+		if (terWins > ctWins) winTeam = 1;
+		else if (ctWins > terWins) winTeam = 2;
+	}
+
+	serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] User ({}) has sent Packet_Host EndGame - winTeam: {}, terWins: {}, ctWins: {}, matchDuration: {}\n",
+		user->GetUserLogName(), winTeam, terWins, ctWins, matchDuration));
 
 	vector<GameMatchUser*> gameMatchUsers = gameMatch->GetGameMatchUsers();
 
@@ -408,12 +455,76 @@ void Packet_HostManager::parsePacket_Host_EndGame(User* user, TCPConnection::Pac
 		return (gameMatchUser->GetUser() == NULL || gameMatchUser->GetUser()->GetConnection() == NULL);
 	}), gameMatchUsers.end());
 
+	// Sort by kills descending for ranking
+	sort(gameMatchUsers.begin(), gameMatchUsers.end(), [](GameMatchUser* a, GameMatchUser* b) {
+		if (a->GetKills() != b->GetKills()) {
+			return a->GetKills() > b->GetKills();
+		}
+		return a->GetDeaths() < b->GetDeaths();
+	});
+
+	unsigned char gameModeID = room ? room->GetRoomSettings().gameModeID : 0;
+	// Only competitive PVP modes record battles/wins/frags/deaths to user personal stats:
+	// 0: Original, 1: DeathMatch, 2: TeamDeathMatch, 6: Official, 7: Official_TieBreak, 22: GunDeath, 23: LightOri
+	bool recordStats = (gameModeID == 0 || gameModeID == 1 || gameModeID == 2 || 
+	                    gameModeID == 6 || gameModeID == 7 || 
+	                    gameModeID == 22 || gameModeID == 23);
+
+	// Calculate and persist match results for each player
+	for (size_t i = 0; i < gameMatchUsers.size(); ++i) {
+		GameMatchUser* gmu = gameMatchUsers[i];
+		User* u = gmu->GetUser();
+
+		unsigned char team = (unsigned char)gmu->GetTeam();
+		if (team != 1 && team != 2) {
+			RoomUser* ru = room ? room->GetRoomUser(u) : NULL;
+			team = ru ? ru->team : 1;
+		}
+
+		unsigned short kills = gmu->GetKills();
+		unsigned short deaths = gmu->GetDeaths();
+		bool isWin = false;
+		if (gameModeID == 1 || gameModeID == 22) {
+			isWin = (gmu->GetRank() == 1);
+		}
+		else {
+			isWin = (winTeam != 0 && team == winTeam);
+		}
+
+		unsigned short earnedExp = 100 + kills * 10 + (isWin ? 50 : 0);
+		unsigned short earnedPoints = 200 + kills * 15 + (isWin ? 100 : 0);
+
+		gmu->SetExp(earnedExp);
+		gmu->SetPoints(earnedPoints);
+		gmu->SetRank((unsigned char)(i + 1));
+
+		// Fetch current character stats from database
+		UserCharacterResult ucr = u->GetUserCharacter(USERCHARACTER_FLAG_ALL);
+		unsigned char oldLevel = ucr.userCharacter.level ? ucr.userCharacter.level : 1;
+		unsigned long long newExp = ucr.userCharacter.exp + earnedExp;
+		unsigned long long newPoints = ucr.userCharacter.points + earnedPoints;
+		unsigned char newLevel = max(oldLevel, User::CalculateLevel(newExp));
+		unsigned char levelUp = (newLevel > oldLevel) ? 1 : 0;
+
+		gmu->SetLevelUp(levelUp);
+
+		// Save battle result to database (recordStats only for competitive modes)
+		databaseManager.SaveUserBattleResult(u->GetUserID(), earnedExp, earnedPoints, kills, deaths, isWin, newLevel, recordStats);
+
+		// Note: DO NOT send UpdateInfo here!
+		// The client settlement dialog (CResultCurrentPlayerInfoPanel) expects localPlayer in memory
+		// to still hold the pre-match level and EXP, adding earnedExp itself.
+		// Sending UpdateInfo before GameResult causes the client to double-add earnedExp,
+		// displaying wrong percentage and level.
+		// UpdateInfo is sent when the user confirms the settlement dialog (ResultConfirm).
+	}
+
 	for (auto& gameMatchUser : gameMatchUsers) {
 		User* u = gameMatchUser->GetUser();
 
 		u->SetUserStatus(UserStatus::InRoom);
-		sendPacket_Host_HostEndSession(u->GetConnection());
-		packet_RoomManager.SendPacket_Room_GameResult(u->GetConnection());
+		SendPacket_Host_HostEndSession(u->GetConnection());
+		packet_RoomManager.SendPacket_Room_GameResult(u->GetConnection(), room, gameMatch, winTeam, (unsigned char)terWins, ctWins);
 	}
 
 	delete gameMatch;
@@ -435,6 +546,13 @@ void Packet_HostManager::parsePacket_Host_EndGame(User* user, TCPConnection::Pac
 	for (auto& u : roomUsers) {
 		packet_RoomManager.SendPacket_Room_ReplyUpdateRoomSettings(u->GetConnection(), roomSettings);
 		roomManager.SendUpdateRoomPacket(u->GetConnection(), room, ROOMLIST_FLAG_ROOMSTATE);
+
+		if (u != room->GetRoomHostUser()) {
+			room->SetUserReady(u, 0);
+			for (auto& dest : roomUsers) {
+				packet_RoomManager.SendPacket_Room_UserReady(dest->GetConnection(), u->GetUserID(), 0);
+			}
+		}
 	}
 }
 
@@ -506,22 +624,20 @@ void Packet_HostManager::parsePacket_Host_AddKill(User* user, TCPConnection::Pac
 
 	unsigned long userID = packet->ReadUInt32_LE();
 
+	GameMatchUser* gameMatchUser = NULL;
 	if (userID) {
 		User* targetUser = userManager.GetUserByUserID(userID);
-		if (!targetUser) {
-			serverConsole.Print(PrefixType::Warn, format("[ Packet_HostManager ] User ({}) has sent Packet_Host AddKill, but targetUser is not logged in!\n", user->GetUserLogName()));
-			return;
-		}
-
-		GameMatchUser* gameMatchUser = gameMatch->GetGameMatchUserByUser(targetUser);
-		if (gameMatchUser == NULL) {
-			serverConsole.Print(PrefixType::Warn, format("[ Packet_HostManager ] User ({}) has sent Packet_Host AddKill, but gameMatchUser is NULL!\n", user->GetUserLogName()));
-			return;
+		if (targetUser) {
+			gameMatchUser = gameMatch->GetGameMatchUserByUser(targetUser);
 		}
 	}
 
 	signed char point = packet->ReadUInt8();
 	signed short frags = packet->ReadUInt16_LE();
+
+	if (gameMatchUser && frags >= 0) {
+		gameMatchUser->SetKills((unsigned short)frags);
+	}
 
 	serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] User ({}) has sent Packet_Host AddKill - userID: {}, point: {}, frags: {}\n", user->GetUserLogName(), userID, point, frags));
 }
@@ -570,6 +686,10 @@ void Packet_HostManager::parsePacket_Host_AddDeath(User* user, TCPConnection::Pa
 	signed char point = packet->ReadUInt8();
 	signed short deaths = packet->ReadUInt16_LE();
 
+	if (deaths >= 0) {
+		gameMatchUser->SetDeaths((unsigned short)deaths);
+	}
+
 	serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] User ({}) has sent Packet_Host AddDeath - userID: {}, deathCount: {}, totalDeaths: {}\n", user->GetUserLogName(), userID, point, deaths));
 }
 
@@ -604,6 +724,10 @@ void Packet_HostManager::parsePacket_Host_RoundResult(User* user, TCPConnection:
 	unsigned char terWins = packet->ReadUInt8();
 	unsigned char ctWins = packet->ReadUInt8();
 
+	gameMatch->SetWinTeam(winTeam);
+	gameMatch->SetTerWins(terWins);
+	gameMatch->SetCtWins(ctWins);
+
 	serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] User ({}) has sent Packet_Host RoundResult - winTeam: {}, terWins: {}, ctWins: {}\n", user->GetUserLogName(), winTeam, terWins, ctWins));
 }
 
@@ -612,8 +736,8 @@ void Packet_HostManager::parsePacket_Host_SelectTeam(User* user, TCPConnection::
 		return;
 	}
 
-	if (user->GetUserStatus() != UserStatus::InGame) {
-		serverConsole.Print(PrefixType::Warn, format("[ Packet_HostManager ] User ({}) has sent Packet_Host SelectTeam, but it's not in game!\n", user->GetUserLogName()));
+	if (user->GetUserStatus() != UserStatus::InRoom && user->GetUserStatus() != UserStatus::InGame) {
+		serverConsole.Print(PrefixType::Warn, format("[ Packet_HostManager ] User ({}) has sent Packet_Host SelectTeam, but it's not in a room or in game!\n", user->GetUserLogName()));
 		return;
 	}
 
@@ -660,7 +784,7 @@ void Packet_HostManager::parsePacket_Host_SelectTeam(User* user, TCPConnection::
 	gameMatchUser->SetTeam((Team)team);
 }
 
-void Packet_HostManager::sendPacket_Host_HostEndSession(TCPConnection::pointer connection) {
+void Packet_HostManager::SendPacket_Host_HostEndSession(TCPConnection::pointer connection) {
 	if (connection == NULL) {
 		return;
 	}
@@ -673,4 +797,90 @@ void Packet_HostManager::sendPacket_Host_HostEndSession(TCPConnection::pointer c
 	packet->WriteUInt8(Packet_HostType::HostEndSession);
 
 	packet->Send();
+}
+
+void Packet_HostManager::parsePacket_Host_UserWeapons(User* user, TCPConnection::Packet::pointer packet) {
+	if (user == NULL || packet == NULL) {
+		return;
+	}
+
+	auto& connection = user->GetConnection();
+	if (connection == NULL) {
+		return;
+	}
+
+	unsigned long targetUserID = packet->ReadUInt32_LE();
+	serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] User ({}) requested UserWeapons for userID {}\n", user->GetUserLogName(), targetUserID));
+
+	SendPacket_Host_UserWeapons(connection, targetUserID);
+}
+
+void Packet_HostManager::SendPacket_Host_UserWeapons(TCPConnection::pointer connection, unsigned long targetUserID) {
+	if (connection == NULL) {
+		return;
+	}
+
+	auto packet = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::Host });
+	if (packet == NULL) {
+		return;
+	}
+
+	packet->WriteUInt8(Packet_HostType::UserWeapons);
+	packet->WriteUInt32_LE(targetUserID);
+
+	set<unsigned short> allowedWeapons;
+
+	// 1. Standard CS weapons and equipment (1 to 31)
+	for (unsigned short id = 1; id <= 31; ++id) {
+		allowedWeapons.insert(id);
+	}
+
+	// 2. Default Buy Menu items from server config
+	for (const auto& bm : serverConfig.defaultBuyMenus) {
+		for (unsigned short id : bm.items) {
+			if (id > 0) {
+				allowedWeapons.insert(id);
+			}
+		}
+	}
+
+	// 3. Default Inventory items from server config
+	for (unsigned short id : serverConfig.defaultInventory) {
+		if (id > 0 && !IsTattooItem(id)) {
+			allowedWeapons.insert(id);
+		}
+	}
+
+	// 4. Target user's actual inventory items if online
+	User* targetUser = userManager.GetUserByUserID(targetUserID);
+	if (targetUser != NULL) {
+		auto userInventory = targetUser->GetUserInventory();
+		unsigned short equippedTattooID = 0;
+		for (const auto& item : userInventory) {
+			if (item.itemID > 0) {
+				if (IsTattooItem(item.itemID)) {
+					if (item.inUse) {
+						equippedTattooID = item.itemID;
+					}
+				}
+				else {
+					allowedWeapons.insert(item.itemID);
+				}
+			}
+		}
+		if (equippedTattooID > 0) {
+			allowedWeapons.insert(equippedTattooID);
+		}
+	}
+
+	packet->WriteUInt16_LE((unsigned short)allowedWeapons.size());
+	for (unsigned short itemID : allowedWeapons) {
+		packet->WriteUInt16_LE(itemID); // weaponID / itemID
+		packet->WriteUInt16_LE(1);      // count
+		packet->WriteUInt32_LE(0);      // unk
+	}
+
+	packet->Send();
+
+	serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] Sent Packet_Host UserWeapons for userID {} ({} weapons)\n", targetUserID, allowedWeapons.size()));
 }

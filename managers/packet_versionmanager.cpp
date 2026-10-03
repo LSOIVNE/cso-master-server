@@ -2,6 +2,7 @@
 #include "packetmanager.h"
 #include "usermanager.h"
 #include "serverconsole.h"
+#include "serverconfig.h"
 
 Packet_VersionManager packet_VersionManager;
 
@@ -41,24 +42,12 @@ void Packet_VersionManager::ParsePacket_Version(TCPConnection::Packet::pointer p
 
 	serverConsole.Print(PrefixType::Info, format("[ Packet_VersionManager ] Client ({}) has sent Packet_Version - launcherVersion: {}, clientVersion: {}, clientBuildTimestamp: {}, clientNARChecksum: {}\n", connection->GetLogEndpoint(), launcherVersion, clientVersion, dateStr, clientNARChecksum));
 
-	if (launcherVersion != LAUNCHER_VERSION) {
-		packetManager.SendPacket_Reply(connection, Packet_ReplyType::INVALID_CLIENT_VERSION);
-		return;
-	}
-
-	if (clientVersion != CLIENT_VERSION) {
-		packetManager.SendPacket_Reply(connection, Packet_ReplyType::INVALID_CLIENT_VERSION);
-		return;
-	}
-
-	if (strcmp(dateStr, CLIENT_BUILD_TIMESTAMP) != 0) {
-		packetManager.SendPacket_Reply(connection, Packet_ReplyType::INVALID_CLIENT_VERSION);
-		return;
-	}
-
-	if (clientNARChecksum != CLIENT_NAR_CHECKSUM) {
-		packetManager.SendPacket_Reply(connection, Packet_ReplyType::INVALID_CLIENT_VERSION);
-		return;
+	if (launcherVersion != serverConfig.launcherVersion ||
+		clientVersion != serverConfig.clientVersion ||
+		strcmp(dateStr, serverConfig.clientBuildTimestamp.c_str()) != 0 ||
+		clientNARChecksum != serverConfig.clientNARChecksum) {
+		serverConsole.Print(PrefixType::Warn, format("[ Packet_VersionManager ] Client ({}) version mismatch ignored (launcher: {}/{}, client: {}/{}, date: {}/{}, checksum: {}/{})\n",
+			connection->GetLogEndpoint(), launcherVersion, serverConfig.launcherVersion, clientVersion, serverConfig.clientVersion, dateStr, serverConfig.clientBuildTimestamp, clientNARChecksum, serverConfig.clientNARChecksum));
 	}
 
 	connection->SetVersionReceived(true);

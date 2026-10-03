@@ -45,12 +45,14 @@ enum class PacketID {
 	GameGuard = 79,
 	SearchRoom = 80,
 	Report = 83,
+	Messenger = 93,
 	UserStart = 150,
 	RoomList = 151,
 	Lobby = 153,
 	Inventory = 154,
 	ClanStock = 155,
-	CafeItems = 156
+	CafeItems = 156,
+	UserUpdateInfo = 157
 };
 
 enum Packet_ReplyType {
@@ -99,13 +101,20 @@ struct Cipher {
 	unsigned char iv[BLOCK_SIZE] = {};
 };
 
+constexpr auto BUYMENU_TOTAL_CATEGORIES = 16;
 constexpr auto BUYMENU_MAX_CATEGORY = 7;
 constexpr auto BUYMENU_MAX_SLOT = 9;
 constexpr auto BOOKMARK_MAX_SLOT = 5;
 
 struct BuyMenu {
 	unsigned char categoryID = 0;
-	vector<unsigned char> items;
+	vector<unsigned short> items;
+};
+
+struct ItemSet {
+	unsigned short characterItemID = 0;
+	unsigned char activeTab = 0;
+	unsigned short weapons[3][4] = {};
 };
 
 struct BookMark {
@@ -125,12 +134,14 @@ struct BookMark {
 };
 
 struct InventoryItem {
-	unsigned char slotID = 0;
-	unsigned char itemID = 0;
-	unsigned char count = 0;
+	unsigned short slotID = 0;
+	unsigned short itemID = 0;
+	unsigned short count = 1;
+	unsigned char activeFlag = 0;
 	bool inUse = false;
 	unsigned long obtainTime = 0;
 	unsigned long expirationTime = 0;
+	unsigned long enhanceBits = 0;
 };
 
 class TCPConnection : public enable_shared_from_this<TCPConnection> {

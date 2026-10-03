@@ -1,4 +1,4 @@
-﻿#include "packet_updateinfomanager.h"
+#include "packet_updateinfomanager.h"
 #include "packetmanager.h"
 #include "usermanager.h"
 #include "serverconsole.h"
@@ -51,6 +51,14 @@ void Packet_UpdateInfoManager::SendPacket_UpdateInfo(const GameUser& gameUser) {
 		return;
 	}
 
+	// 2013 client registers UserUpdateInfo (157) for CPlayerManager HUD and local player initialization
+	auto packet2013 = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::UserUpdateInfo });
+	if (packet2013 != NULL) {
+		packet2013->WriteUInt32_LE(gameUser.user->GetUserID());
+		packetManager.BuildUserCharacter(packet2013, gameUser.userCharacter);
+		packet2013->Send();
+	}
+
 	auto packet = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::UpdateInfo });
 	if (packet == NULL) {
 		return;
@@ -58,6 +66,24 @@ void Packet_UpdateInfoManager::SendPacket_UpdateInfo(const GameUser& gameUser) {
 
 	packet->WriteUInt32_LE(gameUser.user->GetUserID());
 	packetManager.BuildUserCharacter(packet, gameUser.userCharacter);
+
+	packet->Send();
+}
+
+void Packet_UpdateInfoManager::SendPacket_UserUpdateInfo_ChatCount(TCPConnection::pointer connection, unsigned long userID, unsigned char count) {
+	if (connection == NULL) {
+		return;
+	}
+
+	auto packet = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::UserUpdateInfo });
+	if (packet == NULL) {
+		return;
+	}
+
+	packet->WriteUInt32_LE(userID);
+	packet->WriteUInt32_LE(USERCHARACTER_FLAG_CHATCOUNT); // 0x200000
+	packet->WriteUInt8(count);                            // remaining lobby chat quota (255)
+	packet->WriteUInt32_LE(0);                            // expiration / timeout (0 = never expires)
 
 	packet->Send();
 }

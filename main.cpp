@@ -6,6 +6,7 @@
 #include "usermanager.h"
 #include "roommanager.h"
 #include "serverconsole.h"
+#include "itemdefinitionmanager.h"
 
 HANDLE hMutex;
 
@@ -46,6 +47,10 @@ int main() {
 	if (!serverConfig.Load()) {
 		serverConsole.Print(PrefixType::Fatal, "[ ServerConfig ] Failed to load server configs!\n");
 		return -1;
+	}
+
+	if (!itemDefinitionManager.Init()) {
+		serverConsole.Print(PrefixType::Warn, "[ ItemDefinitionManager ] Failed to load item definitions from item.csv!\n");
 	}
 
 	hMutex = CreateMutexA(NULL, FALSE, format("cso-master-server-{}-{}", serverConfig.serverID, serverConfig.channelID).c_str());

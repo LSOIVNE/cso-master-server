@@ -34,6 +34,19 @@ struct Server {
 	vector<Channel> channels;
 };
 
+#include <unordered_set>
+#include <unordered_map>
+
+struct ItemCommandConfig {
+	bool verifyItemCSVHash = true;
+	string expectedItemCSVHash = "b21036850d713889e6bb39ac4b9580f5ac291a53e6b965700bdf47cb8ecfc711";
+	unordered_set<unsigned short> disabledItemIDs;
+	unordered_map<unsigned char, unordered_set<unsigned short>> categoryExcludeItemIDs;
+	unordered_map<unsigned char, unordered_set<unsigned short>> categoryIncludeItemIDs;
+	unordered_set<unsigned char> excludedCategories;
+	unordered_set<unsigned char> includedCategories;
+};
+
 class ServerConfig {
 public:
 	ServerConfig();
@@ -49,6 +62,10 @@ public:
 	unsigned short maxPlayers;
 	unsigned char serverID;
 	unsigned char channelID;
+	unsigned char launcherVersion;
+	unsigned short clientVersion;
+	string clientBuildTimestamp;
+	unsigned long clientNARChecksum;
 	vector<Server> serverList;
 	string sqlServer;
 	string sqlUser;
@@ -56,7 +73,8 @@ public:
 	string sqlDatabase;
 	vector<string> prohibitedNames;
 	vector<BuyMenu> defaultBuyMenus;
-	vector<unsigned char> defaultInventory;
+	vector<unsigned short> defaultInventory;
+	ItemCommandConfig itemCommands;
 };
 
 extern ServerConfig serverConfig;

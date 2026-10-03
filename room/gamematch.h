@@ -26,8 +26,32 @@ public:
 	void RemoveGameMatchUser(GameMatchUser* gameMatchUser);
 	GameMatchUser* GetGameMatchUserByUser(User* user);
 
+	unsigned char GetWinTeam() const noexcept {
+		return _winTeam;
+	}
+	void SetWinTeam(unsigned char winTeam) noexcept {
+		_winTeam = winTeam;
+	}
+
+	unsigned char GetTerWins() const noexcept {
+		return _terWins;
+	}
+	void SetTerWins(unsigned char terWins) noexcept {
+		_terWins = terWins;
+	}
+
+	unsigned char GetCtWins() const noexcept {
+		return _ctWins;
+	}
+	void SetCtWins(unsigned char ctWins) noexcept {
+		_ctWins = ctWins;
+	}
+
 private:
 	unsigned short _roomID;
 	vector<unsigned char> _saveData;
 	vector<GameMatchUser*> _gameMatchUsers;
+	unsigned char _winTeam = 0;
+	unsigned char _terWins = 0;
+	unsigned char _ctWins = 0;
 };

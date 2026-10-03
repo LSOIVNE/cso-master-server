@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="main.cpp" />
@@ -55,7 +55,13 @@
     <ClCompile Include="managers\packet_itemmanager.cpp">
       <Filter>managers</Filter>
     </ClCompile>
+    <ClCompile Include="managers\itemdefinitionmanager.cpp">
+      <Filter>managers</Filter>
+    </ClCompile>
     <ClCompile Include="managers\packet_userstartmanager.cpp">
+      <Filter>managers</Filter>
+    </ClCompile>
+    <ClCompile Include="managers\packet_messengermanager.cpp">
       <Filter>managers</Filter>
     </ClCompile>
     <ClCompile Include="managers\usermanager.cpp">
@@ -155,7 +161,13 @@
     <ClInclude Include="managers\packet_itemmanager.h">
       <Filter>managers</Filter>
     </ClInclude>
+    <ClInclude Include="managers\itemdefinitionmanager.h">
+      <Filter>managers</Filter>
+    </ClInclude>
     <ClInclude Include="managers\packet_userstartmanager.h">
+      <Filter>managers</Filter>
+    </ClInclude>
+    <ClInclude Include="managers\packet_messengermanager.h">
       <Filter>managers</Filter>
     </ClInclude>
     <ClInclude Include="managers\usermanager.h">

@@ -1,4 +1,4 @@
-﻿#include "packetmanager.h"
+#include "packetmanager.h"
 #include "packet_versionmanager.h"
 #include "packet_transfermanager.h"
 #include "packet_loginmanager.h"
@@ -16,6 +16,7 @@
 #include "packet_favoritemanager.h"
 #include "packet_itemmanager.h"
 #include "packet_userstartmanager.h"
+#include "packet_messengermanager.h"
 #include "serverconsole.h"
 
 PacketManager packetManager;
@@ -91,7 +92,7 @@ void PacketManager::SendPacket_Reply(TCPConnection::pointer connection, Packet_R
 	packet->Send();
 }
 
-void PacketManager::SendPacket_Inventory(TCPConnection::pointer connection, const vector<InventoryItem>& userInventory) {
+void PacketManager::SendPacket_Inventory(TCPConnection::pointer connection, const vector<InventoryItem>& userInventory, const vector<unsigned short>& deletedSlots) {
 	if (connection == NULL) {
 		return;
 	}
@@ -101,15 +102,23 @@ void PacketManager::SendPacket_Inventory(TCPConnection::pointer connection, cons
 		return;
 	}
 
-	packet->WriteUInt8((unsigned char)userInventory.size());
+	packet->WriteUInt16_LE((unsigned short)(userInventory.size() + deletedSlots.size()));
+
+	for (unsigned short slotID : deletedSlots) {
+		packet->WriteUInt16_LE(slotID);
+		packet->WriteUInt8(0); // status (0 = removed / deleted from client inventory)
+	}
+
 	for (auto& item : userInventory) {
-		packet->WriteUInt8(item.slotID);
-		packet->WriteUInt8(1); // unk, 0 - crash
-		packet->WriteUInt8(item.itemID);
-		packet->WriteUInt8(item.count);
-		packet->WriteBool(item.inUse);
+		packet->WriteUInt16_LE(item.slotID);
+		packet->WriteUInt8(1); // status (1 = present)
+		packet->WriteUInt16_LE(item.itemID);
+		packet->WriteUInt16_LE(item.count);
+		packet->WriteUInt8(item.activeFlag == 0 ? 1 : item.activeFlag);
+		packet->WriteUInt8(item.inUse ? 1 : 0);
 		packet->WriteUInt32_LE(item.obtainTime);
-		packet->WriteUInt32_LE(item.expirationTime); // not in use - days, inUse - unix timestamp ; if 0, permanent
+		packet->WriteUInt32_LE(item.expirationTime); // 0 = permanent
+		packet->WriteUInt32_LE(item.enhanceBits);
 	}
 
 	packet->Send();
@@ -120,7 +129,7 @@ void PacketManager::BuildUserCharacter(TCPConnection::Packet::pointer packet, co
 		return;
 	}
 
-	packet->WriteUInt16_LE(userCharacter.flag);
+	packet->WriteUInt32_LE(userCharacter.flag);
 
 	if (userCharacter.flag & USERCHARACTER_FLAG_UNK1) {
 		packet->WriteUInt8(userCharacter.unk1);
@@ -154,6 +163,8 @@ void PacketManager::BuildUserCharacter(TCPConnection::Packet::pointer packet, co
 		packet->WriteUInt32_LE(userCharacter.wins);
 		packet->WriteUInt32_LE(userCharacter.frags);
 		packet->WriteUInt32_LE(userCharacter.deaths);
+		packet->WriteUInt32_LE(userCharacter.battleStats4);
+		packet->WriteUInt32_LE(userCharacter.battleStats5);
 	}
 	if (userCharacter.flag & USERCHARACTER_FLAG_LOCATION) {
 		packet->WriteString(""); // pcBang
@@ -175,6 +186,10 @@ void PacketManager::BuildUserCharacter(TCPConnection::Packet::pointer packet, co
 		packet->WriteUInt8(userCharacter.clanUnk4);
 		packet->WriteUInt8(userCharacter.clanUnk5);
 		packet->WriteUInt8(userCharacter.clanUnk6);
+	}
+	if (userCharacter.flag & USERCHARACTER_FLAG_CHATCOUNT) {
+		packet->WriteUInt8(userCharacter.chatRemainCount);
+		packet->WriteUInt32_LE(0); // expiration / timeout (0 = never expires)
 	}
 }
 
@@ -240,6 +255,8 @@ void PacketManager::parsePacket(TCPConnection::Packet::pointer packet) {
 	if (connection == NULL) {
 		return;
 	}
+
+	serverConsole.Print(PrefixType::Info, format("[ PacketManager ] Client ({}) sent packet ({} bytes): {}\n", connection->GetLogEndpoint(), packet->GetBuffer().size(), packet->ByteStr(true)));
 
 	unsigned char packetID = packet->ReadUInt8();
 
@@ -314,6 +331,14 @@ void PacketManager::parsePacket(TCPConnection::Packet::pointer packet) {
 		}
 		case PacketID::UserStart: {
 			packet_UserStartManager.ParsePacket_UserStart(packet);
+			break;
+		}
+		case PacketID::Messenger: {
+			packet_MessengerManager.ParsePacket_Messenger(packet);
+			break;
+		}
+		case (PacketID)90: {
+			// Client telemetry/ping packet
 			break;
 		}
 		default: {

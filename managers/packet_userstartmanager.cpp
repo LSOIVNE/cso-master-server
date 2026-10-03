@@ -47,6 +47,7 @@ void Packet_UserStartManager::SendPacket_UserStart(const GameUser& gameUser) {
 	packet->WriteUInt32_LE(gameUser.user->GetUserID());
 	packet->WriteString(gameUser.user->GetUserName());
 	packet->WriteString(gameUser.userCharacter.nickName);
+	packet->WriteUInt8(1); // isAge18 for CSO 2013
 
 	packet->Send();
 }

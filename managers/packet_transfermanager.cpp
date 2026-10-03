@@ -1,5 +1,6 @@
 #include "packet_transfermanager.h"
 #include "packet_umsgmanager.h"
+#include "packet_updateinfomanager.h"
 #include "packetmanager.h"
 #include "usermanager.h"
 #include "serverconfig.h"
@@ -119,6 +120,8 @@ void Packet_TransferManager::ParsePacket_RequestTransfer(TCPConnection::Packet::
 			userManager.SendAddUserPacketToAll(user);
 			userManager.SendFullUserListPacket(connection);
 			roomManager.SendFullRoomListPacket(connection);
+
+			packet_UpdateInfoManager.SendPacket_UserUpdateInfo_ChatCount(connection, user->GetUserID(), 255);
 		}
 	}
 	else {

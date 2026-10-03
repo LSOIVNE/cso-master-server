@@ -1,7 +1,7 @@
 #include "gamematch.h"
 #include "usermanager.h"
 
-GameMatch::GameMatch(unsigned short roomID) : _roomID(roomID) {
+GameMatch::GameMatch(unsigned short roomID) : _roomID(roomID), _winTeam(0), _terWins(0), _ctWins(0) {
 	if (roomID == NULL) {
 		delete this;
 		return;

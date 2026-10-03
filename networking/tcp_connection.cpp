@@ -107,6 +107,8 @@ void TCPConnection::WritePacket(TCPConnection::Packet::pointer packet) {
 
 		const vector<unsigned char>& buffer = packet->GetBuffer();
 
+		serverConsole.Log(PrefixType::Info, format("[ TCPConnection ] Sent packet to client ({}) ({} bytes): {}\n", GetLogEndpoint(), buffer.size(), packet->ByteStr(true)));
+
 		if (buffer.size() > TCP_PACKET_MAX_SIZE) {
 #ifdef _DEBUG
 			serverConsole.Log(PrefixType::Debug, format("[ TCPConnection ] Packet not sent to client ({}) because buffer size ({}) > TCP_PACKET_MAX_SIZE ({})!\n", _ipAddress, buffer.size(), TCP_PACKET_MAX_SIZE));

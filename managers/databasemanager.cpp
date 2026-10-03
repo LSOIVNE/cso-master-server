@@ -5,6 +5,7 @@
 #include "libbcrypt/bcrypt.h"
 #include <tuple>
 #include <ctime>
+#include <unordered_set>
 #include "udp_server.h"
 
 DatabaseManager databaseManager;
@@ -133,7 +134,7 @@ char DatabaseManager::CreateUserCharacter(unsigned long userID, const string& ni
     return 1;
 }
 
-const UserCharacterResult DatabaseManager::GetUserCharacter(unsigned long userID, unsigned short flag) {
+const UserCharacterResult DatabaseManager::GetUserCharacter(unsigned long userID, unsigned long flag) {
     UserCharacter userCharacter;
     userCharacter.flag = flag;
 
@@ -279,12 +280,21 @@ bool DatabaseManager::CreateUserBuymenus(unsigned long userID) {
         mysql_free_result(res);
 
         query = format("INSERT INTO user_buymenus (userID, categoryID, slot1, slot2, slot3, slot4, slot5, slot6, slot7, slot8, slot9) VALUES");
+        bool hasCat14 = false, hasCat15 = false;
         for (auto& buyMenu : serverConfig.defaultBuyMenus) {
+            if (buyMenu.categoryID == 14) hasCat14 = true;
+            if (buyMenu.categoryID == 15) hasCat15 = true;
             query += format(" ({}, {}", userID, buyMenu.categoryID);
             for (unsigned char slotID = 0; slotID < BUYMENU_MAX_SLOT; slotID++) {
                 query += format(", {}", buyMenu.items[slotID]);
             }
             query += "),";
+        }
+        if (!hasCat14) {
+            query += format(" ({}, 14, 161, 0, 0, 0, 0, 0, 0, 0, 0),", userID);
+        }
+        if (!hasCat15) {
+            query += format(" ({}, 15, 161, 0, 0, 0, 0, 0, 0, 0, 0),", userID);
         }
         query[query.size() - 1] = ';';
 
@@ -346,11 +356,51 @@ bool DatabaseManager::CreateUserInventory(unsigned long userID) {
 
         time_t now;
         time(&now);
-        unsigned char slotID = 1;
+        static const std::unordered_set<unsigned short> kTerroristCharacters = {
+            40, 41, 42, 43, 44, 45, 46, 47, 48,
+            153, 154, 155, 254, 317, 319, 329, 360, 377, 393, 426, 432, 433, 510
+        };
 
-        string query = format("INSERT INTO user_inventory (userID, slotID, itemID, count, inUse, obtainTime, expirationTime) VALUES");
+        static const std::unordered_set<unsigned short> kCTCharacters = {
+            49, 50, 51, 52, 53, 54, 55, 56, 57,
+            150, 151, 152, 253, 316, 318, 328, 361, 362, 376, 392, 418, 419, 425, 511
+        };
+
+        static const std::unordered_set<unsigned short> kTattooItems = {
+            373, 374, 375, 386, 387, 9997, 9998, 9999
+        };
+
+        bool equippedT = false;
+        bool equippedCT = false;
+        bool equippedTattoo = false;
+        unsigned short slotID = 1;
+
+        string query = format("INSERT INTO user_inventory (userID, slotID, itemID, count, activeFlag, inUse, obtainTime, expirationTime, enhanceBits) VALUES");
         for (auto& itemID : serverConfig.defaultInventory) {
-            query += format(" ({}, {}, {}, 1, 1, {}, 0),", userID, slotID++, itemID, now);
+            int inUse = 1;
+            if (kTerroristCharacters.count(itemID)) {
+                if (!equippedT) {
+                    inUse = 1;
+                    equippedT = true;
+                } else {
+                    inUse = 0;
+                }
+            } else if (kCTCharacters.count(itemID)) {
+                if (!equippedCT) {
+                    inUse = 1;
+                    equippedCT = true;
+                } else {
+                    inUse = 0;
+                }
+            } else if (kTattooItems.count(itemID)) {
+                if (!equippedTattoo) {
+                    inUse = 1;
+                    equippedTattoo = true;
+                } else {
+                    inUse = 0;
+                }
+            }
+            query += format(" ({}, {}, {}, 1, 1, {}, {}, 0, 0),", userID, slotID++, itemID, inUse, now);
         }
         query[query.size() - 1] = ';';
 
@@ -619,8 +669,25 @@ const vector<unsigned char> DatabaseManager::GetUserOption(unsigned long userID)
     return userOption;
 }
 
-bool DatabaseManager::SaveUserBuyMenu(unsigned long userID, unsigned char categoryID, unsigned char slotID, unsigned char itemID) {
-    string query = format("UPDATE user_buymenus SET slot{} = {} WHERE userID = {} AND categoryID = {};", slotID + 1, itemID, userID, categoryID);
+bool DatabaseManager::SaveUserBuyMenu(unsigned long userID, unsigned char categoryID, unsigned char slotID, unsigned short itemID) {
+    if (categoryID >= BUYMENU_TOTAL_CATEGORIES || slotID >= BUYMENU_MAX_SLOT) {
+        return false;
+    }
+
+    string query = format("INSERT INTO user_buymenus (userID, categoryID, slot1, slot2, slot3, slot4, slot5, slot6, slot7, slot8, slot9) "
+                          "VALUES ({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}) "
+                          "ON DUPLICATE KEY UPDATE slot{} = {};",
+                          userID, categoryID,
+                          (slotID == 0 ? itemID : 0),
+                          (slotID == 1 ? itemID : 0),
+                          (slotID == 2 ? itemID : 0),
+                          (slotID == 3 ? itemID : 0),
+                          (slotID == 4 ? itemID : 0),
+                          (slotID == 5 ? itemID : 0),
+                          (slotID == 6 ? itemID : 0),
+                          (slotID == 7 ? itemID : 0),
+                          (slotID == 8 ? itemID : 0),
+                          slotID + 1, itemID);
 
     if (mysql_query(_connection, query.c_str())) {
         serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on SaveUserBuyMenu: {}\n", mysql_error(_connection)));
@@ -648,7 +715,7 @@ const vector<BuyMenu> DatabaseManager::GetUserBuyMenus(unsigned long userID) {
         buyMenu.categoryID = atoi(row[0]);
 
         for (unsigned char slotID = 0; slotID < BUYMENU_MAX_SLOT; slotID++) {
-            buyMenu.items.push_back(atoi(row[slotID + 1]));
+            buyMenu.items.push_back((unsigned short)atoi(row[slotID + 1]));
         }
 
         userBuyMenus.push_back(buyMenu);
@@ -657,6 +724,54 @@ const vector<BuyMenu> DatabaseManager::GetUserBuyMenus(unsigned long userID) {
     mysql_free_result(res);
 
 	return userBuyMenus;
+}
+
+bool DatabaseManager::SaveUserItemSetSlot(unsigned long userID, unsigned char slotID, unsigned short itemID) {
+    string query = format("INSERT INTO user_itemsets (userID, slotID, itemID) VALUES ({}, {}, {}) ON DUPLICATE KEY UPDATE itemID = {};", userID, slotID, itemID, itemID);
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on SaveUserItemSetSlot: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    return true;
+}
+
+ItemSet DatabaseManager::GetUserItemSet(unsigned long userID) {
+    string query = format("SELECT slotID, itemID FROM user_itemsets WHERE userID = {};", userID);
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on GetUserItemSet: {}\n", mysql_error(_connection)));
+        return {};
+    }
+
+    MYSQL_RES* res = mysql_use_result(_connection);
+    MYSQL_ROW row = NULL;
+    ItemSet itemSet;
+
+    while ((row = mysql_fetch_row(res)))
+    {
+        unsigned char slotID = (unsigned char)atoi(row[0]);
+        unsigned short itemID = (unsigned short)atoi(row[1]);
+
+        if (slotID == 0) {
+            itemSet.characterItemID = itemID;
+        }
+        else if (slotID == 1) {
+            itemSet.activeTab = (unsigned char)itemID;
+        }
+        else if (slotID >= 10 && slotID < 40) {
+            int loadout = (slotID / 10) - 1;
+            int weapon = slotID % 10;
+            if (loadout >= 0 && loadout < 3 && weapon < 4) {
+                itemSet.weapons[loadout][weapon] = itemID;
+            }
+        }
+    }
+
+    mysql_free_result(res);
+
+    return itemSet;
 }
 
 bool DatabaseManager::SaveUserBookMark(unsigned long userID, const BookMark& userBookMark) {
@@ -702,7 +817,7 @@ const vector<BookMark> DatabaseManager::GetUserBookMarks(unsigned long userID) {
 }
 
 const vector<InventoryItem> DatabaseManager::GetUserInventory(unsigned long userID) {
-    string query = format("SELECT slotID, itemID, count, inUse, obtainTime, expirationTime FROM user_inventory WHERE userID = {};", userID);
+    string query = format("SELECT slotID, itemID, count, activeFlag, inUse, obtainTime, expirationTime, enhanceBits FROM user_inventory WHERE userID = {};", userID);
 
     if (mysql_query(_connection, query.c_str())) {
         serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on GetUserInventory: {}\n", mysql_error(_connection)));
@@ -715,7 +830,16 @@ const vector<InventoryItem> DatabaseManager::GetUserInventory(unsigned long user
 
     while ((row = mysql_fetch_row(res)))
     {
-        InventoryItem item{ (unsigned char)atoi(row[0]), (unsigned char)atoi(row[1]), (unsigned char)atoi(row[2]), (bool)atoi(row[3]), (unsigned long)atoi(row[4]), (unsigned long)atoi(row[5]) };
+        InventoryItem item{
+            (unsigned short)atoi(row[0]),
+            (unsigned short)atoi(row[1]),
+            (unsigned short)atoi(row[2]),
+            (unsigned char)atoi(row[3]),
+            (bool)atoi(row[4]),
+            (unsigned long)strtoul(row[5], NULL, 10),
+            (unsigned long)strtoul(row[6], NULL, 10),
+            (unsigned long)strtoul(row[7], NULL, 10)
+        };
 
         userInventory.push_back(item);
     }
@@ -724,3 +848,138 @@ const vector<InventoryItem> DatabaseManager::GetUserInventory(unsigned long user
 
     return userInventory;
 }
+
+bool DatabaseManager::SetUserInventoryItemInUse(unsigned long userID, unsigned short slotID, bool inUse) {
+    string query = format("UPDATE user_inventory SET inUse = {} WHERE userID = {} AND slotID = {};", inUse ? 1 : 0, userID, slotID);
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on SetUserInventoryItemInUse: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    return true;
+}
+
+bool DatabaseManager::SetUserInventoryItemsUnused(unsigned long userID, const vector<unsigned short>& slotIDs) {
+    if (slotIDs.empty()) {
+        return true;
+    }
+
+    string idList = "";
+    for (size_t i = 0; i < slotIDs.size(); i++) {
+        idList += to_string(slotIDs[i]);
+        if (i + 1 < slotIDs.size()) {
+            idList += ",";
+        }
+    }
+
+    string query = format("UPDATE user_inventory SET inUse = 0 WHERE userID = {} AND slotID IN ({});", userID, idList);
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on SetUserInventoryItemsUnused: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    return true;
+}
+
+bool DatabaseManager::AddUserInventoryItems(unsigned long userID, const vector<InventoryItem>& newItems) {
+    if (newItems.empty() || _connection == NULL) {
+        return true;
+    }
+
+    string query = "INSERT INTO user_inventory (userID, slotID, itemID, count, activeFlag, inUse, obtainTime, expirationTime, enhanceBits) VALUES ";
+    for (size_t i = 0; i < newItems.size(); i++) {
+        const auto& item = newItems[i];
+        query += format("({}, {}, {}, {}, {}, {}, {}, {}, {})",
+            userID, item.slotID, item.itemID, item.count,
+            (unsigned int)(item.activeFlag == 0 ? 1 : item.activeFlag),
+            item.inUse ? 1 : 0,
+            item.obtainTime, item.expirationTime, item.enhanceBits);
+        if (i + 1 < newItems.size()) {
+            query += ", ";
+        }
+        else {
+            query += ";";
+        }
+    }
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on AddUserInventoryItems: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Successfully added {} items to inventory for userID {}\n", newItems.size(), userID));
+    return true;
+}
+
+bool DatabaseManager::UpdateUserInventoryItemCount(unsigned long userID, unsigned short itemID, unsigned short addedCount) {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    string query = format("UPDATE user_inventory SET count = LEAST(count + {}, 999) WHERE userID = {} AND itemID = {};", addedCount, userID, itemID);
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on UpdateUserInventoryItemCount: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Successfully updated itemID {} count (+{}) for userID {}\n", itemID, addedCount, userID));
+    return true;
+}
+
+bool DatabaseManager::UpdateUserInventoryExpiration(unsigned long userID, unsigned short itemID, unsigned long newExpirationTime) {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    string query = format("UPDATE user_inventory SET expirationTime = {} WHERE userID = {} AND itemID = {};", newExpirationTime, userID, itemID);
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on UpdateUserInventoryExpiration: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Successfully updated itemID {} expirationTime ({}) for userID {}\n", itemID, newExpirationTime, userID));
+    return true;
+}
+
+bool DatabaseManager::ResetUserInventory(unsigned long userID) {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    string delQuery = format("DELETE FROM user_inventory WHERE userID = {};", userID);
+    if (mysql_query(_connection, delQuery.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on ResetUserInventory delete: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    bool res = CreateUserInventory(userID);
+    if (res) {
+        serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Successfully reset user inventory to default for userID {}\n", userID));
+    }
+    return res;
+}
+
+bool DatabaseManager::SaveUserBattleResult(unsigned long userID, unsigned long long addedExp, unsigned long long addedPoints, unsigned short addedFrags, unsigned short addedDeaths, bool isWin, unsigned char newLevel, bool recordStats) {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    string query = format("UPDATE user_characters SET exp = exp + {}, points = points + {}, battles = battles + {}, wins = wins + {}, frags = frags + {}, deaths = deaths + {}, level = {} WHERE userID = {};",
+        addedExp, addedPoints, recordStats ? 1 : 0, (recordStats && isWin) ? 1 : 0, recordStats ? addedFrags : 0, recordStats ? addedDeaths : 0, newLevel, userID);
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on SaveUserBattleResult: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Updated battle result for userID {}: +{} exp, +{} points, recordStats: {}, +{} frags, +{} deaths, win: {}, level: {}\n",
+        userID, addedExp, addedPoints, recordStats ? 1 : 0, recordStats ? addedFrags : 0, recordStats ? addedDeaths : 0, (recordStats && isWin) ? 1 : 0, newLevel));
+
+    return true;
+}
+
+

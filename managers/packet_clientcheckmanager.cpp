@@ -40,5 +40,7 @@ void Packet_ClientCheckManager::SendPacket_ClientCheck(TCPConnection::pointer co
 		return;
 	}
 
+	packet->WriteUInt64_LE(0);
+
 	packet->Send();
 }
