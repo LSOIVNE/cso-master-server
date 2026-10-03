@@ -7,6 +7,7 @@
 #include <iostream>
 #include <sstream>
 #include <mutex>
+#include <windows.h>
 
 ServerConsole serverConsole;
 static mutex consoleMutex;
@@ -25,6 +26,9 @@ ServerConsole::~ServerConsole() {
 }
 
 bool ServerConsole::Init() {
+	SetConsoleOutputCP(CP_UTF8);
+	SetConsoleCP(CP_UTF8);
+
 	time(&_currentTime);
 
 	char time_buf[28];
@@ -183,7 +187,7 @@ void ServerConsole::StartRead() {
 		}
 		else if (command.rfind("yell ", 0) == 0) {
 			string text = command.substr(5);
-			packet_UMsgManager.BroadcastServerYell("[伺服器]", text);
+			packet_UMsgManager.BroadcastServerYell("[系統廣播]", text);
 			Print(PrefixType::Info, format("[ ServerConsole ] Broadcast yell: {}\n", text));
 			continue;
 		}

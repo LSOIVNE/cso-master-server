@@ -16,27 +16,27 @@ Packet_UMsgManager packet_UMsgManager;
 
 std::string Utf8ToCp950(const std::string& utf8Str) {
 	if (utf8Str.empty()) return "";
-	int wlen = MultiByteToWideChar(CP_UTF8, 0, utf8Str.c_str(), -1, NULL, 0);
+	int wlen = MultiByteToWideChar(CP_UTF8, 0, utf8Str.data(), (int)utf8Str.size(), NULL, 0);
 	if (wlen <= 0) return utf8Str;
 	std::wstring wstr(wlen, 0);
-	MultiByteToWideChar(CP_UTF8, 0, utf8Str.c_str(), -1, &wstr[0], wlen);
-	int mblen = WideCharToMultiByte(950, 0, wstr.c_str(), -1, NULL, 0, NULL, NULL);
+	MultiByteToWideChar(CP_UTF8, 0, utf8Str.data(), (int)utf8Str.size(), &wstr[0], wlen);
+	int mblen = WideCharToMultiByte(950, 0, wstr.data(), (int)wstr.size(), NULL, 0, NULL, NULL);
 	if (mblen <= 0) return utf8Str;
-	std::string result(mblen - 1, 0);
-	WideCharToMultiByte(950, 0, wstr.c_str(), -1, &result[0], mblen, NULL, NULL);
+	std::string result(mblen, 0);
+	WideCharToMultiByte(950, 0, wstr.data(), (int)wstr.size(), &result[0], mblen, NULL, NULL);
 	return result;
 }
 
 std::string Cp950ToUtf8(const std::string& cp950Str) {
 	if (cp950Str.empty()) return "";
-	int wlen = MultiByteToWideChar(950, 0, cp950Str.c_str(), -1, NULL, 0);
+	int wlen = MultiByteToWideChar(950, 0, cp950Str.data(), (int)cp950Str.size(), NULL, 0);
 	if (wlen <= 0) return cp950Str;
 	std::wstring wstr(wlen, 0);
-	MultiByteToWideChar(950, 0, cp950Str.c_str(), -1, &wstr[0], wlen);
-	int u8len = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, NULL, 0, NULL, NULL);
+	MultiByteToWideChar(950, 0, cp950Str.data(), (int)cp950Str.size(), &wstr[0], wlen);
+	int u8len = WideCharToMultiByte(CP_UTF8, 0, wstr.data(), (int)wstr.size(), NULL, 0, NULL, NULL);
 	if (u8len <= 0) return cp950Str;
-	std::string result(u8len - 1, 0);
-	WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, &result[0], u8len, NULL, NULL);
+	std::string result(u8len, 0);
+	WideCharToMultiByte(CP_UTF8, 0, wstr.data(), (int)wstr.size(), &result[0], u8len, NULL, NULL);
 	return result;
 }
 
@@ -266,7 +266,7 @@ void Packet_UMsgManager::parsePacket_UMsg_WhisperChat(User* user, TCPConnection:
 	const string& receiverNickName = packet->ReadString();
 	const string& text = packet->ReadString();
 
-	serverConsole.Print(PrefixType::Info, format("[ Packet_UMsgManager ] User ({}) has sent Packet_UMsg WhisperChat - receiverNickName: {}, text: {}\n", user->GetUserLogName(), receiverNickName, text));
+	serverConsole.Print(PrefixType::Info, format("[ Packet_UMsgManager ] User ({}) has sent Packet_UMsg WhisperChat - receiverNickName: {}, text: {}\n", user->GetUserLogName(), Cp950ToUtf8(receiverNickName), Cp950ToUtf8(text)));
 
 	vector<User*> users = userManager.GetUsers();
 
@@ -316,7 +316,7 @@ void Packet_UMsgManager::parsePacket_UMsg_ChannelChat(User* user, TCPConnection:
 
 	const string& text = packet->ReadString();
 
-	serverConsole.Print(PrefixType::Info, format("[ Packet_UMsgManager ] User ({}) has sent Packet_UMsg ChannelChat - text: {}\n", user->GetUserLogName(), text));
+	serverConsole.Print(PrefixType::Info, format("[ Packet_UMsgManager ] User ({}) has sent Packet_UMsg ChannelChat - text: {}\n", user->GetUserLogName(), Cp950ToUtf8(text)));
 
 	if (HandleChatCommand(user, connection, text, Packet_UMsgType::ChannelChat)) {
 		return;
@@ -362,7 +362,7 @@ void Packet_UMsgManager::parsePacket_UMsg_RoomChat(User* user, TCPConnection::Pa
 
 	const string& text = packet->ReadString();
 
-	serverConsole.Print(PrefixType::Info, format("[ Packet_UMsgManager ] User ({}) has sent Packet_UMsg RoomChat - text: {}\n", user->GetUserLogName(), text));
+	serverConsole.Print(PrefixType::Info, format("[ Packet_UMsgManager ] User ({}) has sent Packet_UMsg RoomChat - text: {}\n", user->GetUserLogName(), Cp950ToUtf8(text)));
 
 	if (HandleChatCommand(user, connection, text, Packet_UMsgType::RoomChat)) {
 		return;
@@ -397,7 +397,7 @@ void Packet_UMsgManager::parsePacket_UMsg_ServerYell(User* user, TCPConnection::
 
 	const string& text = packet->ReadString();
 
-	serverConsole.Print(PrefixType::Info, format("[ Packet_UMsgManager ] User ({}) has sent Packet_UMsg ServerYell - text: {}\n", user->GetUserLogName(), text));
+	serverConsole.Print(PrefixType::Info, format("[ Packet_UMsgManager ] User ({}) has sent Packet_UMsg ServerYell - text: {}\n", user->GetUserLogName(), Cp950ToUtf8(text)));
 
 	vector<User*> users = userManager.GetUsers();
 	for (auto& u : users) {
@@ -444,9 +444,9 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 	transform(cmdLower.begin(), cmdLower.end(), cmdLower.begin(), [](unsigned char c) { return (char)tolower(c); });
 
 	if (cmdLower != "/additem" && cmdLower != "/addallitem" && cmdLower != "/resetinv" && cmdLower != "/resetitem" &&
-		cmdLower != "/help" && cmdLower != "/?" &&
+		cmdLower != "/?" &&
 		cmdLower != "/notice" && cmdLower != "/msg" && cmdLower != "/gm" && cmdLower != "/dialog" &&
-		cmdLower != "/banner" && cmdLower != "/yell" && cmdLower != "/reloadnotice") {
+		cmdLower != "/banner" && cmdLower != "/bulletin" && cmdLower != "/yell" && cmdLower != "/reloadnotice") {
 		return false;
 	}
 
@@ -915,14 +915,14 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		}
 		return true;
 	}
-	else if (cmdLower == "/help" || cmdLower == "/?") {
-		SendNotice(format("=== CSO 伺服器指令列表 [{}] ===", isGM ? "管理員 GM" : "一般玩家"));
+	else if (cmdLower == "/?") {
+		SendNotice(format("=== CSO 指令列表 [{}] ===", isGM ? "管理員 GM" : "一般玩家"));
 		SendNotice("/additem <ID> [天數/數量] : 添加指定道具 (0為永久)");
 		SendNotice("/addallitem <分類ID> [天數] : 批量添加道具 (1:手槍 2:散彈 3:衝鋒 4:步槍 5:機槍 6:裝備 7:人物 8:刀 9:殭屍 10:手榴彈 11:服飾)");
 		SendNotice("/resetinv : 重置個人倉庫為官方初始預設裝備");
 		if (isGM || serverConfig.permissions.allowPlayerNotice) {
 			SendNotice("/notice <公告內容> : 全服廣播頂部跑馬燈公告/大廳公告");
-			SendNotice("/msg <內容> : 全服發送GM伺服器訊息彈窗");
+			SendNotice("/msg <內容> : 全服發送GM系統訊息彈窗");
 			SendNotice("/banner <內容> : 全服廣播頂部即時跑馬燈");
 			SendNotice("/bulletin <標題> | <內容> : 全服發布並更新大廳頂部公告欄");
 			SendNotice("/yell <內容> : 全服喇叭廣播");
@@ -946,12 +946,12 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		string msgText;
 		getline(ss >> ws, msgText);
 		if (msgText.empty()) {
-			SendNotice("用法：/msg <訊息內容> (向全服發送GM伺服器訊息彈窗)");
+			SendNotice("用法：/msg <訊息內容> (向全服發送GM系統訊息彈窗)");
 			return true;
 		}
 		BroadcastServerMessage(msgText);
 		serverConsole.Print(PrefixType::Info, format("[ Admin Command ] User ({}) broadcast ServerMessage: {}\n", user->GetUserLogName(), msgText));
-		SendNotice("伺服器訊息已向全服發送！");
+		SendNotice("系統訊息已向全服發送！");
 		return true;
 	}
 	else if (cmdLower == "/banner") {
@@ -974,7 +974,7 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 			return true;
 		}
 
-		string title = "伺服器公告";
+		string title = "測試服公告";
 		string content = fullText;
 		size_t sep = fullText.find('|');
 		if (sep != string::npos) {
