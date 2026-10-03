@@ -13,6 +13,7 @@
 #include "udp_server.h"
 #include "serverconfig.h"
 #include "noticemanager.h"
+#include "packet_shopmanager.h"
 
 UserManager userManager;
 
@@ -182,6 +183,9 @@ bool UserManager::SendLoginPackets(User* user, Packet_ReplyType reply) {
 	// This prevents the client-side chat restriction for players below level 8
 	packet_UpdateInfoManager.SendPacket_UserUpdateInfo_ChatCount(connection, user->GetUserID(), 255);
 	packet_MessengerManager.SendPacket_Messenger_ChatCount(connection, 255);
+
+	// Send shop catalog to client so that the Shop tab is immediately populated
+	packet_ShopManager.SendPacket_Shop_ShopList(connection);
 
 	if (reply != Packet_ReplyType::NoReply) {
 		user->SetUserStatus(UserStatus::InServerList);

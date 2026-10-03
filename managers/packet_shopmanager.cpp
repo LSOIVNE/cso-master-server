@@ -202,7 +202,7 @@ void Packet_ShopManager::parsePacket_Shop_RequestShopList(User* user) {
 
 	serverConsole.Print(PrefixType::Info, format("[ Packet_ShopManager ] User ({}) has requested shop list\n", user->GetUserLogName()));
 
-	sendPacket_Shop_ShopList(connection);
+	SendPacket_Shop_ShopList(connection);
 }
 
 void Packet_ShopManager::parsePacket_Shop_Buy(User* user, TCPConnection::Packet::pointer packet) {
@@ -323,7 +323,7 @@ void Packet_ShopManager::parsePacket_Shop_Buy(User* user, TCPConnection::Packet:
 		user->GetUserLogName(), offer.subProductID, offer.productName, durationText, offer.price, currencyName));
 }
 
-void Packet_ShopManager::sendPacket_Shop_ShopList(TCPConnection::pointer connection) {
+void Packet_ShopManager::SendPacket_Shop_ShopList(TCPConnection::pointer connection) {
 	if (connection == NULL) {
 		return;
 	}
@@ -376,4 +376,12 @@ void Packet_ShopManager::sendPacket_Shop_BuyReply(TCPConnection::pointer connect
 	}
 
 	packet->Send();
+}
+
+void Packet_ShopManager::BroadcastShopList() {
+	for (User* user : userManager.GetUsers()) {
+		if (user != NULL && userManager.IsUserLoggedIn(user)) {
+			SendPacket_Shop_ShopList(user->GetConnection());
+		}
+	}
 }

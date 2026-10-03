@@ -1027,7 +1027,8 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 	}
 	else if (cmdLower == "/reloadshop") {
 		if (packet_ShopManager.LoadShopConfig()) {
-			SendNotice(format("[系統] 商城配置已重新加載！共 {} 件商品，{} 種方案。",
+			packet_ShopManager.BroadcastShopList();
+			SendNotice(format("[系統] 商城配置已重新加載並廣播！共 {} 件商品，{} 種方案。",
 				packet_ShopManager.GetProductCount(), packet_ShopManager.GetOfferCount()));
 		}
 		else {

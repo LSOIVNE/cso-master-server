@@ -42,11 +42,12 @@ public:
 
 	size_t GetProductCount() const { return _products.size(); }
 	size_t GetOfferCount() const { return _offersBySubId.size(); }
+	void SendPacket_Shop_ShopList(TCPConnection::pointer connection);
+	void BroadcastShopList();
 
 private:
 	void parsePacket_Shop_RequestShopList(User* user);
 	void parsePacket_Shop_Buy(User* user, TCPConnection::Packet::pointer packet);
-	void sendPacket_Shop_ShopList(TCPConnection::pointer connection);
 	void sendPacket_Shop_BuyReply(TCPConnection::pointer connection, unsigned char status, const std::string& message = "");
 
 private:
