@@ -10,6 +10,7 @@
 #include "udp_server.h"
 #include "libbcrypt/bcrypt.h"
 #include "noticemanager.h"
+#include "bingomanager.h"
 
 Packet_TransferManager packet_TransferManager;
 
@@ -121,6 +122,8 @@ void Packet_TransferManager::ParsePacket_RequestTransfer(TCPConnection::Packet::
 			userManager.SendAddUserPacketToAll(user);
 			userManager.SendFullUserListPacket(connection);
 			roomManager.SendFullRoomListPacket(connection);
+
+			bingoManager.SendEventActive(connection);
 
 			packet_UpdateInfoManager.SendPacket_UserUpdateInfo_ChatCount(connection, user->GetUserID(), 255);
 

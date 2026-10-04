@@ -6,5 +6,6 @@ thirdparty/boost
 *.vcxproj.user
 bin/certs
 bin/logs
+logs/
 bin/*.exe
 bin/*.pdb

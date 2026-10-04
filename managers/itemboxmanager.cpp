@@ -7,6 +7,7 @@
 #include "packet_itemmanager.h"
 #include "packet_updateinfomanager.h"
 #include "itemdefinitionmanager.h"
+#include "bingomanager.h"
 #include "nlohmann/json.hpp"
 #include <fstream>
 #include <filesystem>
@@ -436,6 +437,9 @@ bool ItemBoxManager::OpenBox(User* user, unsigned short decoderSlotID, unsigned 
 		serverConsole.Print(PrefixType::Info, format("[ ItemBoxManager ] Green Broadcast: key={}, player={}, itemID={} ({}), grade={}\n",
 			fullKey, playerName, wonItem->itemID, wonItem->name, wonItem->grade));
 	}
+
+	// 11. Bingo integration: roll a bingo number and check lines
+	bingoManager.OnBoxOpened(connection, user, boxDef->decoderID);
 
 	return true;
 }

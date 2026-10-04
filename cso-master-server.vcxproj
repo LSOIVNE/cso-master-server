@@ -181,6 +181,8 @@ copy /Y "$(TargetDir)$(ProjectName).pdb" "$(SolutionDir)bin\$(ProjectName).pdb"<
     <ClCompile Include="managers\packet_itemmanager.cpp" />
     <ClCompile Include="managers\itemboxmanager.cpp" />
     <ClCompile Include="managers\itemdefinitionmanager.cpp" />
+    <ClCompile Include="managers\bingomanager.cpp" />
+    <ClCompile Include="managers\packet_minigamemanager.cpp" />
     <ClCompile Include="managers\packet_userstartmanager.cpp" />
     <ClCompile Include="managers\packet_messengermanager.cpp" />
     <ClCompile Include="managers\usermanager.cpp" />
@@ -221,6 +223,8 @@ copy /Y "$(TargetDir)$(ProjectName).pdb" "$(SolutionDir)bin\$(ProjectName).pdb"<
     <ClInclude Include="managers\packet_itemmanager.h" />
     <ClInclude Include="managers\itemboxmanager.h" />
     <ClInclude Include="managers\itemdefinitionmanager.h" />
+    <ClInclude Include="managers\bingomanager.h" />
+    <ClInclude Include="managers\packet_minigamemanager.h" />
     <ClInclude Include="managers\packet_userstartmanager.h" />
     <ClInclude Include="managers\packet_messengermanager.h" />
     <ClInclude Include="managers\usermanager.h" />

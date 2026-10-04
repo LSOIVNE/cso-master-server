@@ -58,6 +58,15 @@
     <ClCompile Include="managers\itemdefinitionmanager.cpp">
       <Filter>managers</Filter>
     </ClCompile>
+    <ClCompile Include="managers\itemboxmanager.cpp">
+      <Filter>managers</Filter>
+    </ClCompile>
+    <ClCompile Include="managers\bingomanager.cpp">
+      <Filter>managers</Filter>
+    </ClCompile>
+    <ClCompile Include="managers\packet_minigamemanager.cpp">
+      <Filter>managers</Filter>
+    </ClCompile>
     <ClCompile Include="managers\packet_userstartmanager.cpp">
       <Filter>managers</Filter>
     </ClCompile>
@@ -165,6 +174,15 @@
       <Filter>managers</Filter>
     </ClInclude>
     <ClInclude Include="managers\itemdefinitionmanager.h">
+      <Filter>managers</Filter>
+    </ClInclude>
+    <ClInclude Include="managers\itemboxmanager.h">
+      <Filter>managers</Filter>
+    </ClInclude>
+    <ClInclude Include="managers\bingomanager.h">
+      <Filter>managers</Filter>
+    </ClInclude>
+    <ClInclude Include="managers\packet_minigamemanager.h">
       <Filter>managers</Filter>
     </ClInclude>
     <ClInclude Include="managers\packet_userstartmanager.h">

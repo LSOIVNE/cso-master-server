@@ -13,6 +13,28 @@ struct TransferLoginResult {
 	Packet_ReplyType reply = Packet_ReplyType::LoginSuccess;
 };
 
+struct BingoSlot {
+	unsigned char slotIdx = 0;  // 0 ~ 24
+	unsigned char number = 0;   // 0 ~ 99
+	unsigned char opened = 0;   // 0 or 1
+};
+
+struct BingoPrize {
+	unsigned char lineIdx = 0;  // 0 ~ 11
+	unsigned short itemID = 0;
+	unsigned char count = 1;
+	unsigned char duration = 0; // days, 0 = permanent
+	unsigned char opened = 0;   // 0 or 1
+};
+
+struct BingoBoard {
+	unsigned long userID = 0;
+	int status = 0;
+	bool canPlay = true;
+	vector<BingoSlot> slots;   // 25 items
+	vector<BingoPrize> prizes; // 12 items
+};
+
 class DatabaseManager {
 public:
 	DatabaseManager();
@@ -55,6 +77,12 @@ public:
 	bool SaveUserBattleResult(unsigned long userID, unsigned long long addedExp, unsigned long long addedPoints, unsigned short addedFrags, unsigned short addedDeaths, bool isWin, unsigned char newLevel, bool recordStats = true);
 	bool DeductUserFunds(unsigned long userID, bool isPoints, unsigned long long amount);
 	bool AddUserFunds(unsigned long userID, bool isPoints, unsigned long long amount);
+	bool EnsureBingoTables();
+	bool GetUserBingoBoard(unsigned long userID, BingoBoard& outBoard);
+	bool SaveUserBingoBoard(const BingoBoard& board);
+	bool UpdateUserBingoSlot(unsigned long userID, unsigned char slotIdx, unsigned char opened);
+	bool UpdateUserBingoPrize(unsigned long userID, unsigned char lineIdx, unsigned char opened);
+	bool ResetUserBingoBoard(unsigned long userID, const BingoBoard& newBoard);
 
 private:
 	MYSQL* _connection;

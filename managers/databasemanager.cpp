@@ -29,6 +29,10 @@ bool DatabaseManager::Init(const string& server, const string& user, const strin
 
     tie(success, _connection) = make_tuple(success, _connection);
 
+    if (success) {
+        EnsureBingoTables();
+    }
+
     return success;
 }
 
@@ -1175,5 +1179,195 @@ bool DatabaseManager::AddUserFunds(unsigned long userID, bool isPoints, unsigned
         amount, isPoints ? "points" : "cash", userID));
     return true;
 }
+
+bool DatabaseManager::EnsureBingoTables() {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    const char* queries[] = {
+        "CREATE TABLE IF NOT EXISTS user_bingo ("
+        "    userID INT UNSIGNED NOT NULL PRIMARY KEY,"
+        "    status INT NOT NULL DEFAULT 0,"
+        "    canPlay TINYINT(1) NOT NULL DEFAULT 1,"
+        "    FOREIGN KEY (userID) REFERENCES user_characters(userID) ON DELETE CASCADE"
+        ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
+
+        "CREATE TABLE IF NOT EXISTS user_bingo_slots ("
+        "    userID INT UNSIGNED NOT NULL,"
+        "    slotIdx TINYINT UNSIGNED NOT NULL,"
+        "    number TINYINT UNSIGNED NOT NULL,"
+        "    opened TINYINT UNSIGNED NOT NULL DEFAULT 0,"
+        "    PRIMARY KEY (userID, slotIdx),"
+        "    FOREIGN KEY (userID) REFERENCES user_characters(userID) ON DELETE CASCADE"
+        ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
+
+        "CREATE TABLE IF NOT EXISTS user_bingo_prizes ("
+        "    userID INT UNSIGNED NOT NULL,"
+        "    lineIdx TINYINT UNSIGNED NOT NULL,"
+        "    itemID INT UNSIGNED NOT NULL,"
+        "    count SMALLINT UNSIGNED NOT NULL DEFAULT 1,"
+        "    duration INT UNSIGNED NOT NULL DEFAULT 0,"
+        "    opened TINYINT UNSIGNED NOT NULL DEFAULT 0,"
+        "    PRIMARY KEY (userID, lineIdx),"
+        "    FOREIGN KEY (userID) REFERENCES user_characters(userID) ON DELETE CASCADE"
+        ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;"
+    };
+
+    for (const char* q : queries) {
+        if (mysql_query(_connection, q)) {
+            serverConsole.Print(PrefixType::Warn, format("[ DatabaseManager ] EnsureBingoTables warning: {}\n", mysql_error(_connection)));
+        }
+    }
+
+    return true;
+}
+
+bool DatabaseManager::GetUserBingoBoard(unsigned long userID, BingoBoard& outBoard) {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    string query = format("SELECT status, canPlay FROM user_bingo WHERE userID = {};", userID);
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on GetUserBingoBoard: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    MYSQL_RES* result = mysql_store_result(_connection);
+    if (!result) {
+        return false;
+    }
+
+    MYSQL_ROW row = mysql_fetch_row(result);
+    if (!row) {
+        mysql_free_result(result);
+        return false;
+    }
+
+    outBoard.userID = userID;
+    outBoard.status = row[0] ? atoi(row[0]) : 0;
+    outBoard.canPlay = row[1] ? (atoi(row[1]) != 0) : true;
+    mysql_free_result(result);
+
+    // Load 25 slots
+    outBoard.slots.clear();
+    string slotQuery = format("SELECT slotIdx, number, opened FROM user_bingo_slots WHERE userID = {} ORDER BY slotIdx ASC;", userID);
+    if (mysql_query(_connection, slotQuery.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on GetUserBingoSlots: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    MYSQL_RES* slotResult = mysql_store_result(_connection);
+    if (slotResult) {
+        while ((row = mysql_fetch_row(slotResult)) != NULL) {
+            BingoSlot slot;
+            slot.slotIdx = (unsigned char)atoi(row[0]);
+            slot.number = (unsigned char)atoi(row[1]);
+            slot.opened = (unsigned char)atoi(row[2]);
+            outBoard.slots.push_back(slot);
+        }
+        mysql_free_result(slotResult);
+    }
+
+    if (outBoard.slots.size() != 25) {
+        return false;
+    }
+
+    // Load 12 prizes
+    outBoard.prizes.clear();
+    string prizeQuery = format("SELECT lineIdx, itemID, count, duration, opened FROM user_bingo_prizes WHERE userID = {} ORDER BY lineIdx ASC;", userID);
+    if (mysql_query(_connection, prizeQuery.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on GetUserBingoPrizes: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    MYSQL_RES* prizeResult = mysql_store_result(_connection);
+    if (prizeResult) {
+        while ((row = mysql_fetch_row(prizeResult)) != NULL) {
+            BingoPrize prize;
+            prize.lineIdx = (unsigned char)atoi(row[0]);
+            prize.itemID = (unsigned short)atoi(row[1]);
+            prize.count = (unsigned char)atoi(row[2]);
+            prize.duration = (unsigned char)atoi(row[3]);
+            prize.opened = (unsigned char)atoi(row[4]);
+            outBoard.prizes.push_back(prize);
+        }
+        mysql_free_result(prizeResult);
+    }
+
+    if (outBoard.prizes.size() != 12) {
+        return false;
+    }
+
+    return true;
+}
+
+bool DatabaseManager::SaveUserBingoBoard(const BingoBoard& board) {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    // 1. Insert/Update user_bingo
+    string q1 = format("INSERT INTO user_bingo (userID, status, canPlay) VALUES ({}, {}, {}) "
+        "ON DUPLICATE KEY UPDATE status = VALUES(status), canPlay = VALUES(canPlay);",
+        board.userID, board.status, board.canPlay ? 1 : 0);
+    if (mysql_query(_connection, q1.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] SaveUserBingoBoard error: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    // 2. Insert/Update slots
+    for (const auto& slot : board.slots) {
+        string q2 = format("INSERT INTO user_bingo_slots (userID, slotIdx, number, opened) VALUES ({}, {}, {}, {}) "
+            "ON DUPLICATE KEY UPDATE number = VALUES(number), opened = VALUES(opened);",
+            board.userID, (int)slot.slotIdx, (int)slot.number, (int)slot.opened);
+        if (mysql_query(_connection, q2.c_str())) {
+            serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] SaveUserBingoSlot error: {}\n", mysql_error(_connection)));
+        }
+    }
+
+    // 3. Insert/Update prizes
+    for (const auto& prize : board.prizes) {
+        string q3 = format("INSERT INTO user_bingo_prizes (userID, lineIdx, itemID, count, duration, opened) VALUES ({}, {}, {}, {}, {}, {}) "
+            "ON DUPLICATE KEY UPDATE itemID = VALUES(itemID), count = VALUES(count), duration = VALUES(duration), opened = VALUES(opened);",
+            board.userID, (int)prize.lineIdx, (int)prize.itemID, (int)prize.count, (int)prize.duration, (int)prize.opened);
+        if (mysql_query(_connection, q3.c_str())) {
+            serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] SaveUserBingoPrize error: {}\n", mysql_error(_connection)));
+        }
+    }
+
+    return true;
+}
+
+bool DatabaseManager::UpdateUserBingoSlot(unsigned long userID, unsigned char slotIdx, unsigned char opened) {
+    if (_connection == NULL) {
+        return false;
+    }
+    string q = format("UPDATE user_bingo_slots SET opened = {} WHERE userID = {} AND slotIdx = {};",
+        (int)opened, userID, (int)slotIdx);
+    return mysql_query(_connection, q.c_str()) == 0;
+}
+
+bool DatabaseManager::UpdateUserBingoPrize(unsigned long userID, unsigned char lineIdx, unsigned char opened) {
+    if (_connection == NULL) {
+        return false;
+    }
+    string q = format("UPDATE user_bingo_prizes SET opened = {} WHERE userID = {} AND lineIdx = {};",
+        (int)opened, userID, (int)lineIdx);
+    return mysql_query(_connection, q.c_str()) == 0;
+}
+
+bool DatabaseManager::ResetUserBingoBoard(unsigned long userID, const BingoBoard& newBoard) {
+    if (_connection == NULL) {
+        return false;
+    }
+    string d1 = format("DELETE FROM user_bingo_slots WHERE userID = {};", userID);
+    mysql_query(_connection, d1.c_str());
+    string d2 = format("DELETE FROM user_bingo_prizes WHERE userID = {};", userID);
+    mysql_query(_connection, d2.c_str());
+    return SaveUserBingoBoard(newBoard);
+}
+
 
 

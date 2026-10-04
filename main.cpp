@@ -10,6 +10,7 @@
 #include "noticemanager.h"
 #include "packet_shopmanager.h"
 #include "itemboxmanager.h"
+#include "bingomanager.h"
 
 HANDLE hMutex;
 
@@ -59,6 +60,7 @@ int main() {
 	noticeManager.Init();
 	packet_ShopManager.Init();
 	itemBoxManager.Init();
+	bingoManager.Init();
 
 	hMutex = CreateMutexA(NULL, FALSE, format("cso-master-server-{}-{}", serverConfig.serverID, serverConfig.channelID).c_str());
 	if (hMutex) {

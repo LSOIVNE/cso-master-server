@@ -1,0 +1,42 @@
+{
+  "Settings": {
+    "Active": true,
+    "ResetCost": 19,
+    "ShuffleCost": 35,
+    "MaxShuffleCompletedLines": 0,
+    "MaxShuffleOpenedNumbers": 10
+  },
+  "Prizes": [
+    { "ItemID": 483, "Name": "青龍偃月刀", "Count": 1, "Duration": 0, "Weight": 5 },
+    { "ItemID": 281, "Name": "狂戰巨斧", "Count": 1, "Duration": 0, "Weight": 5 },
+    { "ItemID": 363, "Name": "九曲斷腸(SKULL-9)", "Count": 1, "Duration": 0, "Weight": 10 },
+    { "ItemID": 458, "Name": "爆能脈衝", "Count": 1, "Duration": 0, "Weight": 10 },
+    { "ItemID": 463, "Name": "連環殺神(M32)", "Count": 1, "Duration": 0, "Weight": 15 },
+    { "ItemID": 466, "Name": "熾獄火神(BALROG-VII)", "Count": 1, "Duration": 0, "Weight": 10 },
+    { "ItemID": 482, "Name": "煉獄炎神(BALROG-V)", "Count": 1, "Duration": 0, "Weight": 10 },
+    { "ItemID": 504, "Name": "冥獄滅神(BALROG-IX)", "Count": 1, "Duration": 0, "Weight": 10 },
+    { "ItemID": 327, "Name": "貝西摩斯之爪(SKULL-7)", "Count": 1, "Duration": 0, "Weight": 15 },
+    { "ItemID": 367, "Name": "死神之騎(SKULL-5)", "Count": 1, "Duration": 0, "Weight": 15 },
+    { "ItemID": 242, "Name": "瞬殺者(Infinity)", "Count": 1, "Duration": 0, "Weight": 20 },
+    { "ItemID": 261, "Name": "幽能百萬伏特(M79)", "Count": 1, "Duration": 0, "Weight": 20 },
+    { "ItemID": 304, "Name": "喋血狂殺(M14 EBR)", "Count": 1, "Duration": 0, "Weight": 25 },
+    { "ItemID": 355, "Name": "戰慄加農砲(M60)", "Count": 1, "Duration": 0, "Weight": 25 },
+    { "ItemID": 372, "Name": "煉獄之怒(MG36)", "Count": 1, "Duration": 0, "Weight": 25 },
+    { "ItemID": 237, "Name": "疾風之翼", "Count": 1, "Duration": 0, "Weight": 25 },
+    { "ItemID": 233, "Name": "影武者(M24)", "Count": 1, "Duration": 0, "Weight": 25 },
+    { "ItemID": 187, "Name": "幽能風暴(SL8)", "Count": 1, "Duration": 0, "Weight": 25 },
+    { "ItemID": 38,  "Name": "USAS-12", "Count": 1, "Duration": 0, "Weight": 30 },
+    { "ItemID": 65,  "Name": "暱稱變更券", "Count": 1, "Duration": 0, "Weight": 30 },
+    { "ItemID": 306, "Name": "致命重擊(30天)", "Count": 1, "Duration": 30, "Weight": 40 },
+    { "ItemID": 163, "Name": "達叔(殭屍角色 30天)", "Count": 1, "Duration": 30, "Weight": 40 },
+    { "ItemID": 164, "Name": "鋒利銀刃(30天)", "Count": 1, "Duration": 30, "Weight": 40 },
+    { "ItemID": 158, "Name": "獵戶戰斧(30天)", "Count": 1, "Duration": 30, "Weight": 40 },
+    { "ItemID": 73,  "Name": "經驗值雙倍(15天)", "Count": 1, "Duration": 15, "Weight": 50 },
+    { "ItemID": 59,  "Name": "經驗值加成(15天)", "Count": 1, "Duration": 15, "Weight": 50 },
+    { "ItemID": 108, "Name": "Point加成(15天)", "Count": 1, "Duration": 15, "Weight": 50 },
+    { "ItemID": 46,  "Name": "火線特戰部隊(VC 30天)", "Count": 1, "Duration": 30, "Weight": 50 },
+    { "ItemID": 48,  "Name": "皇家特勤隊(ARA 30天)", "Count": 1, "Duration": 30, "Weight": 50 },
+    { "ItemID": 376, "Name": "暗影獵手(30天)", "Count": 1, "Duration": 30, "Weight": 50 },
+    { "ItemID": 377, "Name": "紅心黑桃(30天)", "Count": 1, "Duration": 30, "Weight": 50 }
+  ]
+}

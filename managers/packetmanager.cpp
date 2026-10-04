@@ -17,6 +17,7 @@
 #include "packet_itemmanager.h"
 #include "packet_userstartmanager.h"
 #include "packet_messengermanager.h"
+#include "packet_minigamemanager.h"
 #include "usermanager.h"
 #include "serverconsole.h"
 
@@ -361,6 +362,10 @@ void PacketManager::parsePacket(TCPConnection::Packet::pointer packet) {
 		}
 		case PacketID::Messenger: {
 			packet_MessengerManager.ParsePacket_Messenger(packet);
+			break;
+		}
+		case PacketID::Minigame: {
+			packet_MiniGameManager.ParsePacket_MiniGame(packet);
 			break;
 		}
 		case (PacketID)90: {

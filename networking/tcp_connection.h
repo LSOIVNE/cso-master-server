@@ -45,6 +45,7 @@ enum class PacketID {
 	GameGuard = 79,
 	SearchRoom = 80,
 	Report = 83,
+	Minigame = 89,
 	Messenger = 93,
 	UserStart = 150,
 	RoomList = 151,
@@ -52,7 +53,8 @@ enum class PacketID {
 	Inventory = 154,
 	ClanStock = 155,
 	CafeItems = 156,
-	UserUpdateInfo = 157
+	UserUpdateInfo = 157,
+	Event = 159
 };
 
 enum Packet_ReplyType {

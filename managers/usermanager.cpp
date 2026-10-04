@@ -14,6 +14,7 @@
 #include "serverconfig.h"
 #include "noticemanager.h"
 #include "packet_shopmanager.h"
+#include "bingomanager.h"
 
 UserManager userManager;
 
@@ -186,6 +187,9 @@ bool UserManager::SendLoginPackets(User* user, Packet_ReplyType reply) {
 
 	// Send shop catalog to client so that the Shop tab is immediately populated
 	packet_ShopManager.SendPacket_Shop_ShopList(connection);
+
+	// Activate MiniGame / Bingo in client lobby
+	bingoManager.SendEventActive(connection);
 
 	if (reply != Packet_ReplyType::NoReply) {
 		user->SetUserStatus(UserStatus::InServerList);
