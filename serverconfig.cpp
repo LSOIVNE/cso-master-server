@@ -192,6 +192,7 @@ bool ServerConfig::Load() {
 						Channel ch;
 						ch.id = channelID++;
 						ch.name = channel.value("Name", format("Channel {}-{}", s.id, ch.id));
+						ch.loginMsg = channel.value("LoginMsg", "");
 
 						if (s.id != this->serverID || s.id == this->serverID && ch.id != this->channelID) {
 							ch.maxPlayers = channel.value("MaxPlayers", 600);
@@ -380,6 +381,16 @@ bool ServerConfig::Load() {
 			}
 			if (p.contains("AllowPlayerNotice") && p["AllowPlayerNotice"].is_boolean()) {
 				permissions.allowPlayerNotice = p["AllowPlayerNotice"].get<bool>();
+			}
+			if (p.contains("AllowPlayerReloadShop") && p["AllowPlayerReloadShop"].is_boolean()) {
+				permissions.allowPlayerReloadShop = p["AllowPlayerReloadShop"].get<bool>();
+			}
+		}
+
+		if (config.contains("Shop") && config["Shop"].is_object()) {
+			const auto& s = config["Shop"];
+			if (s.contains("BroadcastOnReload") && s["BroadcastOnReload"].is_boolean()) {
+				shop.broadcastOnReload = s["BroadcastOnReload"].get<bool>();
 			}
 		}
 

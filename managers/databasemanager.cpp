@@ -244,6 +244,10 @@ const UserCharacterResult DatabaseManager::GetUserCharacter(unsigned long userID
         }
         if (flag & USERCHARACTER_FLAG_UNK400) {
             userCharacter.unk400 = atoi(row[index++]);
+            // CSO 2013 client uses flag 0x400 (32-bit int) as Cash / GASH balance in CGamePlayer (offset 312)
+            if (userCharacter.unk400 == 0 && userCharacter.cash > 0) {
+                userCharacter.unk400 = (unsigned long)userCharacter.cash;
+            }
         }
         if (flag & USERCHARACTER_FLAG_UNK800) {
             userCharacter.unk800 = atoi(row[index++]);
@@ -259,6 +263,23 @@ const UserCharacterResult DatabaseManager::GetUserCharacter(unsigned long userID
     }
 
     mysql_free_result(res);
+
+    if (flag & USERCHARACTER_FLAG_CBOXCOUNT) {
+        string cboxQuery = format("SELECT COALESCE(SUM(count), 0) FROM user_inventory WHERE userID = {} AND itemID = 166;", userID);
+        if (!mysql_query(_connection, cboxQuery.c_str())) {
+            MYSQL_RES* cboxRes = mysql_store_result(_connection);
+            if (cboxRes) {
+                MYSQL_ROW cboxRow = mysql_fetch_row(cboxRes);
+                if (cboxRow && cboxRow[0]) {
+                    userCharacter.cboxCount = (unsigned short)atoi(cboxRow[0]);
+                }
+                mysql_free_result(cboxRes);
+            }
+        }
+        else {
+            serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on GetUserCharacter (cboxCount): {}\n", mysql_error(_connection)));
+        }
+    }
 
     return { userCharacter, 1 };
 }
@@ -982,6 +1003,58 @@ bool DatabaseManager::ConsumeUserInventoryItem(unsigned long userID, unsigned sh
     return true;
 }
 
+bool DatabaseManager::ConsumeUserInventoryItemBySlot(unsigned long userID, unsigned short slotID, unsigned short count, bool& outDeleted) {
+    outDeleted = false;
+    if (_connection == NULL) {
+        return false;
+    }
+
+    string query = format("SELECT count, itemID FROM user_inventory WHERE userID = {} AND slotID = {} LIMIT 1;", userID, slotID);
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on ConsumeUserInventoryItemBySlot SELECT: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    MYSQL_RES* res = mysql_store_result(_connection);
+    if (res == NULL) {
+        return false;
+    }
+
+    MYSQL_ROW row = mysql_fetch_row(res);
+    if (row == NULL) {
+        mysql_free_result(res);
+        return false;
+    }
+
+    unsigned short currentCount = (unsigned short)atoi(row[0]);
+    unsigned short itemID = (unsigned short)atoi(row[1]);
+    mysql_free_result(res);
+
+    if (currentCount <= count) {
+        // Completely consumed: delete the row
+        string delQuery = format("DELETE FROM user_inventory WHERE userID = {} AND slotID = {};", userID, slotID);
+        if (mysql_query(_connection, delQuery.c_str())) {
+            serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on ConsumeUserInventoryItemBySlot DELETE: {}\n", mysql_error(_connection)));
+            return false;
+        }
+        outDeleted = true;
+        serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] SlotID {} (itemID {}) completely consumed and deleted for userID {}\n", slotID, itemID, userID));
+    }
+    else {
+        // Partially consumed: decrement count
+        string updateQuery = format("UPDATE user_inventory SET count = count - {} WHERE userID = {} AND slotID = {};", count, userID, slotID);
+        if (mysql_query(_connection, updateQuery.c_str())) {
+            serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on ConsumeUserInventoryItemBySlot UPDATE: {}\n", mysql_error(_connection)));
+            return false;
+        }
+        outDeleted = false;
+        serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] SlotID {} (itemID {}) count decremented by {} (remaining: {}) for userID {}\n",
+            slotID, itemID, count, currentCount - count, userID));
+    }
+
+    return true;
+}
+
 bool DatabaseManager::UpdateUserInventoryExpiration(unsigned long userID, unsigned short itemID, unsigned long newExpirationTime) {
     if (_connection == NULL) {
         return false;
@@ -1044,9 +1117,15 @@ bool DatabaseManager::DeductUserFunds(unsigned long userID, bool isPoints, unsig
         return true;
     }
 
-    string col = isPoints ? "points" : "cash";
-    string query = format("UPDATE user_characters SET {} = {} - {} WHERE userID = {} AND {} >= {};",
-        col, col, amount, userID, col, amount);
+    string query;
+    if (isPoints) {
+        query = format("UPDATE user_characters SET points = points - {} WHERE userID = {} AND points >= {};",
+            amount, userID, amount);
+    }
+    else {
+        query = format("UPDATE user_characters SET cash = cash - {}, unk400 = cash - {} WHERE userID = {} AND cash >= {};",
+            amount, amount, userID, amount);
+    }
 
     if (mysql_query(_connection, query.c_str())) {
         serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on DeductUserFunds: {}\n", mysql_error(_connection)));
@@ -1072,9 +1151,15 @@ bool DatabaseManager::AddUserFunds(unsigned long userID, bool isPoints, unsigned
         return true;
     }
 
-    string col = isPoints ? "points" : "cash";
-    string query = format("UPDATE user_characters SET {} = {} + {} WHERE userID = {};",
-        col, col, amount, userID);
+    string query;
+    if (isPoints) {
+        query = format("UPDATE user_characters SET points = points + {} WHERE userID = {};",
+            amount, userID);
+    }
+    else {
+        query = format("UPDATE user_characters SET cash = cash + {}, unk400 = cash + {} WHERE userID = {};",
+            amount, amount, userID);
+    }
 
     if (mysql_query(_connection, query.c_str())) {
         serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on AddUserFunds: {}\n", mysql_error(_connection)));

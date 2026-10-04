@@ -19,14 +19,28 @@
                 "NoticeID": 3,
                 "Category": 3,
                 "Title": "最新功能更新日誌",
-                "Content": "【系統更新】\n1. 修復了服飾/裝備卸下與穿戴功能\n2. 新增了大廳頂部多頁公告面板與跑馬燈廣播\n3. 優化了道具數據庫存檔與個人倉庫同步"
+                "Content": "【系統更新】\n1. 修復了服飾/裝備卸下與穿戴功能\n2. 新增了大廳頂部多頁公告面板與跑馬燈廣播\n3. 優化了道具數據庫存檔與個人倉庫同步\n4. 支援登入遊戲與進入頻道的獨立自訂公告彈窗與跑馬燈"
             }
         ]
     },
-    "WelcomeNotice": {
+    "LoginWelcomeNotice": {
+        "Enabled": true,
+        "Type": "PublicNotice",
+        "Category": 2,
+        "Title": "伺服器公告",
+        "Message": "歡迎來到 CSO 2013 懷舊伺服器！祝您遊戲愉快！"
+    },
+    "ChannelLoginNotice": {
+        "Enabled": true,
+        "Type": "PublicNotice",
+        "Category": 2,
+        "Title": "頻道公告",
+        "Message": "歡迎進入 CSO 遊戲頻道！祝您遊戲愉快！"
+    },
+    "ChannelChatNotice": {
         "Enabled": true,
         "Type": "ServerMessage",
-        "Message": "歡迎來到 CSO 2013 懷舊測試服，祝您遊戲愉快！"
+        "Message": "歡迎進入 CSO 遊戲頻道！祝您遊戲愉快！"
     },
     "PeriodicAnnouncements": {
         "Enabled": true,

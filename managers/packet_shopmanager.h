@@ -11,6 +11,12 @@ enum Packet_ShopType {
 	BuyReply = 1
 };
 
+struct ShopPackageReward {
+	unsigned short itemID = 0;
+	unsigned short duration = 0; // 0 = permanent (if duration item), or days
+	unsigned short count = 1;    // quantity (if count-based consumable)
+};
+
 struct ShopOffer {
 	unsigned int subProductID = 0;        // Sequential offer ID sent to client
 	unsigned short duration = 0;           // Days (3, 10, 30, 0=permanent)
@@ -25,12 +31,14 @@ struct ShopOffer {
 	unsigned int productID = 0;
 	std::string productName = "";
 	bool isPoints = true;
+	std::vector<ShopPackageReward> packageItems;
 };
 
 struct ShopProduct {
 	unsigned int productID = 0;
 	std::string name = "";
 	bool isPoints = true; // 1 = Points, 0 = Cash
+	std::vector<ShopPackageReward> packageItems;
 	std::vector<ShopOffer> offers;
 };
 

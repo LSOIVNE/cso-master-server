@@ -1,6 +1,25 @@
 {
   "Products": [
     {
+      "ProductID": 20128,
+      "Name": "萌萌甜心包",
+      "IsPoints": 0,
+      "PackageItems": [
+        { "ItemID": 510, "Duration": 0, "Count": 1 },
+        { "ItemID": 511, "Duration": 0, "Count": 1 },
+        { "ItemID": 512, "Duration": 0, "Count": 1 }
+      ],
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 880,
+          "AdType": 2,
+          "IsCount": 0
+        }
+      ]
+    },
+    {
       "ProductID": 308,
       "Name": "InfinitySS",
       "IsPoints": 1,
@@ -22,6 +41,13 @@
           "Count": 1,
           "Price": 19110,
           "AdType": 7
+        },
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 59000,
+          "AdType": 7,
+          "IsCount": 0
         }
       ]
     },

@@ -85,6 +85,41 @@ bool Packet_ShopManager::LoadShopConfig(const std::string& configPath) {
 				product.isPoints = (pJson["IsPoints"].get<int>() != 0);
 			}
 
+			// Parse PackageItems (e.g. for bundles like yurialice2, skull set, etc.)
+			auto parsePackageList = [](const json& jArray) -> std::vector<ShopPackageReward> {
+				std::vector<ShopPackageReward> list;
+				for (const auto& itemJson : jArray) {
+					ShopPackageReward reward;
+					if (itemJson.is_number()) {
+						reward.itemID = (unsigned short)itemJson.get<unsigned int>();
+						reward.duration = 0;
+						reward.count = 1;
+					}
+					else if (itemJson.is_object()) {
+						if (itemJson.contains("ItemID") && itemJson["ItemID"].is_number()) {
+							reward.itemID = (unsigned short)itemJson["ItemID"].get<unsigned int>();
+						}
+						if (itemJson.contains("Duration") && itemJson["Duration"].is_number()) {
+							reward.duration = itemJson["Duration"].get<unsigned short>();
+						}
+						if (itemJson.contains("Count") && itemJson["Count"].is_number()) {
+							reward.count = itemJson["Count"].get<unsigned short>();
+						}
+					}
+					if (reward.itemID > 0) {
+						list.push_back(reward);
+					}
+				}
+				return list;
+			};
+
+			if (pJson.contains("PackageItems") && pJson["PackageItems"].is_array()) {
+				product.packageItems = parsePackageList(pJson["PackageItems"]);
+			}
+			else if (pJson.contains("Items") && pJson["Items"].is_array()) {
+				product.packageItems = parsePackageList(pJson["Items"]);
+			}
+
 			const ItemDefinition* itemDef = itemDefinitionManager.GetItem((unsigned short)product.productID);
 
 			if (pJson.contains("Offers") && pJson["Offers"].is_array()) {
@@ -121,12 +156,24 @@ bool Packet_ShopManager::LoadShopConfig(const std::string& configPath) {
 						offer.adType = oJson["AdType"].get<unsigned char>();
 					}
 
+					// Inherit package items or allow per-offer override
+					offer.packageItems = product.packageItems;
+					if (oJson.contains("PackageItems") && oJson["PackageItems"].is_array()) {
+						offer.packageItems = parsePackageList(oJson["PackageItems"]);
+					}
+					else if (oJson.contains("Items") && oJson["Items"].is_array()) {
+						offer.packageItems = parsePackageList(oJson["Items"]);
+					}
+
 					// Check isCount
 					if (oJson.contains("IsCount") && oJson["IsCount"].is_number()) {
 						offer.isCount = (unsigned char)oJson["IsCount"].get<int>();
 					}
 					else {
-						if (offer.duration == 0 && (offer.count > 1 || (itemDef != nullptr && !itemDef->isPeriod))) {
+						if (!offer.packageItems.empty()) {
+							offer.isCount = 0;
+						}
+						else if (offer.duration == 0 && (offer.count > 1 || (itemDef != nullptr && !itemDef->isPeriod))) {
 							offer.isCount = 1;
 						}
 						else {
@@ -240,6 +287,131 @@ void Packet_ShopManager::parsePacket_Shop_Buy(User* user, TCPConnection::Packet:
 
 	// Update user inventory
 	auto currentInventory = user->GetUserInventory();
+	time_t now = time(nullptr);
+
+	// Check if this offer is a package/bundle
+	if (!offer.packageItems.empty()) {
+		unsigned short maxSlotID = 0;
+		for (const auto& item : currentInventory) {
+			if (item.slotID > maxSlotID) {
+				maxSlotID = item.slotID;
+			}
+		}
+
+		std::vector<InventoryItem> itemsToAdd;
+		std::vector<std::string> rewardedNames;
+
+		for (const auto& reward : offer.packageItems) {
+			const ItemDefinition* itemDef = itemDefinitionManager.GetItem(reward.itemID);
+			std::string itemName = (itemDef != nullptr) ? itemDef->name : format("ID:{}", reward.itemID);
+			rewardedNames.push_back(itemName);
+
+			bool itemOwned = false;
+			InventoryItem ownedItem;
+			for (const auto& item : currentInventory) {
+				if (item.itemID == reward.itemID) {
+					itemOwned = true;
+					ownedItem = item;
+					break;
+				}
+			}
+
+			bool isPeriod = (itemDef != nullptr) ? itemDef->isPeriod : (reward.duration > 0 || (reward.duration == 0 && reward.count == 1));
+
+			if (isPeriod) {
+				if (itemOwned) {
+					if (ownedItem.expirationTime == 0) {
+						// Already permanent
+					}
+					else if (reward.duration == 0 || reward.duration == 0xFFFF) {
+						// Upgrade to permanent
+						databaseManager.UpdateUserInventoryExpiration(userID, reward.itemID, 0);
+					}
+					else {
+						// Extend expiration
+						unsigned long baseTime = (ownedItem.expirationTime > (unsigned long)now) ? ownedItem.expirationTime : (unsigned long)now;
+						unsigned long newExp = baseTime + (unsigned long)reward.duration * 86400;
+						databaseManager.UpdateUserInventoryExpiration(userID, reward.itemID, newExp);
+					}
+				}
+				else {
+					InventoryItem newItem;
+					newItem.slotID = ++maxSlotID;
+					newItem.itemID = reward.itemID;
+					newItem.count = 1;
+					newItem.activeFlag = 1;
+					newItem.inUse = false;
+					newItem.obtainTime = (unsigned long)now;
+					newItem.expirationTime = (reward.duration == 0 || reward.duration == 0xFFFF) ? 0 : (unsigned long)(now + (unsigned long)reward.duration * 86400);
+					newItem.enhanceBits = 0;
+					itemsToAdd.push_back(newItem);
+					currentInventory.push_back(newItem);
+				}
+			}
+			else {
+				// Count-based
+				if (itemOwned) {
+					databaseManager.UpdateUserInventoryItemCount(userID, reward.itemID, reward.count);
+				}
+				else {
+					InventoryItem newItem;
+					newItem.slotID = ++maxSlotID;
+					newItem.itemID = reward.itemID;
+					newItem.count = reward.count;
+					newItem.activeFlag = 1;
+					newItem.inUse = false;
+					newItem.obtainTime = (unsigned long)now;
+					newItem.expirationTime = 0;
+					newItem.enhanceBits = 0;
+					itemsToAdd.push_back(newItem);
+					currentInventory.push_back(newItem);
+				}
+			}
+		}
+
+		if (!itemsToAdd.empty()) {
+			databaseManager.AddUserInventoryItems(userID, itemsToAdd);
+		}
+
+		// Process bonus points rewards
+		if (offer.additionalPoints > 0) {
+			databaseManager.AddUserFunds(userID, true, offer.additionalPoints);
+		}
+
+		// 1. Send successful BuyReply to client
+		sendPacket_Shop_BuyReply(connection, 1, "");
+
+		// 2. Immediately sync updated inventory to client (Packet 154)
+		packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
+
+		// 3. Immediately sync updated Points and Cash balance to client HUD (Packet 157 & 69)
+		auto charResult = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
+		packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, charResult.userCharacter });
+
+		// 4. Send informative chat notice
+		std::string currencyName = offer.isPoints ? "Points" : "GASH";
+		std::string itemsStr;
+		for (size_t i = 0; i < rewardedNames.size(); ++i) {
+			if (i > 0) itemsStr += "、";
+			itemsStr += rewardedNames[i];
+		}
+		std::string bonusNotice;
+		if (offer.additionalPoints > 0) {
+			bonusNotice += format("，額外獲贈 +{} Points", offer.additionalPoints);
+		}
+		if (offer.additionalClanPoints > 0) {
+			bonusNotice += format("，額外獲贈 +{} 軍團點數", offer.additionalClanPoints);
+		}
+		std::string notice = format("[系統] 成功購買「{}」！獲得：[{}]。扣除 {} {}{}。",
+			offer.productName, itemsStr, offer.price, currencyName, bonusNotice);
+		packet_UMsgManager.SendPacket_UMsg_PublicNotice(connection, notice);
+
+		serverConsole.Print(PrefixType::Info, format("[ Packet_ShopManager ] User ({}) successfully purchased package offer {} ('{}', [{}], {} {}{})\n",
+			user->GetUserLogName(), offer.subProductID, offer.productName, itemsStr, offer.price, currencyName, bonusNotice));
+		return;
+	}
+
+	// Single item purchase
 	bool alreadyOwned = false;
 	InventoryItem ownedItem;
 	unsigned short maxSlotID = 0;
@@ -254,7 +426,6 @@ void Packet_ShopManager::parsePacket_Shop_Buy(User* user, TCPConnection::Packet:
 		}
 	}
 
-	time_t now = time(nullptr);
 	if (offer.isCount) {
 		if (alreadyOwned) {
 			databaseManager.UpdateUserInventoryItemCount(userID, (unsigned short)offer.productID, offer.count);
@@ -274,11 +445,12 @@ void Packet_ShopManager::parsePacket_Shop_Buy(User* user, TCPConnection::Packet:
 	}
 	else {
 		// Duration-based equipment
+		bool isPermOffer = (offer.duration == 0 || offer.duration == 0xFFFF);
 		if (alreadyOwned) {
 			if (ownedItem.expirationTime == 0) {
 				// Already permanent, keep permanent
 			}
-			else if (offer.duration == 0) {
+			else if (isPermOffer) {
 				// Upgrade to permanent
 				databaseManager.UpdateUserInventoryExpiration(userID, (unsigned short)offer.productID, 0);
 			}
@@ -297,10 +469,15 @@ void Packet_ShopManager::parsePacket_Shop_Buy(User* user, TCPConnection::Packet:
 			newItem.activeFlag = 1;
 			newItem.inUse = false;
 			newItem.obtainTime = (unsigned long)now;
-			newItem.expirationTime = (offer.duration == 0) ? 0 : (unsigned long)(now + (unsigned long)offer.duration * 86400);
+			newItem.expirationTime = isPermOffer ? 0 : (unsigned long)(now + (unsigned long)offer.duration * 86400);
 			newItem.enhanceBits = 0;
 			databaseManager.AddUserInventoryItems(userID, { newItem });
 		}
+	}
+
+	// Process bonus points rewards
+	if (offer.additionalPoints > 0) {
+		databaseManager.AddUserFunds(userID, true, offer.additionalPoints);
 	}
 
 	// 1. Send successful BuyReply to client
@@ -314,13 +491,21 @@ void Packet_ShopManager::parsePacket_Shop_Buy(User* user, TCPConnection::Packet:
 	packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, charResult.userCharacter });
 
 	// 4. Send informative chat notice to user
-	std::string currencyName = offer.isPoints ? "Points" : "GASH/Cash";
-	std::string durationText = (offer.isCount) ? format("{} 個", offer.count) : ((offer.duration == 0) ? "永久" : format("{} 天", offer.duration));
-	std::string notice = format("[系統] 成功購買「{}」({})！扣除 {} {}。", offer.productName, durationText, offer.price, currencyName);
+	std::string currencyName = offer.isPoints ? "Points" : "GASH";
+	bool isPerm = (offer.duration == 0 || offer.duration == 0xFFFF);
+	std::string durationText = (offer.isCount) ? format("{} 個", offer.count) : (isPerm ? "永久" : format("{} 天", offer.duration));
+	std::string bonusNotice;
+	if (offer.additionalPoints > 0) {
+		bonusNotice += format("，額外獲贈 +{} Points", offer.additionalPoints);
+	}
+	if (offer.additionalClanPoints > 0) {
+		bonusNotice += format("，額外獲贈 +{} 軍團點數", offer.additionalClanPoints);
+	}
+	std::string notice = format("[系統] 成功購買「{}」({})！扣除 {} {}{}。", offer.productName, durationText, offer.price, currencyName, bonusNotice);
 	packet_UMsgManager.SendPacket_UMsg_PublicNotice(connection, notice);
 
-	serverConsole.Print(PrefixType::Info, format("[ Packet_ShopManager ] User ({}) successfully purchased offer {} ('{}', {}, {} {})\n",
-		user->GetUserLogName(), offer.subProductID, offer.productName, durationText, offer.price, currencyName));
+	serverConsole.Print(PrefixType::Info, format("[ Packet_ShopManager ] User ({}) successfully purchased offer {} ('{}', {}, {} {}{})\n",
+		user->GetUserLogName(), offer.subProductID, offer.productName, durationText, offer.price, currencyName, bonusNotice));
 }
 
 void Packet_ShopManager::SendPacket_Shop_ShopList(TCPConnection::pointer connection) {
@@ -344,7 +529,11 @@ void Packet_ShopManager::SendPacket_Shop_ShopList(TCPConnection::pointer connect
 
 		for (const auto& offer : product.offers) {
 			packet->WriteUInt32_LE(offer.subProductID);
-			packet->WriteUInt16_LE(offer.duration);
+			unsigned short sendDuration = offer.duration;
+			if (!offer.isCount && (offer.duration == 0 || offer.duration == 0xFFFF)) {
+				sendDuration = 0xFFFF; // 0xFFFF triggers client "#CSO_Permanent" display
+			}
+			packet->WriteUInt16_LE(sendDuration);
 			packet->WriteUInt8(offer.isCount);
 			packet->WriteUInt16_LE(offer.count);
 			packet->WriteUInt32_LE(offer.price);

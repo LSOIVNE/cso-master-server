@@ -24,6 +24,7 @@ struct Channel {
 	unsigned short port = 0;
 	bool isOnline = true;
 	unsigned long long lastHeartbeat = 0;
+	string loginMsg = "";
 };
 
 struct Server {
@@ -51,6 +52,11 @@ struct PermissionConfig {
 	vector<string> gmList = { "test", "admin" };
 	bool allowPlayerItemCommands = true;
 	bool allowPlayerNotice = false;
+	bool allowPlayerReloadShop = false;
+};
+
+struct ShopConfig {
+	bool broadcastOnReload = false;
 };
 
 class ServerConfig {
@@ -82,6 +88,7 @@ public:
 	vector<unsigned short> defaultInventory;
 	ItemCommandConfig itemCommands;
 	PermissionConfig permissions;
+	ShopConfig shop;
 };
 
 extern ServerConfig serverConfig;

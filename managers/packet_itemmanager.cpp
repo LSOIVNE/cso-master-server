@@ -5,6 +5,7 @@
 #include "packetmanager.h"
 #include "serverconsole.h"
 #include "itemdefinitionmanager.h"
+#include "itemboxmanager.h"
 #include <unordered_set>
 
 Packet_ItemManager packet_ItemManager;
@@ -40,6 +41,10 @@ void Packet_ItemManager::ParsePacket_Item(TCPConnection::Packet::pointer packet)
 		}
 		case Packet_ItemType::BuyWeapon: {
 			parsePacket_Item_BuyWeapon(user, packet);
+			break;
+		}
+		case Packet_ItemType::OpenBox: {
+			parsePacket_Item_OpenBox(user, packet);
 			break;
 		}
 		case Packet_ItemType::Tattoo: {
@@ -265,4 +270,22 @@ void Packet_ItemManager::parsePacket_Item_Tattoo(User* user, TCPConnection::Pack
 
 	// Send refreshed inventory so client updates equipped badges and button text (卸除 / 裝備)
 	packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
+}
+
+void Packet_ItemManager::parsePacket_Item_OpenBox(User* user, TCPConnection::Packet::pointer packet) {
+	if (user == NULL || packet == NULL) {
+		return;
+	}
+
+	auto& connection = user->GetConnection();
+	if (connection == NULL) {
+		return;
+	}
+
+	unsigned short decoderSlotID = packet->ReadUInt16_LE();
+
+	serverConsole.Print(PrefixType::Info, format("[ Packet_ItemManager ] User ({}) open box request: decoderSlot {}\n",
+		user->GetUserLogName(), decoderSlotID));
+
+	itemBoxManager.OpenBox(user, decoderSlotID, 0, 0);
 }

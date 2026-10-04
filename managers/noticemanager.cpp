@@ -10,7 +10,15 @@ using json = nlohmann::json;
 
 NoticeManager noticeManager;
 
-static const string NOTICE_CONFIG_PATH = "configs/notice.json";
+static string GetNoticeConfigPath() {
+	if (std::filesystem::exists("configs/notice.json")) {
+		return "configs/notice.json";
+	}
+	if (std::filesystem::exists("bin/configs/notice.json")) {
+		return "bin/configs/notice.json";
+	}
+	return "configs/notice.json";
+}
 
 NoticeManager::NoticeManager() {
 	_secondCounter = 0;
@@ -23,8 +31,8 @@ bool NoticeManager::Init() {
 }
 
 bool NoticeManager::SaveConfig(const string& path) {
-	string targetPath = path.empty() ? NOTICE_CONFIG_PATH : path;
-	std::filesystem::create_directories("configs");
+	string targetPath = path.empty() ? GetNoticeConfigPath() : path;
+	std::filesystem::create_directories(std::filesystem::path(targetPath).parent_path());
 
 	json j;
 	json bulletinsJson = json::array();
@@ -42,10 +50,26 @@ bool NoticeManager::SaveConfig(const string& path) {
 		{ "Bulletins", bulletinsJson }
 	};
 
-	j["WelcomeNotice"] = {
-		{ "Enabled", _config.welcomeNotice.enabled },
-		{ "Type", _config.welcomeNotice.type },
-		{ "Message", _config.welcomeNotice.message }
+	j["LoginWelcomeNotice"] = {
+		{ "Enabled", _config.loginWelcomeNotice.enabled },
+		{ "Type", _config.loginWelcomeNotice.type },
+		{ "Category", _config.loginWelcomeNotice.category },
+		{ "Title", _config.loginWelcomeNotice.title },
+		{ "Message", _config.loginWelcomeNotice.message }
+	};
+
+	j["ChannelLoginNotice"] = {
+		{ "Enabled", _config.channelLoginNotice.enabled },
+		{ "Type", _config.channelLoginNotice.type },
+		{ "Category", _config.channelLoginNotice.category },
+		{ "Title", _config.channelLoginNotice.title },
+		{ "Message", _config.channelLoginNotice.message }
+	};
+
+	j["ChannelChatNotice"] = {
+		{ "Enabled", _config.channelChatNotice.enabled },
+		{ "Type", _config.channelChatNotice.type },
+		{ "Message", _config.channelChatNotice.message }
 	};
 
 	j["PeriodicAnnouncements"] = {
@@ -55,28 +79,42 @@ bool NoticeManager::SaveConfig(const string& path) {
 		{ "Messages", _config.periodicAnnouncements.messages }
 	};
 
+	bool success = false;
 	ofstream file(targetPath);
 	if (file.is_open()) {
 		file << j.dump(4);
 		serverConsole.Print(PrefixType::Info, format("[ NoticeManager ] Saved config to {}\n", targetPath));
-		return true;
+		success = true;
 	}
 	else {
 		serverConsole.Print(PrefixType::Error, format("[ NoticeManager ] Failed to save config file: {}\n", targetPath));
-		return false;
 	}
+
+	// Also sync to alternate path if directory exists
+	if (path.empty()) {
+		string altPath = (targetPath == "configs/notice.json") ? "bin/configs/notice.json" : "configs/notice.json";
+		if (std::filesystem::exists(std::filesystem::path(altPath).parent_path())) {
+			ofstream altFile(altPath);
+			if (altFile.is_open()) {
+				altFile << j.dump(4);
+			}
+		}
+	}
+
+	return success;
 }
 
 bool NoticeManager::LoadConfig() {
-	if (!std::filesystem::exists(NOTICE_CONFIG_PATH)) {
-		serverConsole.Print(PrefixType::Warn, format("[ NoticeManager ] Config file {} not found. Generating default...\n", NOTICE_CONFIG_PATH));
-		SaveConfig(NOTICE_CONFIG_PATH);
+	string configPath = GetNoticeConfigPath();
+	if (!std::filesystem::exists(configPath)) {
+		serverConsole.Print(PrefixType::Warn, format("[ NoticeManager ] Config file {} not found. Generating default...\n", configPath));
+		SaveConfig(configPath);
 		return true;
 	}
 
-	ifstream file(NOTICE_CONFIG_PATH);
+	ifstream file(configPath);
 	if (!file.is_open()) {
-		serverConsole.Print(PrefixType::Error, format("[ NoticeManager ] Failed to open {}!\n", NOTICE_CONFIG_PATH));
+		serverConsole.Print(PrefixType::Error, format("[ NoticeManager ] Failed to open {}!\n", configPath));
 		return false;
 	}
 
@@ -131,37 +169,139 @@ bool NoticeManager::LoadConfig() {
 			}
 		}
 
-		// 2. Welcome Notice (sent upon entering a channel)
-		if (j.contains("WelcomeNotice") && j["WelcomeNotice"].is_object()) {
-			auto& wn = j["WelcomeNotice"];
-			if (wn.contains("Enabled") && wn["Enabled"].is_boolean()) {
-				_config.welcomeNotice.enabled = wn["Enabled"].get<bool>();
+		// 2. Login Welcome Notice (sent upon logging in / entering server list, aligned with 2014 "WelcomeMessage")
+		if (j.contains("LoginWelcomeNotice") && j["LoginWelcomeNotice"].is_object()) {
+			auto& lwn = j["LoginWelcomeNotice"];
+			if (lwn.contains("Enabled") && lwn["Enabled"].is_boolean()) {
+				_config.loginWelcomeNotice.enabled = lwn["Enabled"].get<bool>();
 			}
-			if (wn.contains("Type") && wn["Type"].is_string()) {
-				string typeStr = wn["Type"].get<string>();
-				// If legacy type was "Bulletin", convert to "ServerMessage" to prevent channel-entry popup conflict
-				if (typeStr == "Bulletin") {
-					_config.welcomeNotice.type = "ServerMessage";
-				}
-				else {
-					_config.welcomeNotice.type = typeStr;
-				}
+			if (lwn.contains("Type") && lwn["Type"].is_string()) {
+				_config.loginWelcomeNotice.type = lwn["Type"].get<string>();
 			}
-			if (wn.contains("Message") && wn["Message"].is_string()) {
-				_config.welcomeNotice.message = wn["Message"].get<string>();
+			if (lwn.contains("Category") && lwn["Category"].is_number()) {
+				_config.loginWelcomeNotice.category = lwn["Category"].get<unsigned char>();
 			}
-			// Legacy fallback: if old config had Title/Content inside WelcomeNotice, use them for ServerBulletin if not already set
-			if (wn.contains("Title") && wn["Title"].is_string() && !j.contains("ServerBulletin")) {
-				BulletinItem b;
-				b.title = wn["Title"].get<string>();
-				if (wn.contains("Content") && wn["Content"].is_string()) {
-					b.content = wn["Content"].get<string>();
+			if (lwn.contains("Title") && lwn["Title"].is_string()) {
+				_config.loginWelcomeNotice.title = lwn["Title"].get<string>();
+			}
+			if (lwn.contains("Message") && lwn["Message"].is_string()) {
+				_config.loginWelcomeNotice.message = lwn["Message"].get<string>();
+			}
+		}
+		else if (j.contains("WelcomeMessage")) {
+			// Compatibility with 2014 WelcomeMessage format
+			if (j["WelcomeMessage"].is_string()) {
+				_config.loginWelcomeNotice.message = j["WelcomeMessage"].get<string>();
+				_config.loginWelcomeNotice.enabled = true;
+				_config.loginWelcomeNotice.type = "Bulletin";
+			}
+			else if (j["WelcomeMessage"].is_object()) {
+				auto& wm = j["WelcomeMessage"];
+				if (wm.contains("Enabled") && wm["Enabled"].is_boolean()) {
+					_config.loginWelcomeNotice.enabled = wm["Enabled"].get<bool>();
 				}
-				_config.serverBulletin.bulletins = { b };
+				if (wm.contains("Type") && wm["Type"].is_string()) {
+					_config.loginWelcomeNotice.type = wm["Type"].get<string>();
+				}
+				if (wm.contains("Category") && wm["Category"].is_number()) {
+					_config.loginWelcomeNotice.category = wm["Category"].get<unsigned char>();
+				}
+				if (wm.contains("Title") && wm["Title"].is_string()) {
+					_config.loginWelcomeNotice.title = wm["Title"].get<string>();
+				}
+				if (wm.contains("Message") && wm["Message"].is_string()) {
+					_config.loginWelcomeNotice.message = wm["Message"].get<string>();
+				}
 			}
 		}
 
-		// 3. Periodic Announcements
+		// 3. Channel Login Notice (sent upon entering a channel, aligned with 2014 "LoginMsg")
+		if (j.contains("ChannelLoginNotice") && j["ChannelLoginNotice"].is_object()) {
+			auto& cln = j["ChannelLoginNotice"];
+			if (cln.contains("Enabled") && cln["Enabled"].is_boolean()) {
+				_config.channelLoginNotice.enabled = cln["Enabled"].get<bool>();
+			}
+			if (cln.contains("Type") && cln["Type"].is_string()) {
+				_config.channelLoginNotice.type = cln["Type"].get<string>();
+			}
+			if (cln.contains("Category") && cln["Category"].is_number()) {
+				_config.channelLoginNotice.category = cln["Category"].get<unsigned char>();
+			}
+			if (cln.contains("Title") && cln["Title"].is_string()) {
+				_config.channelLoginNotice.title = cln["Title"].get<string>();
+			}
+			if (cln.contains("Message") && cln["Message"].is_string()) {
+				_config.channelLoginNotice.message = cln["Message"].get<string>();
+			}
+		}
+		else if (j.contains("LoginMsg")) {
+			// Compatibility with 2014 LoginMsg format
+			if (j["LoginMsg"].is_string()) {
+				_config.channelLoginNotice.message = j["LoginMsg"].get<string>();
+				_config.channelLoginNotice.enabled = true;
+				_config.channelLoginNotice.type = "PublicNotice";
+			}
+			else if (j["LoginMsg"].is_object()) {
+				auto& lm = j["LoginMsg"];
+				if (lm.contains("Enabled") && lm["Enabled"].is_boolean()) {
+					_config.channelLoginNotice.enabled = lm["Enabled"].get<bool>();
+				}
+				if (lm.contains("Type") && lm["Type"].is_string()) {
+					_config.channelLoginNotice.type = lm["Type"].get<string>();
+				}
+				if (lm.contains("Category") && lm["Category"].is_number()) {
+					_config.channelLoginNotice.category = lm["Category"].get<unsigned char>();
+				}
+				if (lm.contains("Title") && lm["Title"].is_string()) {
+					_config.channelLoginNotice.title = lm["Title"].get<string>();
+				}
+				if (lm.contains("Message") && lm["Message"].is_string()) {
+					_config.channelLoginNotice.message = lm["Message"].get<string>();
+				}
+			}
+		}
+		else if (j.contains("WelcomeNotice") && j["WelcomeNotice"].is_object()) {
+			// Legacy fallback: convert WelcomeNotice to ChannelLoginNotice
+			auto& wn = j["WelcomeNotice"];
+			if (wn.contains("Enabled") && wn["Enabled"].is_boolean()) {
+				_config.channelLoginNotice.enabled = wn["Enabled"].get<bool>();
+			}
+			if (wn.contains("Type") && wn["Type"].is_string()) {
+				_config.channelLoginNotice.type = wn["Type"].get<string>();
+			}
+			if (wn.contains("Title") && wn["Title"].is_string()) {
+				_config.channelLoginNotice.title = wn["Title"].get<string>();
+			}
+			if (wn.contains("Message") && wn["Message"].is_string()) {
+				_config.channelLoginNotice.message = wn["Message"].get<string>();
+			}
+		}
+
+		// 4. Channel Chat Notice (sent to lobby chat upon entering a channel, defaults to ServerMessage [黃色字 伺服器信息])
+		if (j.contains("ChannelChatNotice") && j["ChannelChatNotice"].is_object()) {
+			auto& ccn = j["ChannelChatNotice"];
+			if (ccn.contains("Enabled") && ccn["Enabled"].is_boolean()) {
+				_config.channelChatNotice.enabled = ccn["Enabled"].get<bool>();
+			}
+			if (ccn.contains("Type") && ccn["Type"].is_string()) {
+				_config.channelChatNotice.type = ccn["Type"].get<string>();
+			}
+			if (ccn.contains("Message") && ccn["Message"].is_string()) {
+				_config.channelChatNotice.message = ccn["Message"].get<string>();
+			}
+		}
+		else if (j.contains("ChannelLoginNotice") && j["ChannelLoginNotice"].is_object()) {
+			// Backward compatibility: if SendToChat or ChatMessage was present in ChannelLoginNotice
+			auto& cln = j["ChannelLoginNotice"];
+			if (cln.contains("SendToChat") && cln["SendToChat"].is_boolean()) {
+				_config.channelChatNotice.enabled = cln["SendToChat"].get<bool>();
+			}
+			if (cln.contains("ChatMessage") && cln["ChatMessage"].is_string()) {
+				_config.channelChatNotice.message = cln["ChatMessage"].get<string>();
+			}
+		}
+
+		// 5. Periodic Announcements
 		if (j.contains("PeriodicAnnouncements") && j["PeriodicAnnouncements"].is_object()) {
 			auto& pa = j["PeriodicAnnouncements"];
 			if (pa.contains("Enabled") && pa["Enabled"].is_boolean()) {
@@ -186,9 +326,12 @@ bool NoticeManager::LoadConfig() {
 			}
 		}
 
-		serverConsole.Print(PrefixType::Info, format("[ NoticeManager ] Config loaded! ServerBulletin: {}, WelcomeNotice: {}, PeriodicAnnouncements: {} (Interval: {}s, Count: {})\n",
+		serverConsole.Print(PrefixType::Info, format("[ NoticeManager ] Config loaded from {}! ServerBulletin: {}, LoginWelcome: {}, ChannelLogin: {}, ChannelChat: {}, PeriodicAnnouncements: {} (Interval: {}s, Count: {})\n",
+			configPath,
 			_config.serverBulletin.enabled ? format("ON ({} bulletins)", _config.serverBulletin.bulletins.size()) : "OFF",
-			_config.welcomeNotice.enabled ? _config.welcomeNotice.type : "OFF",
+			_config.loginWelcomeNotice.enabled ? _config.loginWelcomeNotice.type : "OFF",
+			_config.channelLoginNotice.enabled ? _config.channelLoginNotice.type : "OFF",
+			_config.channelChatNotice.enabled ? _config.channelChatNotice.type : "OFF",
 			_config.periodicAnnouncements.enabled ? "ON" : "OFF",
 			_config.periodicAnnouncements.intervalSeconds,
 			_config.periodicAnnouncements.messages.size()));
@@ -196,7 +339,7 @@ bool NoticeManager::LoadConfig() {
 		return true;
 	}
 	catch (json::parse_error& e) {
-		serverConsole.Print(PrefixType::Error, format("[ NoticeManager ] Failed to parse {}: {}\n", NOTICE_CONFIG_PATH, e.what()));
+		serverConsole.Print(PrefixType::Error, format("[ NoticeManager ] Failed to parse {}: {}\n", configPath, e.what()));
 		return false;
 	}
 }
@@ -301,33 +444,115 @@ void NoticeManager::BroadcastServerBulletin() {
 	serverConsole.Print(PrefixType::Info, format("[ NoticeManager ] Broadcast {} server bulletin(s) to all users\n", _config.serverBulletin.bulletins.size()));
 }
 
-void NoticeManager::SendWelcomeNotice(User* user) {
+void NoticeManager::SendLoginWelcomeNotice(User* user) {
 	if (user == NULL || user->GetConnection() == NULL) {
 		return;
 	}
 
-	if (!_config.welcomeNotice.enabled || _config.welcomeNotice.type == "None") {
+	if (!_config.loginWelcomeNotice.enabled || _config.loginWelcomeNotice.type == "None") {
 		return;
 	}
 
-	if (_config.welcomeNotice.type == "ServerMessage") {
-		packet_UMsgManager.SendPacket_UMsg_ServerMessageText(user->GetConnection(), _config.welcomeNotice.message);
+	const string& type = _config.loginWelcomeNotice.type;
+	const string& msg = _config.loginWelcomeNotice.message;
+	const string& title = _config.loginWelcomeNotice.title.empty() ? "伺服器公告" : _config.loginWelcomeNotice.title;
+
+	if (msg.empty()) {
+		return;
 	}
-	else if (_config.welcomeNotice.type == "ServerYell") {
-		packet_UMsgManager.SendPacket_UMsg_ServerYell(user->GetConnection(), "系統", _config.welcomeNotice.message);
+
+	if (type == "Bulletin") {
+		packet_UMsgManager.SendPacket_UMsg_BulletinNotice(
+			user->GetConnection(),
+			1000,
+			_config.loginWelcomeNotice.category,
+			title,
+			msg
+		);
 	}
-	else if (_config.welcomeNotice.type == "RollingBanner") {
-		packet_UMsgManager.SendPacket_UMsg_RollingBanner(user->GetConnection(), _config.welcomeNotice.message);
+	else if (type == "PublicNotice" || type == "RollingBanner") {
+		packet_UMsgManager.SendPacket_UMsg_PublicNotice(user->GetConnection(), msg);
 	}
-	else if (_config.welcomeNotice.type == "Chat") {
-		packet_UMsgManager.SendPacket_UMsg_Chat(user->GetConnection(), Packet_UMsgType::ChannelChat, Utf8ToCp950("系統"), Utf8ToCp950(_config.welcomeNotice.message));
+	else if (type == "ServerYell") {
+		packet_UMsgManager.SendPacket_UMsg_ServerYell(user->GetConnection(), "系統", msg);
 	}
-	else {
-		// Default: PublicNotice
-		if (!_config.welcomeNotice.message.empty()) {
-			packet_UMsgManager.SendPacket_UMsg_PublicNotice(user->GetConnection(), _config.welcomeNotice.message);
+	else if (type == "Chat") {
+		packet_UMsgManager.SendPacket_UMsg_Chat(user->GetConnection(), Packet_UMsgType::ChannelChat, Utf8ToCp950("系統"), Utf8ToCp950(msg));
+	}
+	else if (type == "ServerMessage") {
+		packet_UMsgManager.SendPacket_UMsg_ServerMessageText(user->GetConnection(), msg);
+	}
+
+	serverConsole.Print(PrefixType::Info, format("[ NoticeManager ] Sent login welcome notice ({}) to user ({})\n", type, user->GetUserLogName()));
+}
+
+void NoticeManager::SendChannelLoginNotice(User* user, const string& channelCustomLoginMsg) {
+	if (user == NULL || user->GetConnection() == NULL) {
+		return;
+	}
+
+	if (!_config.channelLoginNotice.enabled || _config.channelLoginNotice.type == "None") {
+		return;
+	}
+
+	string msg = !channelCustomLoginMsg.empty() ? channelCustomLoginMsg : _config.channelLoginNotice.message;
+	if (msg.empty()) {
+		return;
+	}
+
+	const string& type = _config.channelLoginNotice.type;
+	const string& title = _config.channelLoginNotice.title.empty() ? "頻道公告" : _config.channelLoginNotice.title;
+
+	if (type != "None") {
+		if (type == "Bulletin") {
+			packet_UMsgManager.SendPacket_UMsg_BulletinNotice(
+				user->GetConnection(),
+				2000,
+				_config.channelLoginNotice.category,
+				title,
+				msg
+			);
+		}
+		else if (type == "PublicNotice" || type == "RollingBanner") {
+			packet_UMsgManager.SendPacket_UMsg_PublicNotice(user->GetConnection(), msg);
+		}
+		else if (type == "ServerMessage") {
+			packet_UMsgManager.SendPacket_UMsg_ServerMessageText(user->GetConnection(), msg);
 		}
 	}
 
-	serverConsole.Print(PrefixType::Info, format("[ NoticeManager ] Welcome notice sent to user ({})\n", user->GetUserLogName()));
+	serverConsole.Print(PrefixType::Info, format("[ NoticeManager ] Sent channel login notice ({}) to user ({})\n", type, user->GetUserLogName()));
+}
+
+void NoticeManager::SendChannelChatNotice(User* user, const string& channelCustomLoginMsg) {
+	if (user == NULL || user->GetConnection() == NULL) {
+		return;
+	}
+
+	if (!_config.channelChatNotice.enabled || _config.channelChatNotice.type == "None") {
+		return;
+	}
+
+	string msg = !channelCustomLoginMsg.empty() ? channelCustomLoginMsg : _config.channelChatNotice.message;
+	if (msg.empty()) {
+		return;
+	}
+
+	const string& type = _config.channelChatNotice.type;
+	if (type == "ServerMessage") {
+		// Native client renders ServerMessage in yellow text with [伺服器信息] header
+		packet_UMsgManager.SendPacket_UMsg_ServerMessageText(user->GetConnection(), msg);
+	}
+	else if (type == "Chat") {
+		// Normal client chat renders in white text with [系統] sender
+		packet_UMsgManager.SendPacket_UMsg_Chat(user->GetConnection(), Packet_UMsgType::ChannelChat, Utf8ToCp950("系統"), Utf8ToCp950(msg));
+	}
+	else if (type == "ServerYell") {
+		packet_UMsgManager.SendPacket_UMsg_ServerYell(user->GetConnection(), "系統", msg);
+	}
+	else if (type == "PublicNotice" || type == "RollingBanner") {
+		packet_UMsgManager.SendPacket_UMsg_PublicNotice(user->GetConnection(), msg);
+	}
+
+	serverConsole.Print(PrefixType::Info, format("[ NoticeManager ] Sent channel chat notice ({}) to user ({})\n", type, user->GetUserLogName()));
 }

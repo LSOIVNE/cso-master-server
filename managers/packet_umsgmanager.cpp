@@ -129,8 +129,18 @@ void Packet_UMsgManager::SendPacket_UMsg_ServerMessageText(TCPConnection::pointe
 		return;
 	}
 
+	string cleanText = text;
+	const string prefix1 = "[伺服器訊息] ";
+	const string prefix2 = "[伺服器訊息]";
+	if (cleanText.rfind(prefix1, 0) == 0) {
+		cleanText = cleanText.substr(prefix1.length());
+	}
+	else if (cleanText.rfind(prefix2, 0) == 0) {
+		cleanText = cleanText.substr(prefix2.length());
+	}
+
 	packet->WriteUInt8(Packet_UMsgType::ServerMessage);
-	packet->WriteString(Utf8ToCp950(text));
+	packet->WriteString(Utf8ToCp950(cleanText));
 
 	packet->Send();
 }
@@ -240,6 +250,35 @@ void Packet_UMsgManager::BroadcastBulletinNotice(unsigned short noticeID, unsign
 	for (auto& u : users) {
 		if (u != NULL && u->GetConnection() != NULL && userManager.IsUserLoggedIn(u) && u->GetUserStatus() != UserStatus::InServerList) {
 			SendPacket_UMsg_BulletinNotice(u->GetConnection(), noticeID, flags, title, content);
+		}
+	}
+}
+
+void Packet_UMsgManager::SendPacket_UMsg_SystemReply(TCPConnection::pointer connection, Packet_UMsgType type, const string& replyKey, const vector<string>& args) {
+	if (connection == NULL) {
+		return;
+	}
+
+	auto packet = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::UMsg });
+	if (packet == NULL) {
+		return;
+	}
+
+	packet->WriteUInt8((unsigned char)type);
+	packet->WriteString(replyKey);
+	packet->WriteUInt8((unsigned char)args.size());
+	for (const auto& a : args) {
+		packet->WriteString(Utf8ToCp950(a));
+	}
+
+	packet->Send();
+}
+
+void Packet_UMsgManager::BroadcastSystemReply(Packet_UMsgType type, const string& replyKey, const vector<string>& args) {
+	vector<User*> users = userManager.GetUsers();
+	for (auto& u : users) {
+		if (u != NULL && u->GetConnection() != NULL && userManager.IsUserLoggedIn(u) && u->GetUserStatus() != UserStatus::InServerList) {
+			SendPacket_UMsg_SystemReply(u->GetConnection(), type, replyKey, args);
 		}
 	}
 }
@@ -448,7 +487,7 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 	if (cmdLower != "/additem" && cmdLower != "/addallitem" && cmdLower != "/resetinv" && cmdLower != "/resetitem" &&
 		cmdLower != "/notice" && cmdLower != "/msg" && cmdLower != "/gm" && cmdLower != "/dialog" &&
 		cmdLower != "/banner" && cmdLower != "/yell" && cmdLower != "/reloadnotice" &&
-		cmdLower != "/addpoints" && cmdLower != "/points" && cmdLower != "/addcash" && cmdLower != "/cash" &&
+		cmdLower != "/addpoints" && cmdLower != "/addgash" &&
 		cmdLower != "/reloadshop") {
 		return false;
 	}
@@ -466,15 +505,15 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 	};
 
 	if (cmdLower == "/additem" || cmdLower == "/addallitem" || cmdLower == "/resetinv" || cmdLower == "/resetitem" ||
-		cmdLower == "/addpoints" || cmdLower == "/points" || cmdLower == "/addcash" || cmdLower == "/cash") {
+		cmdLower == "/addpoints" || cmdLower == "/addgash") {
 		if (!serverConfig.permissions.allowPlayerItemCommands && !isGM) {
 			SendNotice("權限不足：測試指令已被管理員停用！");
 			return true;
 		}
 	}
 	else if (cmdLower == "/reloadshop") {
-		if (!isGM) {
-			SendNotice("權限不足：商城配置重載指令僅限 GM 使用！");
+		if (!serverConfig.permissions.allowPlayerReloadShop && !isGM) {
+			SendNotice("權限不足：商城配置重載指令已被管理員限制，僅限 GM 使用！");
 			return true;
 		}
 	}
@@ -979,17 +1018,31 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		SendNotice("公告配置 configs/notice.json 已成功重新載入！");
 		return true;
 	}
-	else if (cmdLower == "/addpoints" || cmdLower == "/points") {
+	else if (cmdLower == "/addpoints") {
 		string amountStr;
-		unsigned long long amount = 100000;
-		if (ss >> amountStr) {
-			try {
-				amount = stoull(amountStr);
-			}
-			catch (...) {
-				SendNotice("[系統] 金額格式錯誤！用法：/addpoints <數量>");
-				return true;
-			}
+		if (!(ss >> amountStr)) {
+			SendNotice("[系統] 請指定數量！用法：/addpoints <數量>");
+			return true;
+		}
+
+		unsigned long long amount = 0;
+		try {
+			amount = stoull(amountStr);
+		}
+		catch (...) {
+			SendNotice("[系統] 請指定大於 0 的有效金額！用法：/addpoints <數量>");
+			return true;
+		}
+
+		if (amount == 0) {
+			SendNotice("[系統] 請指定大於 0 的有效金額！用法：/addpoints <數量>");
+			return true;
+		}
+
+		auto currentChar = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
+		if (currentChar.userCharacter.points + amount > 2000000000ULL) {
+			SendNotice("[系統] 增加失敗！Points 總額不可超過上限 2,000,000,000（20 億）。");
+			return true;
 		}
 
 		if (databaseManager.AddUserFunds(userID, true, amount)) {
@@ -1002,34 +1055,54 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		}
 		return true;
 	}
-	else if (cmdLower == "/addcash" || cmdLower == "/cash") {
+	else if (cmdLower == "/addgash") {
 		string amountStr;
-		unsigned long long amount = 100000;
-		if (ss >> amountStr) {
-			try {
-				amount = stoull(amountStr);
-			}
-			catch (...) {
-				SendNotice("[系統] 金額格式錯誤！用法：/addcash <數量>");
-				return true;
-			}
+		if (!(ss >> amountStr)) {
+			SendNotice("[系統] 請指定數量！用法：/addgash <數量>");
+			return true;
+		}
+
+		unsigned long long amount = 0;
+		try {
+			amount = stoull(amountStr);
+		}
+		catch (...) {
+			SendNotice("[系統] 請指定大於 0 的有效金額！用法：/addgash <數量>");
+			return true;
+		}
+
+		if (amount == 0) {
+			SendNotice("[系統] 請指定大於 0 的有效金額！用法：/addgash <數量>");
+			return true;
+		}
+
+		auto currentChar = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
+		if (currentChar.userCharacter.cash + amount > 2000000000ULL) {
+			SendNotice("[系統] 增加失敗！GASH 總額不可超過上限 2,000,000,000（20 億）。");
+			return true;
 		}
 
 		if (databaseManager.AddUserFunds(userID, false, amount)) {
 			auto charResult = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
 			packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, charResult.userCharacter });
-			SendNotice(format("[系統] 成功增加 GASH/Cash: +{}！當前 Cash: {}。", amount, charResult.userCharacter.cash));
+			SendNotice(format("[系統] 成功增加 GASH: +{}！當前 GASH: {}。", amount, charResult.userCharacter.cash));
 		}
 		else {
-			SendNotice("[系統] 增加 Cash 失敗，數據庫寫入錯誤！");
+			SendNotice("[系統] 增加 GASH 失敗，數據庫寫入錯誤！");
 		}
 		return true;
 	}
 	else if (cmdLower == "/reloadshop") {
 		if (packet_ShopManager.LoadShopConfig()) {
-			packet_ShopManager.BroadcastShopList();
-			SendNotice(format("[系統] 商城配置已重新加載並廣播！共 {} 件商品，{} 種方案。",
-				packet_ShopManager.GetProductCount(), packet_ShopManager.GetOfferCount()));
+			if (serverConfig.shop.broadcastOnReload) {
+				packet_ShopManager.BroadcastShopList();
+				SendNotice(format("[系統] 商城配置已重新加載並廣播給在線玩家！共 {} 件商品，{} 種方案。（註：在線客戶端商品將疊加，需重新登入刷新）",
+					packet_ShopManager.GetProductCount(), packet_ShopManager.GetOfferCount()));
+			}
+			else {
+				SendNotice(format("[系統] 商城配置已重新加載！共 {} 件商品，{} 種方案。新登入玩家即刻生效，在線玩家重新登入後即可刷新商城介面。",
+					packet_ShopManager.GetProductCount(), packet_ShopManager.GetOfferCount()));
+			}
 		}
 		else {
 			SendNotice("[系統] 加載商城配置失敗，請檢查 configs/shop.json！");

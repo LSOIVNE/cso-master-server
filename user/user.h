@@ -18,10 +18,12 @@ constexpr auto USERCHARACTER_FLAG_POINTS =		0x80;
 constexpr auto USERCHARACTER_FLAG_BATTLESTATS = 0x100;
 constexpr auto USERCHARACTER_FLAG_LOCATION =	0x200;
 constexpr auto USERCHARACTER_FLAG_UNK400 =		0x400;
+constexpr auto USERCHARACTER_FLAG_CASH_UINT32 =	0x400; // CSO 2013 client reads cash/gash from this flag into CGamePlayer::m_nCash (offset 312)
 constexpr auto USERCHARACTER_FLAG_UNK800 =		0x800;
 constexpr auto USERCHARACTER_FLAG_CLAN =		0x1000;
+constexpr auto USERCHARACTER_FLAG_CBOXCOUNT =	0x10000; // CSO 2013 client reads cbox count into CGamePlayer::m_nCBoxCount (offset 392)
 constexpr auto USERCHARACTER_FLAG_CHATCOUNT =	0x200000;
-constexpr auto USERCHARACTER_FLAG_ALL =			0x1FFF | USERCHARACTER_FLAG_CHATCOUNT;
+constexpr auto USERCHARACTER_FLAG_ALL =			0x1FFF | USERCHARACTER_FLAG_CBOXCOUNT | USERCHARACTER_FLAG_CHATCOUNT;
 
 struct UserCharacter {
 	unsigned long flag = 0;
@@ -54,6 +56,7 @@ struct UserCharacter {
 	unsigned char clanUnk4 = 0;
 	unsigned char clanUnk5 = 0;
 	unsigned char clanUnk6 = 0;
+	unsigned short cboxCount = 0;
 	unsigned char chatRemainCount = 255;
 };
 

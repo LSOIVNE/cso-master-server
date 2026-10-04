@@ -211,6 +211,7 @@ bool UserManager::SendLoginPackets(User* user, Packet_ReplyType reply) {
 		packet_FavoriteManager.SendPacket_Favorite_UserItemSet(connection, userItemSet);
 
 		noticeManager.SendServerBulletin(user);
+		noticeManager.SendLoginWelcomeNotice(user);
 	}
 	else {
 		user->SetUserStatus(UserStatus::InLobby);
@@ -219,7 +220,17 @@ bool UserManager::SendLoginPackets(User* user, Packet_ReplyType reply) {
 		SendFullUserListPacket(connection);
 		roomManager.SendFullRoomListPacket(connection);
 		noticeManager.SendServerBulletin(user);
-		noticeManager.SendWelcomeNotice(user);
+		noticeManager.SendLoginWelcomeNotice(user);
+
+		string channelLoginMsg = "";
+		if (serverConfig.serverID > 0 && serverConfig.serverID <= serverConfig.serverList.size()) {
+			const auto& s = serverConfig.serverList[(unsigned char)(serverConfig.serverID - 1)];
+			if (serverConfig.channelID > 0 && serverConfig.channelID <= s.channels.size()) {
+				channelLoginMsg = s.channels[(unsigned char)(serverConfig.channelID - 1)].loginMsg;
+			}
+		}
+		noticeManager.SendChannelLoginNotice(user, channelLoginMsg);
+		noticeManager.SendChannelChatNotice(user, channelLoginMsg);
 	}
 
 	return true;

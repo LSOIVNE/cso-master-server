@@ -20,10 +20,26 @@ struct ServerBulletinConfig {
 	};
 };
 
-struct WelcomeNoticeConfig {
+struct LoginWelcomeNoticeConfig {
 	bool enabled = true;
-	string type = "ServerMessage"; // "ServerMessage", "PublicNotice", "RollingBanner", "ServerYell", "Chat", "None"
-	string message = "歡迎來到 CSO 2013 懷舊測試服，祝您遊戲愉快！";
+	string type = "PublicNotice"; // "PublicNotice" (跑馬燈橫幅/提示), "Bulletin" (彈窗大公告), "Chat", "ServerYell", "ServerMessage", "None"
+	unsigned char category = 2; // 0: Etc, 1: Hot, 2: Notice, 3: Event
+	string title = "伺服器公告";
+	string message = "歡迎來到 CSO 2013 懷舊伺服器！祝您遊戲愉快！";
+};
+
+struct ChannelLoginNoticeConfig {
+	bool enabled = true;
+	string type = "PublicNotice"; // "PublicNotice" (跑馬燈橫幅/提示), "Bulletin" (彈窗大公告), "None"
+	unsigned char category = 2; // 0: Etc, 1: Hot, 2: Notice, 3: Event
+	string title = "頻道公告";
+	string message = "歡迎進入 CSO 遊戲頻道！祝您遊戲愉快！";
+};
+
+struct ChannelChatNoticeConfig {
+	bool enabled = true;
+	string type = "ServerMessage"; // "ServerMessage" (黃色字 [伺服器信息]), "Chat" (白色字 [系統]), "ServerYell", "None"
+	string message = "歡迎進入 CSO 遊戲頻道！祝您遊戲愉快！";
 };
 
 struct PeriodicAnnouncementConfig {
@@ -39,7 +55,9 @@ struct PeriodicAnnouncementConfig {
 
 struct NoticeConfig {
 	ServerBulletinConfig serverBulletin;
-	WelcomeNoticeConfig welcomeNotice;
+	LoginWelcomeNoticeConfig loginWelcomeNotice;
+	ChannelLoginNoticeConfig channelLoginNotice;
+	ChannelChatNoticeConfig channelChatNotice;
 	PeriodicAnnouncementConfig periodicAnnouncements;
 };
 
@@ -55,7 +73,12 @@ public:
 	void OnSecondTick();
 	void SendServerBulletin(User* user);
 	void BroadcastServerBulletin();
-	void SendWelcomeNotice(User* user);
+	void SendLoginWelcomeNotice(User* user);
+	void SendChannelLoginNotice(User* user, const string& channelCustomLoginMsg = "");
+	void SendChannelChatNotice(User* user, const string& channelCustomLoginMsg = "");
+
+	// Backward compatibility alias
+	void SendWelcomeNotice(User* user) { SendChannelLoginNotice(user); SendChannelChatNotice(user); }
 
 	const NoticeConfig& GetConfig() const noexcept { return _config; }
 	NoticeConfig& GetConfig() noexcept { return _config; }

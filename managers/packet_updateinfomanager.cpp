@@ -88,6 +88,23 @@ void Packet_UpdateInfoManager::SendPacket_UserUpdateInfo_ChatCount(TCPConnection
 	packet->Send();
 }
 
+void Packet_UpdateInfoManager::SendPacket_UserUpdateInfo_CBoxCount(TCPConnection::pointer connection, unsigned long userID, unsigned short count) {
+	if (connection == NULL) {
+		return;
+	}
+
+	auto packet = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::UserUpdateInfo });
+	if (packet == NULL) {
+		return;
+	}
+
+	packet->WriteUInt32_LE(userID);
+	packet->WriteUInt32_LE(USERCHARACTER_FLAG_CBOXCOUNT); // 0x10000
+	packet->WriteUInt16_LE(count);
+
+	packet->Send();
+}
+
 void Packet_UpdateInfoManager::parsePacket_UpdateInfo_Unk0(User* user, TCPConnection::Packet::pointer packet) {
 	if (user == NULL || packet == NULL) {
 		return;

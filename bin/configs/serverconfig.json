@@ -18,7 +18,8 @@
 			"Name": "Server 1",
 			"Channels": [
 				{
-					"Name": "Channel 1-1"
+					"Name": "Channel 1-1",
+					"LoginMsg": "歡迎進入 Channel 1-1 頻道！祝您遊戲愉快！"
 				}
 			]
 		}
@@ -187,6 +188,7 @@
 		29,
 		30,
 		31,
+		214,
 		40,
 		41,
 		42,
@@ -223,6 +225,10 @@
 			"admin"
 		],
 		"AllowPlayerItemCommands": true,
-		"AllowPlayerNotice": false
+		"AllowPlayerNotice": false,
+		"AllowPlayerReloadShop": false
+	},
+	"Shop": {
+		"BroadcastOnReload": false
 	}
 }

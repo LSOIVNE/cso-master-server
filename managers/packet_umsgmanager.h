@@ -14,8 +14,11 @@ enum Packet_UMsgType {
 	PublicNotice = 10,
 	ServerMessage = 11,
 	SystemDialog = 20,
+	SystemReply_Red = 20,
+	SystemReply_Green = 21,
 	WarningMessage = 20,
 	RollingBanner = 10,
+	SystemReply_MsgBox = 30,
 	GMMessage = 40,
 	GMWhisper = 41,
 	DisconnectWarning = 50,
@@ -37,6 +40,7 @@ public:
 	void SendPacket_UMsg_BulletinNotice(TCPConnection::pointer connection, unsigned short noticeID, unsigned char flags, const string& title, const string& content);
 	void SendPacket_UMsg_NoticeMessage(TCPConnection::pointer connection, const string& text);
 	void SendPacket_UMsg_ServerMessage(TCPConnection::pointer connection, Packet_UMsgType type, const string& text, const vector<string>& additionalText = {});
+	void SendPacket_UMsg_SystemReply(TCPConnection::pointer connection, Packet_UMsgType type, const string& replyKey, const vector<string>& args);
 	void SendPacket_UMsg_Chat(TCPConnection::pointer connection, Packet_UMsgType type, const string& senderNickName, const string& text);
 
 	void BroadcastPublicNotice(const string& text);
@@ -44,6 +48,7 @@ public:
 	void BroadcastRollingBanner(const string& text);
 	void BroadcastServerYell(const string& senderNickName, const string& text);
 	void BroadcastBulletinNotice(unsigned short noticeID, unsigned char flags, const string& title, const string& content);
+	void BroadcastSystemReply(Packet_UMsgType type, const string& replyKey, const vector<string>& args);
 
 	bool HandleChatCommand(User* user, TCPConnection::pointer connection, const string& rawText, Packet_UMsgType chatType);
 

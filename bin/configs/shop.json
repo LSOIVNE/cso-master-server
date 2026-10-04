@@ -1,6 +1,436 @@
 {
   "Products": [
     {
+      "ProductID": 20128,
+      "Name": "萌萌甜心包",
+      "IsPoints": 0,
+      "PackageItems": [
+        { "ItemID": 510, "Duration": 0, "Count": 1 },
+        { "ItemID": 511, "Duration": 0, "Count": 1 },
+        { "ItemID": 512, "Duration": 0, "Count": 1 }
+      ],
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 400,
+          "AdType": 2,
+          "IsCount": 0
+        }
+      ]
+    },
+	{
+      "ProductID": 20137,
+      "Name": "B世代優惠包",
+      "IsPoints": 0,
+      "PackageItems": [
+        { "ItemID": 533, "Duration": 0, "Count": 50 },
+        { "ItemID": 166, "Duration": 0, "Count": 50 }
+      ],
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 399,
+          "AdType": 6,
+          "IsCount": 1
+        }
+      ]
+    },
+	{
+      "ProductID": 20056,
+      "Name": "寂滅橫行包",
+      "IsPoints": 0,
+      "PackageItems": [
+        { "ItemID": 396, "Duration": 0, "Count": 50 },
+        { "ItemID": 166, "Duration": 0, "Count": 50 }
+      ],
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 399,
+          "AdType": 6,
+          "IsCount": 1
+        }
+      ]
+    },
+	{
+      "ProductID": 20077,
+      "Name": "怒海王者包",
+      "IsPoints": 0,
+      "PackageItems": [
+        { "ItemID": 432, "Duration": 0, "Count": 1 },
+        { "ItemID": 433, "Duration": 0, "Count": 1 }
+      ],
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 299,
+          "AdType": 6,
+          "IsCount": 1
+        }
+      ]
+    },
+	{
+      "ProductID": 20123,
+      "Name": "災厄索命包",
+      "IsPoints": 0,
+      "PackageItems": [
+	    { "ItemID": 437, "Duration": 0, "Count": 1 },
+        { "ItemID": 396, "Duration": 0, "Count": 25 },
+		{ "ItemID": 173, "Duration": 0, "Count": 25 },
+        { "ItemID": 166, "Duration": 0, "Count": 50 }
+      ],
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 399,
+          "AdType": 6,
+          "IsCount": 1
+        }
+      ]
+    },
+	{
+      "ProductID": 20121,
+      "Name": "災厄閻羅包",
+      "IsPoints": 0,
+      "PackageItems": [
+	    { "ItemID": 427, "Duration": 0, "Count": 1 },
+        { "ItemID": 396, "Duration": 0, "Count": 25 },
+		{ "ItemID": 173, "Duration": 0, "Count": 25 },
+        { "ItemID": 166, "Duration": 0, "Count": 50 }
+      ],
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 399,
+          "AdType": 6,
+          "IsCount": 1
+        }
+      ]
+    },
+	{
+      "ProductID": 20062,
+      "Name": "驚喜組合包-獵戶座",
+      "IsPoints": 0,
+      "PackageItems": [
+	    { "ItemID": 233, "Duration": 0, "Count": 1 },
+		{ "ItemID": 396, "Duration": 0, "Count": 60 },
+        { "ItemID": 166, "Duration": 0, "Count": 60 }
+      ],
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 399,
+          "AdType": 6,
+          "IsCount": 1
+        }
+      ]
+    },
+	{
+      "ProductID": 20061,
+      "Name": "驚喜組合包-蛇姬之吻",
+      "IsPoints": 0,
+      "PackageItems": [
+	    { "ItemID": 344, "Duration": 0, "Count": 1 },
+        { "ItemID": 396, "Duration": 0, "Count": 60 },
+        { "ItemID": 166, "Duration": 0, "Count": 60 }
+      ],
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 399,
+          "AdType": 6,
+          "IsCount": 1
+        }
+      ]
+    },
+	{
+      "ProductID": 20102,
+      "Name": "魔鬼上將+狂暴手榴彈",
+      "IsPoints": 0,
+      "PackageItems": [
+        { "ItemID": 382, "Duration": 0, "Count": 1 },
+		{ "ItemID": 138, "Duration": 30, "Count": 1 }
+      ],
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 249,
+          "AdType": 6,
+          "IsCount": 1
+        }
+      ]
+    },
+	{
+      "ProductID": 20122,
+      "Name": "索命羅剎+5萬Point",
+      "IsPoints": 0,
+       "PackageItems": [
+        { "ItemID": 437, "Duration": 0, "Count": 1 }
+      ],
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+		  "IsCount": 0,
+          "Price": 149,
+		  "AdditionalPoints": 50000,
+          "AdType": 6,
+		  "IsCount": 1
+        }
+      ]
+    },
+	{
+      "ProductID": 20076,
+      "Name": "龍牙開春包-電子",
+      "IsPoints": 0,
+      "PackageItems": [
+	    { "ItemID": 281, "Duration": 0, "Count": 1 },
+        { "ItemID": 173, "Duration": 0, "Count": 50 },
+        { "ItemID": 166, "Duration": 0, "Count": 50 }
+      ],
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 399,
+          "AdType": 6,
+          "IsCount": 1
+        }
+      ]
+    },
+	{
+      "ProductID": 20073,
+      "Name": "深淵惡魔-強化包",
+      "IsPoints": 0,
+      "PackageItems": [
+        { "ItemID": 384, "Duration": 0, "Count": 1 },
+        { "ItemID": 5204, "Duration": 0, "Count": 50 }
+      ],
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 199,
+          "AdType": 6,
+          "IsCount": 1
+        }
+      ]
+    },
+	{
+      "ProductID": 20074,
+      "Name": "連環殺陣-強化包",
+      "IsPoints": 0,
+      "PackageItems": [
+        { "ItemID": 385, "Duration": 0, "Count": 1 },
+        { "ItemID": 5204, "Duration": 0, "Count": 50 }
+      ],
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 199,
+          "AdType": 6,
+          "IsCount": 1
+        }
+      ]
+    },
+	{
+      "ProductID": 20107,
+      "Name": "震天威龍包",
+      "IsPoints": 0,
+      "PackageItems": [
+        { "ItemID": 173, "Duration": 0, "Count": 50 },
+        { "ItemID": 166, "Duration": 0, "Count": 50 },
+		{ "ItemID": 279, "Duration": 10, "Count": 1 },
+		{ "ItemID": 280, "Duration": 10, "Count": 1 },
+		{ "ItemID": 281, "Duration": 0, "Count": 1 }
+      ],
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 699,
+          "AdType": 5,
+          "IsCount": 1
+        }
+      ]
+    },
+	{
+      "ProductID": 20139,
+      "Name": "莎拉+鋒利銀刃(血薔薇限定)",
+      "IsPoints": 0,
+      "PackageItems": [
+        { "ItemID": 163, "Duration": 30, "Count": 1 },
+        { "ItemID": 164, "Duration": 30, "Count": 1 }
+      ],
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 172,
+          "AdType": 6,
+          "IsCount": 1
+        }
+      ]
+    },
+	{
+      "ProductID": 20125,
+      "Name": "深淵蛇王包",
+      "IsPoints": 0,
+      "PackageItems": [
+        { "ItemID": 384, "Duration": 0, "Count": 1 },
+        { "ItemID": 469, "Duration": 0, "Count": 1 },
+		{ "ItemID": 149, "Duration": 0, "Count": 1 }
+      ],
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 299,
+          "AdType": 6,
+          "IsCount": 1
+        }
+      ]
+    },
+	{
+      "ProductID": 20140,
+      "Name": "雙弒絕殺包",
+      "IsPoints": 0,
+      "PackageItems": [
+        { "ItemID": 482, "Duration": 0, "Count": 1 },
+        { "ItemID": 554, "Duration": 0, "Count": 1 }
+      ],
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 719,
+          "AdType": 6
+        }
+      ]
+    },
+	{
+      "ProductID": 20136,
+      "Name": "瞬殺者優惠包",
+      "IsPoints": 0,
+      "PackageItems": [
+        { "ItemID": 532, "Duration": 0, "Count": 1 },
+        { "ItemID": 533, "Duration": 0, "Count": 50 },
+		{ "ItemID": 166, "Duration": 0, "Count": 50 },
+		{ "ItemID": 470, "Duration": 7, "Count": 1 }
+      ],
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 719,
+          "AdType": 6
+        }
+      ]
+    },
+	{
+      "ProductID": 20129,
+      "Name": "獵魔者優惠包",
+      "IsPoints": 0,
+      "PackageItems": [
+        { "ItemID": 517, "Duration": 0, "Count": 1 },
+        { "ItemID": 396, "Duration": 0, "Count": 50 },
+        { "ItemID": 166, "Duration": 0, "Count": 50 }
+      ],
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 880,
+          "AdType": 6,
+          "IsCount": 1
+        }
+      ]
+    },
+	{
+      "ProductID": 20082,
+      "Name": "闇獄閻羅+5萬point",
+      "IsPoints": 0,
+	  "PackageItems": [
+        { "ItemID": 427, "Duration": 0, "Count": 1 }
+      ],
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+		  "IsCount": 0,
+          "Price": 149,
+		  "AdditionalPoints": 50000,
+          "AdType": 7
+        }
+      ]
+    },
+	{
+      "ProductID": 554,
+      "Name": "弒神者(Balrog-XI)",
+      "IsPoints": 0,
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 399,
+          "AdType": 6,
+		  "IsCount": 0
+        }
+      ]
+    },
+	{
+      "ProductID": 482,
+      "Name": "噬魂者(balrog-V)",
+      "IsPoints": 0,
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 399,
+          "AdType": 6,
+		  "IsCount": 0
+        }
+      ]
+    },
+	{
+      "ProductID": 436,
+      "Name": "聖手鷹刁",
+      "IsPoints": 0,
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 299,
+          "AdType": 6,
+		  "IsCount": 1
+        }
+      ]
+    },
+	{
+      "ProductID": 524,
+      "Name": "血薔薇",
+      "IsPoints": 0,
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 99,
+          "AdType": 6,
+		  "IsCount": 0
+        }
+      ]
+    },
+    {
       "ProductID": 308,
       "Name": "InfinitySS",
       "IsPoints": 1,
@@ -22,31 +452,26 @@
           "Count": 1,
           "Price": 19110,
           "AdType": 7
+        },
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 59000,
+          "AdType": 7,
+          "IsCount": 0
         }
       ]
     },
     {
       "ProductID": 242,
-      "Name": "Infinity",
-      "IsPoints": 1,
+      "Name": "黑白雙煞-Dual Infinity",
+      "IsPoints": 0,
       "Offers": [
         {
-          "Duration": 3,
+          "Duration": 0,
           "Count": 1,
-          "Price": 2457,
-          "AdType": 7
-        },
-        {
-          "Duration": 10,
-          "Count": 1,
-          "Price": 7280,
-          "AdType": 7
-        },
-        {
-          "Duration": 30,
-          "Count": 1,
-          "Price": 19110,
-          "AdType": 7
+          "Price": 299,
+          "AdType": 6
         }
       ]
     },
@@ -102,26 +527,14 @@
     },
     {
       "ProductID": 322,
-      "Name": "Kriss",
-      "IsPoints": 1,
+      "Name": "霹靂戰警",
+      "IsPoints": 0,
       "Offers": [
         {
-          "Duration": 3,
+          "Duration": 0,
           "Count": 1,
-          "Price": 2457,
-          "AdType": 7
-        },
-        {
-          "Duration": 10,
-          "Count": 1,
-          "Price": 7280,
-          "AdType": 7
-        },
-        {
-          "Duration": 30,
-          "Count": 1,
-          "Price": 19110,
-          "AdType": 7
+          "Price": 299,
+          "AdType": 6
         }
       ]
     },
@@ -177,78 +590,54 @@
     },
     {
       "ProductID": 248,
-      "Name": "Combatknife",
-      "IsPoints": 1,
-      "Offers": [
-        {
-          "Duration": 3,
-          "Count": 1,
-          "Price": 2457,
-          "AdType": 7
-        },
-        {
-          "Duration": 10,
-          "Count": 1,
-          "Price": 7280,
-          "AdType": 7
-        },
-        {
-          "Duration": 30,
-          "Count": 1,
-          "Price": 19110,
-          "AdType": 7
-        }
-      ]
-    },
-    {
-      "ProductID": 345,
-      "Name": "KATANA",
-      "IsPoints": 1,
-      "Offers": [
-        {
-          "Duration": 3,
-          "Count": 1,
-          "Price": 2457,
-          "AdType": 7
-        },
-        {
-          "Duration": 10,
-          "Count": 1,
-          "Price": 7280,
-          "AdType": 7
-        },
-        {
-          "Duration": 30,
-          "Count": 1,
-          "Price": 19110,
-          "AdType": 7
-        }
-      ]
-    },
-    {
-      "ProductID": 173,
-      "Name": "CashDecoder",
+      "Name": "奪魂短匕",
       "IsPoints": 0,
       "Offers": [
         {
           "Duration": 0,
           "Count": 1,
-          "Price": 30,
-          "AdType": 4,
+          "Price": 167,
+          "AdType": 6
+        }
+      ]
+    },
+    {
+      "ProductID": 345,
+      "Name": "一刀斷罪",
+      "IsPoints": 0,
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 299,
+          "AdType": 6
+        }
+      ]
+    },
+    {
+      "ProductID": 173,
+      "Name": "電子解碼器",
+      "IsPoints": 0,
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 29,
+          "AdType": 6,
           "IsCount": 1
         },
         {
           "Duration": 0,
           "Count": 5,
-          "Price": 140,
-          "AdType": 4,
+          "Price": 139,
+          "AdType": 6,
           "IsCount": 1
         },
         {
           "Duration": 0,
           "Count": 10,
           "Price": 270,
-          "AdType": 4,
+          "AdType": 6,
           "IsCount": 1
         }
       ]
@@ -356,25 +745,14 @@
     {
       "ProductID": 45,
       "Name": "RBC",
-      "IsPoints": 1,
+      "IsPoints": 0,
       "Offers": [
-        {
-          "Duration": 3,
-          "Count": 1,
-          "Price": 6048,
-          "AdType": 0
-        },
-        {
-          "Duration": 10,
-          "Count": 1,
-          "Price": 17920,
-          "AdType": 0
-        },
         {
           "Duration": 30,
           "Count": 1,
-          "Price": 47040,
-          "AdType": 0
+          "Price": 99,
+		  "AdditionalPoints": 55000,
+          "AdType": 4
         }
       ]
     },
@@ -406,50 +784,28 @@
     {
       "ProductID": 54,
       "Name": "707",
-      "IsPoints": 1,
+      "IsPoints": 0,
       "Offers": [
-        {
-          "Duration": 3,
-          "Count": 1,
-          "Price": 6048,
-          "AdType": 0
-        },
-        {
-          "Duration": 10,
-          "Count": 1,
-          "Price": 17920,
-          "AdType": 0
-        },
         {
           "Duration": 30,
           "Count": 1,
-          "Price": 47040,
-          "AdType": 0
+          "Price": 99,
+		  "AdditionalPoints": 30000,
+          "AdType": 4
         }
       ]
     },
     {
       "ProductID": 55,
       "Name": "Sozo",
-      "IsPoints": 1,
+      "IsPoints": 0,
       "Offers": [
-        {
-          "Duration": 3,
-          "Count": 1,
-          "Price": 6048,
-          "AdType": 0
-        },
-        {
-          "Duration": 10,
-          "Count": 1,
-          "Price": 17920,
-          "AdType": 0
-        },
         {
           "Duration": 30,
           "Count": 1,
-          "Price": 47040,
-          "AdType": 0
+          "Price": 99,
+		  "AdditionalPoints": 30000,
+          "AdType": 4
         }
       ]
     },
@@ -776,81 +1132,6 @@
     {
       "ProductID": 196,
       "Name": "Fake05Spray",
-      "IsPoints": 1,
-      "Offers": [
-        {
-          "Duration": 3,
-          "Count": 1,
-          "Price": 1243,
-          "AdType": 0
-        },
-        {
-          "Duration": 10,
-          "Count": 1,
-          "Price": 3640,
-          "AdType": 0
-        },
-        {
-          "Duration": 30,
-          "Count": 1,
-          "Price": 9555,
-          "AdType": 0
-        }
-      ]
-    },
-    {
-      "ProductID": 207,
-      "Name": "GongmoSpray01",
-      "IsPoints": 1,
-      "Offers": [
-        {
-          "Duration": 3,
-          "Count": 1,
-          "Price": 1243,
-          "AdType": 0
-        },
-        {
-          "Duration": 10,
-          "Count": 1,
-          "Price": 3640,
-          "AdType": 0
-        },
-        {
-          "Duration": 30,
-          "Count": 1,
-          "Price": 9555,
-          "AdType": 0
-        }
-      ]
-    },
-    {
-      "ProductID": 208,
-      "Name": "GongmoSpray02",
-      "IsPoints": 1,
-      "Offers": [
-        {
-          "Duration": 3,
-          "Count": 1,
-          "Price": 1243,
-          "AdType": 0
-        },
-        {
-          "Duration": 10,
-          "Count": 1,
-          "Price": 3640,
-          "AdType": 0
-        },
-        {
-          "Duration": 30,
-          "Count": 1,
-          "Price": 9555,
-          "AdType": 0
-        }
-      ]
-    },
-    {
-      "ProductID": 209,
-      "Name": "GongmoSpray03",
       "IsPoints": 1,
       "Offers": [
         {
@@ -1206,82 +1487,70 @@
       ]
     },
     {
-      "ProductID": 72,
-      "Name": "ChannelChat",
+      "ProductID": 65,
+      "Name": "更改暱稱券",
       "IsPoints": 1,
       "Offers": [
         {
-          "Duration": 3,
+          "Duration": 0,
           "Count": 1,
-          "Price": 3213,
-          "AdType": 0
-        },
-        {
-          "Duration": 10,
-          "Count": 1,
-          "Price": 9520,
-          "AdType": 0
-        },
-        {
-          "Duration": 30,
-          "Count": 1,
-          "Price": 24990,
+          "Price": 2000,
           "AdType": 0
         }
       ]
     },
     {
       "ProductID": 396,
-      "Name": "CashDecoderA",
+      "Name": "A世代解碼器",
       "IsPoints": 0,
       "Offers": [
         {
           "Duration": 0,
           "Count": 1,
-          "Price": 35,
-          "AdType": 4,
+          "Price": 29,
+          "AdType": 6,
           "IsCount": 1
         },
         {
           "Duration": 0,
           "Count": 5,
-          "Price": 160,
-          "AdType": 4,
+          "Price": 139,
+          "AdType": 6,
           "IsCount": 1
         },
         {
           "Duration": 0,
           "Count": 10,
-          "Price": 300,
-          "AdType": 4,
+          "Price": 270,
+          "AdType": 6,
           "IsCount": 1
         }
       ]
     },
     {
       "ProductID": 533,
-      "Name": "CashDecoderB",
+      "Name": "B世代解碼器",
       "IsPoints": 0,
       "Offers": [
         {
           "Duration": 0,
           "Count": 1,
-          "Price": 40,
-          "AdType": 4,
+          "Price": 29,
+          "AdType": 6,
           "IsCount": 1
         },
         {
           "Duration": 0,
           "Count": 5,
-          "Price": 180,
-          "AdType": 4,
+          "Price": 139,
+          "AdType": 6,
           "IsCount": 1
         },
         {
           "Duration": 0,
           "Count": 10,
-          "Price": 330,
-          "AdType": 4,
+          "Price": 270,
+          "AdType": 6,
           "IsCount": 1
         }
       ]

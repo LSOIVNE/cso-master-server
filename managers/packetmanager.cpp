@@ -17,6 +17,7 @@
 #include "packet_itemmanager.h"
 #include "packet_userstartmanager.h"
 #include "packet_messengermanager.h"
+#include "usermanager.h"
 #include "serverconsole.h"
 
 PacketManager packetManager;
@@ -97,19 +98,34 @@ void PacketManager::SendPacket_Inventory(TCPConnection::pointer connection, cons
 		return;
 	}
 
+	vector<InventoryItem> itemsToSend;
+	vector<unsigned short> slotsToDelete = deletedSlots;
+	unsigned short cboxCount = 0;
+
+	for (const auto& item : userInventory) {
+		if (item.itemID == 166) {
+			cboxCount += item.count;
+			// Ensure any existing slot on client side for item 166 is removed
+			slotsToDelete.push_back(item.slotID);
+		}
+		else {
+			itemsToSend.push_back(item);
+		}
+	}
+
 	auto packet = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::Inventory });
 	if (packet == NULL) {
 		return;
 	}
 
-	packet->WriteUInt16_LE((unsigned short)(userInventory.size() + deletedSlots.size()));
+	packet->WriteUInt16_LE((unsigned short)(itemsToSend.size() + slotsToDelete.size()));
 
-	for (unsigned short slotID : deletedSlots) {
+	for (unsigned short slotID : slotsToDelete) {
 		packet->WriteUInt16_LE(slotID);
 		packet->WriteUInt8(0); // status (0 = removed / deleted from client inventory)
 	}
 
-	for (auto& item : userInventory) {
+	for (auto& item : itemsToSend) {
 		packet->WriteUInt16_LE(item.slotID);
 		packet->WriteUInt8(1); // status (1 = present)
 		packet->WriteUInt16_LE(item.itemID);
@@ -122,6 +138,12 @@ void PacketManager::SendPacket_Inventory(TCPConnection::pointer connection, cons
 	}
 
 	packet->Send();
+
+	// Also sync CBox count to client HUD / CGamePlayer
+	User* user = userManager.GetUserByConnection(connection);
+	if (user != NULL) {
+		packet_UpdateInfoManager.SendPacket_UserUpdateInfo_CBoxCount(connection, user->GetUserID(), cboxCount);
+	}
 }
 
 void PacketManager::BuildUserCharacter(TCPConnection::Packet::pointer packet, const UserCharacter& userCharacter) {
@@ -174,7 +196,8 @@ void PacketManager::BuildUserCharacter(TCPConnection::Packet::pointer packet, co
 		packet->WriteString(userCharacter.unk200_5);
 	}
 	if (userCharacter.flag & USERCHARACTER_FLAG_UNK400) {
-		packet->WriteUInt32_LE(userCharacter.unk400);
+		unsigned long cashUint32 = (userCharacter.unk400 != 0) ? userCharacter.unk400 : (unsigned long)userCharacter.cash;
+		packet->WriteUInt32_LE(cashUint32);
 	}
 	if (userCharacter.flag & USERCHARACTER_FLAG_UNK800) {
 		packet->WriteUInt8(userCharacter.unk800);
@@ -186,6 +209,9 @@ void PacketManager::BuildUserCharacter(TCPConnection::Packet::pointer packet, co
 		packet->WriteUInt8(userCharacter.clanUnk4);
 		packet->WriteUInt8(userCharacter.clanUnk5);
 		packet->WriteUInt8(userCharacter.clanUnk6);
+	}
+	if (userCharacter.flag & USERCHARACTER_FLAG_CBOXCOUNT) {
+		packet->WriteUInt16_LE(userCharacter.cboxCount);
 	}
 	if (userCharacter.flag & USERCHARACTER_FLAG_CHATCOUNT) {
 		packet->WriteUInt8(userCharacter.chatRemainCount);

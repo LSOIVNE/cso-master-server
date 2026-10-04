@@ -123,7 +123,17 @@ void Packet_TransferManager::ParsePacket_RequestTransfer(TCPConnection::Packet::
 			roomManager.SendFullRoomListPacket(connection);
 
 			packet_UpdateInfoManager.SendPacket_UserUpdateInfo_ChatCount(connection, user->GetUserID(), 255);
-			noticeManager.SendWelcomeNotice(user);
+
+			string channelLoginMsg = "";
+			if (serverID > 0 && serverID <= serverConfig.serverList.size()) {
+				const auto& s = serverConfig.serverList[(unsigned char)(serverID - 1)];
+				if (channelID > 0 && channelID <= s.channels.size()) {
+					channelLoginMsg = s.channels[(unsigned char)(channelID - 1)].loginMsg;
+				}
+			}
+
+			noticeManager.SendChannelLoginNotice(user, channelLoginMsg);
+			noticeManager.SendChannelChatNotice(user, channelLoginMsg);
 		}
 	}
 	else {
