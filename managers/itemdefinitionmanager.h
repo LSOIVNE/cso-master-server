@@ -25,22 +25,19 @@ struct ItemDefinition {
 	}
 
 	bool IsEquipment() const {
-		if (category == 9) {
-			return false;
-		}
 		if (className == "NicknameChange" || className == "NicknameCamouflage") {
 			return false;
 		}
-		if (category >= 1 && category <= 6) {
+		if (isPeriod) {
 			return true;
 		}
-		if (category == 7 || category == 11 || category == 12) {
+		if (category >= 1 && category <= 7) {
+			return true;
+		}
+		if (category == 11 || category == 12) {
 			return true;
 		}
 		if (className == "Equipment" || className == "Class" || className == "Tattoo" || IsCostume()) {
-			return true;
-		}
-		if (category == 8) {
 			return true;
 		}
 		return false;
