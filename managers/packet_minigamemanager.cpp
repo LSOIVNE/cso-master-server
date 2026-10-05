@@ -45,10 +45,7 @@ void Packet_MiniGameManager::parsePacket_MiniGame_Bingo(User* user, TCPConnectio
 
 	switch (action) {
 		case 0: { // Request / Sync Board
-			BingoBoard board;
-			if (bingoManager.GetOrInitBoard(user->GetUserID(), board)) {
-				bingoManager.SendPacket_Bingo_SyncBoard(connection, board);
-			}
+			bingoManager.OnClientRequestSyncBoard(connection, user);
 			break;
 		}
 		case 3: { // Reset Board

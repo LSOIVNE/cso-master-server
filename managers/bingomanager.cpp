@@ -85,6 +85,7 @@ bool BingoManager::LoadConfig(const std::string& configPath) {
 			_settings.shuffleCost = s.value("ShuffleCost", 35ul);
 			_settings.maxShuffleCompletedLines = s.value("MaxShuffleCompletedLines", 0);
 			_settings.maxShuffleOpenedNumbers = s.value("MaxShuffleOpenedNumbers", 10);
+			_settings.testRollNumber = s.value("TestRollNumber", -1);
 		}
 
 		// 2. Prizes pool
@@ -289,6 +290,11 @@ bool BingoManager::ResetBoard(TCPConnection::pointer connection, User* user) {
 		return false;
 	}
 
+	{
+		std::lock_guard<std::mutex> lock(_pendingMutex);
+		_pendingRolls.erase(userID);
+	}
+
 	serverConsole.Print(PrefixType::Info, format("[ BingoManager ] User ({}) successfully reset bingo board (spent {} cash)\n",
 		user->GetUserLogName(), _settings.resetCost));
 
@@ -390,6 +396,11 @@ bool BingoManager::ShuffleBoard(TCPConnection::pointer connection, User* user) {
 		SendPacket_Bingo_LineCompleted(connection, newlyCompleted);
 	}
 
+	{
+		std::lock_guard<std::mutex> lock(_pendingMutex);
+		_pendingRolls.erase(userID);
+	}
+
 	serverConsole.Print(PrefixType::Info, format("[ BingoManager ] User ({}) successfully shuffled bingo board (spent {} cash)\n",
 		user->GetUserLogName(), _settings.shuffleCost));
 
@@ -410,21 +421,27 @@ bool BingoManager::OnBoxOpened(TCPConnection::pointer connection, User* user, un
 	}
 
 	// Roll a number 0 ~ 99
-	std::random_device rd;
-	std::mt19937 g(rd());
-	std::uniform_int_distribution<int> dist(0, 99);
-	unsigned char winNumber = (unsigned char)dist(g);
+	unsigned char winNumber = 0;
+	if (_settings.testRollNumber >= 0 && _settings.testRollNumber <= 99) {
+		winNumber = (unsigned char)_settings.testRollNumber;
+	}
+	else {
+		std::random_device rd;
+		std::mt19937 g(rd());
+		std::uniform_int_distribution<int> dist(0, 99);
+		winNumber = (unsigned char)dist(g);
+	}
 
 	serverConsole.Print(PrefixType::Info, format("[ BingoManager ] User ({}) rolled bingo number {} from box {}\n",
 		user->GetUserLogName(), (int)winNumber, boxID));
 
 	// Check if winNumber hits any slot on board
-	bool hit = false;
+	int hitSlotIdx = -1;
 	for (auto& slot : board.slots) {
 		if (slot.number == winNumber) {
-			hit = true;
 			if (slot.opened == 0) {
 				slot.opened = 1;
+				hitSlotIdx = (int)slot.slotIdx;
 				databaseManager.UpdateUserBingoSlot(userID, slot.slotIdx, 1);
 				serverConsole.Print(PrefixType::Info, format("[ BingoManager ] User ({}) hit new bingo slot {} (number {})!\n",
 					user->GetUserLogName(), (int)slot.slotIdx, (int)winNumber));
@@ -472,16 +489,77 @@ bool BingoManager::OnBoxOpened(TCPConnection::pointer connection, User* user, un
 		packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
 	}
 
-	// 1. Send RollNumber animation
-	SendPacket_Bingo_RollNumber(connection, winNumber);
-
-	// 2. If lines completed, send LineCompleted animation
-	if (!newlyCompleted.empty()) {
-		SendPacket_Bingo_LineCompleted(connection, newlyCompleted);
+	// Store pending roll for the client's upcoming Action 0 request
+	{
+		std::lock_guard<std::mutex> lock(_pendingMutex);
+		PendingBingoRoll roll;
+		roll.winNumber = winNumber;
+		roll.hitSlotIdx = hitSlotIdx;
+		roll.newlyCompletedLines = newlyCompleted;
+		roll.timestamp = std::chrono::steady_clock::now();
+		_pendingRolls[userID] = roll;
 	}
 
-	// 3. Full board sync
-	SendPacket_Bingo_SyncBoard(connection, board);
+	return true;
+}
+
+bool BingoManager::OnClientRequestSyncBoard(TCPConnection::pointer connection, User* user) {
+	if (!user || !connection) {
+		return false;
+	}
+
+	unsigned long userID = user->GetUserID();
+	BingoBoard board;
+	if (!GetOrInitBoard(userID, board)) {
+		return false;
+	}
+
+	PendingBingoRoll pendingRoll;
+	bool hasPending = false;
+	{
+		std::lock_guard<std::mutex> lock(_pendingMutex);
+		auto it = _pendingRolls.find(userID);
+		if (it != _pendingRolls.end()) {
+			auto now = std::chrono::steady_clock::now();
+			auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - it->second.timestamp).count();
+			if (elapsed < 30) {
+				pendingRoll = it->second;
+				hasPending = true;
+			}
+			_pendingRolls.erase(it);
+		}
+	}
+
+	if (hasPending) {
+		serverConsole.Print(PrefixType::Info, format("[ BingoManager ] User ({}) syncing board with pending roll: num={}, hitSlot={}, lines={}\n",
+			user->GetUserLogName(), (int)pendingRoll.winNumber, pendingRoll.hitSlotIdx, pendingRoll.newlyCompletedLines.size()));
+
+		BingoBoard maskedBoard = board;
+		if (pendingRoll.hitSlotIdx >= 0 && pendingRoll.hitSlotIdx < (int)maskedBoard.slots.size()) {
+			maskedBoard.slots[pendingRoll.hitSlotIdx].opened = 0;
+		}
+		for (unsigned char lineIdx : pendingRoll.newlyCompletedLines) {
+			if (lineIdx < maskedBoard.prizes.size()) {
+				maskedBoard.prizes[lineIdx].opened = 0;
+			}
+		}
+
+		// 1. Send the pre-roll board (with hit slot & newly completed lines masked as unopened)
+		SendPacket_Bingo_SyncBoard(connection, maskedBoard);
+
+		// 2. Send RollNumber animation
+		SendPacket_Bingo_RollNumber(connection, pendingRoll.winNumber);
+
+		// 3. If lines completed, send LineCompleted animation
+		if (!pendingRoll.newlyCompletedLines.empty()) {
+			SendPacket_Bingo_LineCompleted(connection, pendingRoll.newlyCompletedLines);
+		}
+	}
+	else {
+		// Normal board sync (e.g. user opens bingo panel in lobby)
+		SendPacket_Bingo_SyncBoard(connection, board);
+	}
+
 	return true;
 }
 

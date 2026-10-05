@@ -3,6 +3,9 @@
 #include "databasemanager.h"
 #include <string>
 #include <vector>
+#include <unordered_map>
+#include <chrono>
+#include <mutex>
 
 struct BingoPrizePoolItem {
 	unsigned short itemID = 0;
@@ -18,6 +21,14 @@ struct BingoSettings {
 	unsigned long shuffleCost = 35;
 	int maxShuffleCompletedLines = 0; // must be <= this to shuffle (< 1)
 	int maxShuffleOpenedNumbers = 10;  // must be <= this to shuffle (< 11)
+	int testRollNumber = -1; // -1 = random, >= 0 = forced win number for testing
+};
+
+struct PendingBingoRoll {
+	unsigned char winNumber = 0;
+	int hitSlotIdx = -1; // -1 if duplicate or not on board
+	std::vector<unsigned char> newlyCompletedLines;
+	std::chrono::steady_clock::time_point timestamp;
 };
 
 class BingoManager {
@@ -36,6 +47,7 @@ public:
 	bool ResetBoard(TCPConnection::pointer connection, User* user);
 	bool ShuffleBoard(TCPConnection::pointer connection, User* user);
 	bool OnBoxOpened(TCPConnection::pointer connection, User* user, unsigned short boxID);
+	bool OnClientRequestSyncBoard(TCPConnection::pointer connection, User* user);
 
 	// Packet sending helpers
 	void SendPacket_Bingo_SyncBoard(TCPConnection::pointer connection, const BingoBoard& board);
@@ -51,6 +63,8 @@ public:
 private:
 	BingoSettings _settings;
 	std::vector<BingoPrizePoolItem> _prizePool;
+	std::unordered_map<unsigned long, PendingBingoRoll> _pendingRolls;
+	std::mutex _pendingMutex;
 };
 
 extern BingoManager bingoManager;
