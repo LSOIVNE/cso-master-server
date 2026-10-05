@@ -379,6 +379,9 @@ bool ServerConfig::Load() {
 			if (p.contains("AllowPlayerItemCommands") && p["AllowPlayerItemCommands"].is_boolean()) {
 				permissions.allowPlayerItemCommands = p["AllowPlayerItemCommands"].get<bool>();
 			}
+			if (p.contains("AllowPlayerDailyCommands") && p["AllowPlayerDailyCommands"].is_boolean()) {
+				permissions.allowPlayerDailyCommands = p["AllowPlayerDailyCommands"].get<bool>();
+			}
 			if (p.contains("AllowPlayerNotice") && p["AllowPlayerNotice"].is_boolean()) {
 				permissions.allowPlayerNotice = p["AllowPlayerNotice"].get<bool>();
 			}

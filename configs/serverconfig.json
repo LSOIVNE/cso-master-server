@@ -197,6 +197,7 @@
 			"admin"
 		],
 		"AllowPlayerItemCommands": true,
+		"AllowPlayerDailyCommands": true,
 		"AllowPlayerNotice": false,
 		"AllowPlayerReloadShop": false
 	},

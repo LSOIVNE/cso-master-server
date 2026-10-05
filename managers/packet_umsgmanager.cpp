@@ -490,8 +490,8 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		cmdLower != "/banner" && cmdLower != "/yell" && cmdLower != "/reloadnotice" &&
 		cmdLower != "/addpoints" && cmdLower != "/addgash" &&
 		cmdLower != "/reloadshop" &&
-		cmdLower != "/resetdaily" && cmdLower != "/resetday" && cmdLower != "/resetattendance" &&
-		cmdLower != "/nextdaily" && cmdLower != "/nextday" && cmdLower != "/nextattendance") {
+		cmdLower != "/resetdaily" &&
+		cmdLower != "/nextdaily") {
 		return false;
 	}
 
@@ -508,11 +508,15 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 	};
 
 	if (cmdLower == "/additem" || cmdLower == "/addallitem" || cmdLower == "/resetinv" || cmdLower == "/resetitem" ||
-		cmdLower == "/addpoints" || cmdLower == "/addgash" ||
-		cmdLower == "/resetdaily" || cmdLower == "/resetday" || cmdLower == "/resetattendance" ||
-		cmdLower == "/nextdaily" || cmdLower == "/nextday" || cmdLower == "/nextattendance") {
+		cmdLower == "/addpoints" || cmdLower == "/addgash") {
 		if (!serverConfig.permissions.allowPlayerItemCommands && !isGM) {
 			SendNotice("權限不足：測試指令已被管理員停用！");
+			return true;
+		}
+	}
+	else if (cmdLower == "/resetdaily" || cmdLower == "/nextdaily") {
+		if (!serverConfig.permissions.allowPlayerDailyCommands && !isGM) {
+			SendNotice("權限不足：每日簽到測試指令已被管理員停用！");
 			return true;
 		}
 	}
@@ -1114,7 +1118,7 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		}
 		return true;
 	}
-	else if (cmdLower == "/resetdaily" || cmdLower == "/resetday" || cmdLower == "/resetattendance") {
+	else if (cmdLower == "/resetdaily") {
 		string dayStr;
 		unsigned char targetStreak = 255;
 		if (ss >> dayStr) {
@@ -1141,7 +1145,7 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		}
 		return true;
 	}
-	else if (cmdLower == "/nextdaily" || cmdLower == "/nextday" || cmdLower == "/nextattendance") {
+	else if (cmdLower == "/nextdaily") {
 		string dayStr;
 		bool specificDay = false;
 		unsigned char targetStreak = 0;

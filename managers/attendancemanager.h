@@ -9,7 +9,6 @@ struct AttendanceRewardItem {
 	unsigned short count = 0;    // 數量 (0 = 純時效武器)
 	unsigned int enhance = 0;    // 強化屬性 bits (0 = 無強化)
 	unsigned char isEvent = 0;   // 1 = 活動標記
-	unsigned int points = 0;     // 額外加贈 Point
 	unsigned int weight = 10;    // 候選權重
 	std::string name = "";       // 備註名稱 (可選)
 };
@@ -23,7 +22,6 @@ struct AttendanceConfig {
 	bool enabled = true;
 	bool autoPopupOnLogin = true;
 	bool serverMessageEnabled = true;
-	std::string title = "新戰場補給";
 	std::vector<AttendanceDailyReward> dailyRewards;
 	std::vector<AttendanceRewardItem> candidatePool;
 };

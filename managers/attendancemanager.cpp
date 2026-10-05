@@ -24,7 +24,6 @@ static void ParseRewardItemJson(const json& j, AttendanceRewardItem& item) {
 	item.count = j.contains("Count") ? j["Count"].get<unsigned short>() : j.value("count", (unsigned short)0);
 	item.enhance = j.contains("Enhance") ? j["Enhance"].get<unsigned int>() : j.value("enhance", 0u);
 	item.isEvent = j.contains("IsEvent") ? j["IsEvent"].get<unsigned char>() : j.value("isEvent", (unsigned char)0);
-	item.points = j.contains("Points") ? j["Points"].get<unsigned int>() : j.value("points", 0u);
 	item.weight = j.contains("Weight") ? j["Weight"].get<unsigned int>() : j.value("weight", 10u);
 	item.name = j.contains("Name") ? j["Name"].get<std::string>() : j.value("name", "");
 
@@ -43,9 +42,6 @@ static std::string FormatRewardDisplay(const AttendanceRewardItem& it) {
 	}
 	else if (it.count > 0) {
 		s += format(" ({}個)", it.count);
-	}
-	if (it.points > 0) {
-		s += format(" + {} Point", it.points);
 	}
 	return s;
 }
@@ -91,7 +87,6 @@ bool AttendanceManager::LoadConfig(const std::string& configPath) {
 		_config.enabled = root.contains("Enabled") ? root["Enabled"].get<bool>() : root.value("enabled", true);
 		_config.autoPopupOnLogin = root.contains("AutoPopupOnLogin") ? root["AutoPopupOnLogin"].get<bool>() : root.value("autoPopupOnLogin", true);
 		_config.serverMessageEnabled = root.contains("ServerMessageEnabled") ? root["ServerMessageEnabled"].get<bool>() : root.value("serverMessageEnabled", true);
-		_config.title = root.contains("Title") ? root["Title"].get<std::string>() : root.value("title", std::string("新戰場補給"));
 		_config.dailyRewards.clear();
 		_config.candidatePool.clear();
 
@@ -177,16 +172,16 @@ std::vector<AttendanceRewardItem> AttendanceManager::selectCandidateItems(User* 
 	while (candidates.size() < 4) {
 		AttendanceRewardItem fallback;
 		if (candidates.size() == 0) {
-			fallback = { 261, 3, 0, 0, 0, 0, 25, "領航者 M79" };
+			fallback = { 261, 3, 0, 0, 0, 25, "領航者 M79" };
 		}
 		else if (candidates.size() == 1) {
-			fallback = { 166, 0, 2, 0, 0, 0, 35, "普通密碼箱" };
+			fallback = { 166, 0, 2, 0, 0, 35, "普通密碼箱" };
 		}
 		else if (candidates.size() == 2) {
-			fallback = { 173, 0, 1, 0, 1, 0, 20, "電子破譯晶片" };
+			fallback = { 173, 0, 1, 0, 1, 20, "電子破譯晶片" };
 		}
 		else {
-			fallback = { 108, 1, 0, 0, 0, 1500, 20, "Point加倍卡" };
+			fallback = { 108, 1, 0, 0, 0, 20, "Point加倍卡" };
 		}
 		candidates.push_back(fallback);
 	}
@@ -202,10 +197,6 @@ bool AttendanceManager::grantRewardItem(User* user, const AttendanceRewardItem& 
 	if (!user) return false;
 	unsigned long userID = user->GetUserID();
 	time_t now = time(nullptr);
-
-	if (item.points > 0) {
-		databaseManager.AddUserFunds(userID, true, item.points);
-	}
 
 	if (item.itemID > 0) {
 		auto currentInv = user->GetUserInventory();
@@ -353,7 +344,7 @@ void AttendanceManager::ClaimAttendanceReward(User* user) {
 	if (!connection) return;
 
 	if (!_config.enabled) {
-		packet_UMsgManager.SendPacket_UMsg_ServerMessageText(connection, format("[{}] 活動目前未開啟。", _config.title));
+		packet_UMsgManager.SendPacket_UMsg_ServerMessageText(connection, "[新戰場補給] 活動目前未開啟。");
 		return;
 	}
 
@@ -363,7 +354,7 @@ void AttendanceManager::ClaimAttendanceReward(User* user) {
 
 	if (!record.canCheckIn) {
 		serverConsole.Print(PrefixType::Warn, format("[ AttendanceManager ] User ({}) attempted duplicate claim today!\n", user->GetUserLogName()));
-		packet_UMsgManager.SendPacket_UMsg_ServerMessageText(connection, format("[{}] 您今天已經領取過簽到獎勵囉，請明天再來！", _config.title));
+		packet_UMsgManager.SendPacket_UMsg_ServerMessageText(connection, "[新戰場補給] 您今天已經領取過簽到獎勵囉，請明天再來！");
 		return;
 	}
 
@@ -377,7 +368,7 @@ void AttendanceManager::ClaimAttendanceReward(User* user) {
 
 	if (!databaseManager.RecordUserAttendance(userID, newConsecutiveDays)) {
 		serverConsole.Print(PrefixType::Warn, format("[ AttendanceManager ] User ({}) atomic check-in rejected (already claimed)!\n", user->GetUserLogName()));
-		packet_UMsgManager.SendPacket_UMsg_ServerMessageText(connection, format("[{}] 您今天已經領取過簽到獎勵囉，請明天再來！", _config.title));
+		packet_UMsgManager.SendPacket_UMsg_ServerMessageText(connection, "[新戰場補給] 您今天已經領取過簽到獎勵囉，請明天再來！");
 		return;
 	}
 
@@ -409,7 +400,7 @@ void AttendanceManager::ClaimAttendanceReward(User* user) {
 			break;
 		}
 	}
-	if (wonDaily.itemID == 0 && wonDaily.points == 0 && !_config.dailyRewards.empty()) {
+	if (wonDaily.itemID == 0 && !_config.dailyRewards.empty()) {
 		wonDaily = _config.dailyRewards[0].item;
 	}
 
@@ -452,8 +443,8 @@ void AttendanceManager::ClaimAttendanceReward(User* user) {
 	std::string displayCand = FormatRewardDisplay(wonCandidate);
 
 	if (_config.serverMessageEnabled) {
-		std::string notice = format("[{}] 簽到成功！連續登入第 {} 天！獲得「{}」與「{}」！",
-			_config.title, newConsecutiveDays, displayDaily, displayCand);
+		std::string notice = format("[新戰場補給] 簽到成功！連續登入第 {} 天！獲得「{}」與「{}」！",
+			newConsecutiveDays, displayDaily, displayCand);
 		packet_UMsgManager.SendPacket_UMsg_ServerMessageText(connection, notice);
 	}
 

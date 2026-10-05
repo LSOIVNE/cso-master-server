@@ -51,6 +51,7 @@ struct ItemCommandConfig {
 struct PermissionConfig {
 	vector<string> gmList = { "test", "admin" };
 	bool allowPlayerItemCommands = true;
+	bool allowPlayerDailyCommands = true;
 	bool allowPlayerNotice = false;
 	bool allowPlayerReloadShop = false;
 };
