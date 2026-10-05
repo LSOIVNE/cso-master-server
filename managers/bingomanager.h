@@ -59,6 +59,7 @@ public:
 	int CountCompletedLines(const BingoBoard& board) const;
 	int CountOpenedNumbers(const BingoBoard& board) const;
 	std::vector<unsigned char> CheckNewlyCompletedLines(BingoBoard& board);
+	void GrantBingoPrize(User* user, const BingoPrize& prize);
 
 private:
 	BingoSettings _settings;

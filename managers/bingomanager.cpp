@@ -256,6 +256,85 @@ std::vector<unsigned char> BingoManager::CheckNewlyCompletedLines(BingoBoard& bo
 	return newlyCompleted;
 }
 
+void BingoManager::GrantBingoPrize(User* user, const BingoPrize& prize) {
+	if (!user) return;
+	unsigned long userID = user->GetUserID();
+	auto inv = user->GetUserInventory();
+
+	unsigned short maxSlotID = 0;
+	bool alreadyOwned = false;
+	InventoryItem ownedItem;
+	for (const auto& it : inv) {
+		if (it.slotID > maxSlotID) {
+			maxSlotID = it.slotID;
+		}
+		if (it.itemID == prize.itemID) {
+			alreadyOwned = true;
+			ownedItem = it;
+		}
+	}
+
+	const auto* itemDef = itemDefinitionManager.GetItem(prize.itemID);
+	bool isPeriodItem = (prize.duration != 0) || (itemDef != nullptr && itemDef->isPeriod);
+	time_t now = time(nullptr);
+
+	if (!isPeriodItem && prize.duration == 0) {
+		// Count-based consumable item (e.g. spray, coupons, decoders)
+		if (alreadyOwned) {
+			databaseManager.UpdateUserInventoryItemCount(userID, prize.itemID, prize.count);
+		}
+		else {
+			InventoryItem newItem;
+			newItem.slotID = ++maxSlotID;
+			newItem.itemID = prize.itemID;
+			newItem.count = prize.count;
+			newItem.activeFlag = 1;
+			newItem.inUse = false;
+			newItem.obtainTime = (unsigned long)now;
+			newItem.expirationTime = 0;
+			newItem.enhanceBits = 0;
+			databaseManager.AddUserInventoryItems(userID, { newItem });
+		}
+	}
+	else {
+		// Duration / permanent equipment
+		bool isPermItem = (prize.duration == 0);
+		if (alreadyOwned) {
+			if (ownedItem.expirationTime == 0) {
+				// Already permanent, keep permanent (skip duplicate creation)
+				serverConsole.Print(PrefixType::Info, format("[ BingoManager ] User ({}) already owns permanent itemID {}, skipping duplicate.\n",
+					user->GetUserLogName(), prize.itemID));
+			}
+			else if (isPermItem) {
+				// Upgrade existing timed item to permanent
+				databaseManager.UpdateUserInventoryExpiration(userID, prize.itemID, 0);
+				serverConsole.Print(PrefixType::Info, format("[ BingoManager ] User ({}) upgraded itemID {} to permanent!\n",
+					user->GetUserLogName(), prize.itemID));
+			}
+			else {
+				// Extend expiration of existing timed item
+				unsigned long baseTime = (ownedItem.expirationTime > (unsigned long)now) ? ownedItem.expirationTime : (unsigned long)now;
+				unsigned long newExp = baseTime + (unsigned long)prize.duration * 86400;
+				databaseManager.UpdateUserInventoryExpiration(userID, prize.itemID, newExp);
+				serverConsole.Print(PrefixType::Info, format("[ BingoManager ] User ({}) extended itemID {} expiration to {}.\n",
+					user->GetUserLogName(), prize.itemID, newExp));
+			}
+		}
+		else {
+			InventoryItem newItem;
+			newItem.slotID = ++maxSlotID;
+			newItem.itemID = prize.itemID;
+			newItem.count = 1;
+			newItem.activeFlag = 1;
+			newItem.inUse = false;
+			newItem.obtainTime = (unsigned long)now;
+			newItem.expirationTime = isPermItem ? 0 : (unsigned long)(now + (unsigned long)prize.duration * 86400);
+			newItem.enhanceBits = 0;
+			databaseManager.AddUserInventoryItems(userID, { newItem });
+		}
+	}
+}
+
 bool BingoManager::ResetBoard(TCPConnection::pointer connection, User* user) {
 	if (!user || !userManager.IsUserLoggedIn(user)) {
 		return false;
@@ -367,27 +446,12 @@ bool BingoManager::ShuffleBoard(TCPConnection::pointer connection, User* user) {
 	databaseManager.SaveUserBingoBoard(board);
 
 	if (!newlyCompleted.empty()) {
-		// Grant prizes
-		auto inv = user->GetUserInventory();
-		unsigned short maxSlotID = 0;
-		for (const auto& it : inv) {
-			if (it.slotID > maxSlotID) maxSlotID = it.slotID;
-		}
-		time_t now = time(nullptr);
-
 		for (unsigned char lineIdx : newlyCompleted) {
 			if (lineIdx < board.prizes.size()) {
 				const auto& prize = board.prizes[lineIdx];
-				InventoryItem newItem;
-				newItem.slotID = ++maxSlotID;
-				newItem.itemID = prize.itemID;
-				newItem.count = prize.count;
-				newItem.activeFlag = 1;
-				newItem.inUse = false;
-				newItem.obtainTime = (unsigned long)now;
-				newItem.expirationTime = (prize.duration == 0) ? 0 : (unsigned long)(now + (unsigned long)prize.duration * 86400);
-				newItem.enhanceBits = 0;
-				databaseManager.AddUserInventoryItems(userID, { newItem });
+				GrantBingoPrize(user, prize);
+				serverConsole.Print(PrefixType::Info, format("[ BingoManager ] User ({}) completed Bingo Line {} via shuffle! Won itemID {}\n",
+					user->GetUserLogName(), (int)lineIdx, prize.itemID));
 			}
 		}
 
@@ -456,28 +520,11 @@ bool BingoManager::OnBoxOpened(TCPConnection::pointer connection, User* user, un
 	std::vector<unsigned char> newlyCompleted = CheckNewlyCompletedLines(board);
 
 	if (!newlyCompleted.empty()) {
-		auto inv = user->GetUserInventory();
-		unsigned short maxSlotID = 0;
-		for (const auto& it : inv) {
-			if (it.slotID > maxSlotID) maxSlotID = it.slotID;
-		}
-		time_t now = time(nullptr);
-
 		for (unsigned char lineIdx : newlyCompleted) {
 			if (lineIdx < board.prizes.size()) {
 				const auto& prize = board.prizes[lineIdx];
 				databaseManager.UpdateUserBingoPrize(userID, lineIdx, 1);
-
-				InventoryItem newItem;
-				newItem.slotID = ++maxSlotID;
-				newItem.itemID = prize.itemID;
-				newItem.count = prize.count;
-				newItem.activeFlag = 1;
-				newItem.inUse = false;
-				newItem.obtainTime = (unsigned long)now;
-				newItem.expirationTime = (prize.duration == 0) ? 0 : (unsigned long)(now + (unsigned long)prize.duration * 86400);
-				newItem.enhanceBits = 0;
-				databaseManager.AddUserInventoryItems(userID, { newItem });
+				GrantBingoPrize(user, prize);
 
 				serverConsole.Print(PrefixType::Info, format("[ BingoManager ] User ({}) completed Bingo Line {}! Won itemID {}\n",
 					user->GetUserLogName(), (int)lineIdx, prize.itemID));
