@@ -45,7 +45,7 @@
     "PeriodicAnnouncements": {
         "Enabled": true,
         "IntervalSeconds": 300,
-        "Type": "Chat",
+        "Type": "ServerMessage",
         "Messages": [
             "本測試服為 2013 懷舊版本，祝您遊戲愉快！",
             "輸入 /resetinv 可重置官方預設裝備倉庫。",

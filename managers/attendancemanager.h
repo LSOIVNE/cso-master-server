@@ -5,13 +5,13 @@
 
 struct AttendanceRewardItem {
 	unsigned int itemID = 0;
-	std::string name = "";
-	unsigned short count = 1;
-	unsigned short period = 0; // days (0 = permanent / count item)
-	unsigned int expirationTime = 0;
-	unsigned char isEvent = 0;
-	unsigned int points = 0;
-	unsigned int weight = 10;
+	unsigned short duration = 0; // 天數 (0 = 數量道具或永久)
+	unsigned short count = 0;    // 數量 (0 = 純時效武器)
+	unsigned int enhance = 0;    // 強化屬性 bits (0 = 無強化)
+	unsigned char isEvent = 0;   // 1 = 活動標記
+	unsigned int points = 0;     // 額外加贈 Point
+	unsigned int weight = 10;    // 候選權重
+	std::string name = "";       // 備註名稱 (可選)
 };
 
 struct AttendanceDailyReward {

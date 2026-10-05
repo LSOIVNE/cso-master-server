@@ -6,6 +6,7 @@
 #include "packet_umsgmanager.h"
 #include "packet_updateinfomanager.h"
 #include "packet_itemmanager.h"
+#include "itemdefinitionmanager.h"
 #include "nlohmann/json.hpp"
 #include <fstream>
 #include <filesystem>
@@ -16,6 +17,38 @@
 using json = nlohmann::json;
 
 AttendanceManager attendanceManager;
+
+static void ParseRewardItemJson(const json& j, AttendanceRewardItem& item) {
+	item.itemID = j.contains("ItemID") ? j["ItemID"].get<unsigned int>() : j.value("itemID", 0u);
+	item.duration = j.contains("Duration") ? j["Duration"].get<unsigned short>() : j.value("duration", (unsigned short)0);
+	item.count = j.contains("Count") ? j["Count"].get<unsigned short>() : j.value("count", (unsigned short)0);
+	item.enhance = j.contains("Enhance") ? j["Enhance"].get<unsigned int>() : j.value("enhance", 0u);
+	item.isEvent = j.contains("IsEvent") ? j["IsEvent"].get<unsigned char>() : j.value("isEvent", (unsigned char)0);
+	item.points = j.contains("Points") ? j["Points"].get<unsigned int>() : j.value("points", 0u);
+	item.weight = j.contains("Weight") ? j["Weight"].get<unsigned int>() : j.value("weight", 10u);
+	item.name = j.contains("Name") ? j["Name"].get<std::string>() : j.value("name", "");
+
+	if (item.name.empty() && item.itemID > 0) {
+		const ItemDefinition* def = itemDefinitionManager.GetItem((unsigned short)item.itemID);
+		if (def) {
+			item.name = def->name;
+		}
+	}
+}
+
+static std::string FormatRewardDisplay(const AttendanceRewardItem& it) {
+	std::string s = it.name.empty() ? format("道具 #{}", it.itemID) : it.name;
+	if (it.duration > 0) {
+		s += format(" ({}日)", it.duration);
+	}
+	else if (it.count > 0) {
+		s += format(" ({}個)", it.count);
+	}
+	if (it.points > 0) {
+		s += format(" + {} Point", it.points);
+	}
+	return s;
+}
 
 bool AttendanceManager::Init(const std::string& configPath) {
 	serverConsole.Print(PrefixType::Info, "[ AttendanceManager ] Initializing daily attendance & roulette system...\n");
@@ -55,38 +88,32 @@ bool AttendanceManager::LoadConfig(const std::string& configPath) {
 		json root;
 		file >> root;
 
-		_config.enabled = root.value("enabled", true);
-		_config.autoPopupOnLogin = root.value("autoPopupOnLogin", true);
+		_config.enabled = root.contains("Enabled") ? root["Enabled"].get<bool>() : root.value("enabled", true);
+		_config.autoPopupOnLogin = root.contains("AutoPopupOnLogin") ? root["AutoPopupOnLogin"].get<bool>() : root.value("autoPopupOnLogin", true);
 		_config.dailyRewards.clear();
 		_config.candidatePool.clear();
 
-		if (root.contains("dailyRewards") && root["dailyRewards"].is_array()) {
-			for (const auto& itemJson : root["dailyRewards"]) {
+		auto parseArray = [](const json& parent, const std::string& key1, const std::string& key2) -> const json* {
+			if (parent.contains(key1) && parent[key1].is_array()) return &parent[key1];
+			if (parent.contains(key2) && parent[key2].is_array()) return &parent[key2];
+			return nullptr;
+		};
+
+		const json* dailyArr = parseArray(root, "DailyRewards", "dailyRewards");
+		if (dailyArr) {
+			for (const auto& itemJson : *dailyArr) {
 				AttendanceDailyReward reward;
-				reward.day = itemJson.value("day", (unsigned char)1);
-				reward.item.itemID = itemJson.value("itemID", (unsigned int)0);
-				reward.item.name = itemJson.value("name", "");
-				reward.item.count = itemJson.value("count", (unsigned short)1);
-				reward.item.period = itemJson.value("period", (unsigned short)0);
-				reward.item.expirationTime = itemJson.value("expirationTime", (unsigned int)0);
-				reward.item.isEvent = itemJson.value("isEvent", (unsigned char)0);
-				reward.item.points = itemJson.value("points", (unsigned int)0);
-				reward.item.weight = itemJson.value("weight", (unsigned int)10);
+				reward.day = itemJson.contains("Day") ? itemJson["Day"].get<unsigned char>() : itemJson.value("day", (unsigned char)1);
+				ParseRewardItemJson(itemJson, reward.item);
 				_config.dailyRewards.push_back(reward);
 			}
 		}
 
-		if (root.contains("candidatePool") && root["candidatePool"].is_array()) {
-			for (const auto& itemJson : root["candidatePool"]) {
+		const json* candArr = parseArray(root, "CandidatePool", "candidatePool");
+		if (candArr) {
+			for (const auto& itemJson : *candArr) {
 				AttendanceRewardItem item;
-				item.itemID = itemJson.value("itemID", (unsigned int)0);
-				item.name = itemJson.value("name", "");
-				item.count = itemJson.value("count", (unsigned short)1);
-				item.period = itemJson.value("period", (unsigned short)0);
-				item.expirationTime = itemJson.value("expirationTime", (unsigned int)0);
-				item.isEvent = itemJson.value("isEvent", (unsigned char)0);
-				item.points = itemJson.value("points", (unsigned int)0);
-				item.weight = itemJson.value("weight", (unsigned int)10);
+				ParseRewardItemJson(itemJson, item);
 				_config.candidatePool.push_back(item);
 			}
 		}
@@ -114,16 +141,16 @@ std::vector<AttendanceRewardItem> AttendanceManager::selectCandidateItems() {
 		while (candidates.size() < 4) {
 			AttendanceRewardItem fallback;
 			if (candidates.size() == 0) {
-				fallback = { 261, "領航者 M79 (3日)", 1, 3, 259200, 0, 0, 25 };
+				fallback = { 261, 3, 0, 0, 0, 0, 25, "領航者 M79" };
 			}
 			else if (candidates.size() == 1) {
-				fallback = { 166, "普通密碼箱 (2個)", 2, 0, 0, 0, 0, 35 };
+				fallback = { 166, 0, 2, 0, 0, 0, 35, "普通密碼箱" };
 			}
 			else if (candidates.size() == 2) {
-				fallback = { 173, "電子破譯晶片 (1個)", 1, 0, 0, 1, 0, 20 };
+				fallback = { 173, 0, 1, 0, 1, 0, 20, "電子破譯晶片" };
 			}
 			else {
-				fallback = { 108, "Point加倍卡 (1日) + 1500 Point", 1, 1, 86400, 0, 1500, 20 };
+				fallback = { 108, 1, 0, 0, 0, 1500, 20, "Point加倍卡" };
 			}
 			candidates.push_back(fallback);
 		}
@@ -156,29 +183,30 @@ bool AttendanceManager::grantRewardItem(User* user, const AttendanceRewardItem& 
 			}
 		}
 
-		if (item.period == 0) {
-			// Consumable count item (e.g. Decoders, C-Box)
+		if (item.duration == 0) {
+			// Consumable count item (e.g. Decoders, C-Box, permanent)
+			unsigned short addedCount = item.count > 0 ? item.count : 1;
 			if (alreadyOwned) {
-				databaseManager.UpdateUserInventoryItemCount(userID, (unsigned short)item.itemID, item.count);
+				databaseManager.UpdateUserInventoryItemCount(userID, (unsigned short)item.itemID, addedCount);
 			}
 			else {
 				InventoryItem newItem;
 				newItem.slotID = ++maxSlotID;
 				newItem.itemID = (unsigned short)item.itemID;
-				newItem.count = item.count;
+				newItem.count = addedCount;
 				newItem.activeFlag = 1;
 				newItem.inUse = false;
 				newItem.obtainTime = (unsigned long)now;
 				newItem.expirationTime = 0;
-				newItem.enhanceBits = 0;
+				newItem.enhanceBits = item.enhance;
 				databaseManager.AddUserInventoryItems(userID, { newItem });
 			}
 		}
 		else {
-			// Duration period item
+			// Duration period item (e.g. 1 day, 3 days)
 			if (alreadyOwned && ownedItem.expirationTime > 0) {
 				unsigned long baseTime = (ownedItem.expirationTime > (unsigned long)now) ? ownedItem.expirationTime : (unsigned long)now;
-				unsigned long newExp = baseTime + (unsigned long)item.period * 86400;
+				unsigned long newExp = baseTime + (unsigned long)item.duration * 86400;
 				databaseManager.UpdateUserInventoryExpiration(userID, (unsigned short)item.itemID, newExp);
 			}
 			else if (!alreadyOwned) {
@@ -189,8 +217,8 @@ bool AttendanceManager::grantRewardItem(User* user, const AttendanceRewardItem& 
 				newItem.activeFlag = 1;
 				newItem.inUse = false;
 				newItem.obtainTime = (unsigned long)now;
-				newItem.expirationTime = (unsigned long)(now + (unsigned long)item.period * 86400);
-				newItem.enhanceBits = 0;
+				newItem.expirationTime = (unsigned long)(now + (unsigned long)item.duration * 86400);
+				newItem.enhanceBits = item.enhance;
 				databaseManager.AddUserInventoryItems(userID, { newItem });
 			}
 		}
@@ -206,7 +234,6 @@ void AttendanceManager::OnUserEnterLobby(User* user) {
 	AttendanceRecord record;
 	databaseManager.GetUserAttendance(userID, record);
 
-	// If eligible today and configured to auto-popup on login, send attendance info packet
 	if (_config.autoPopupOnLogin && record.canCheckIn) {
 		SendAttendanceInfo(user, true);
 	}
@@ -245,12 +272,18 @@ void AttendanceManager::SendAttendanceInfo(User* user, bool forceOpen) {
 	packet->WriteUInt32_LE(0);                      // unknown (0)
 
 	// 4 Candidate items
+	// Wire format per item:
+	// Field 1 (UInt32 LE): itemID
+	// Field 2 (UInt16 LE): duration (天數 -> 格式化為 %d日)
+	// Field 3 (UInt16 LE): count (數量 -> 格式化為 %d個)
+	// Field 4 (UInt32 LE): enhance (武器強化屬性，0 表示無強化，不顯示 (+X))
+	// Field 5 (UInt8): isEvent (活動角標)
 	for (size_t i = 0; i < 4; ++i) {
 		const auto& item = candidates[i];
 		packet->WriteUInt32_LE(item.itemID);
+		packet->WriteUInt16_LE(item.duration);
 		packet->WriteUInt16_LE(item.count);
-		packet->WriteUInt16_LE(item.period);
-		packet->WriteUInt32_LE(item.expirationTime);
+		packet->WriteUInt32_LE(item.enhance);
 		packet->WriteUInt8(item.isEvent);
 	}
 
@@ -265,9 +298,9 @@ void AttendanceManager::SendAttendanceInfo(User* user, bool forceOpen) {
 	for (const auto& daily : _config.dailyRewards) {
 		const auto& item = daily.item;
 		packet->WriteUInt32_LE(item.itemID);
+		packet->WriteUInt16_LE(item.duration);
 		packet->WriteUInt16_LE(item.count);
-		packet->WriteUInt16_LE(item.period);
-		packet->WriteUInt32_LE(item.expirationTime);
+		packet->WriteUInt32_LE(item.enhance);
 		packet->WriteUInt8(item.isEvent);
 	}
 
@@ -348,10 +381,11 @@ void AttendanceManager::ClaimAttendanceReward(User* user) {
 	packet->WriteUInt8(1);                          // Action 1 (Claim result)
 
 	// Won Candidate Item (13 bytes)
+	// Field 1: itemID, Field 2: duration, Field 3: count, Field 4: enhance, Field 5: isEvent
 	packet->WriteUInt32_LE(wonCandidate.itemID);
+	packet->WriteUInt16_LE(wonCandidate.duration);
 	packet->WriteUInt16_LE(wonCandidate.count);
-	packet->WriteUInt16_LE(wonCandidate.period);
-	packet->WriteUInt32_LE(wonCandidate.expirationTime);
+	packet->WriteUInt32_LE(wonCandidate.enhance);
 	packet->WriteUInt8(wonCandidate.isEvent);
 
 	// Consecutive day reached (1 ~ 7)
@@ -359,9 +393,9 @@ void AttendanceManager::ClaimAttendanceReward(User* user) {
 
 	// Won Daily ladder item (13 bytes)
 	packet->WriteUInt32_LE(wonDaily.itemID);
+	packet->WriteUInt16_LE(wonDaily.duration);
 	packet->WriteUInt16_LE(wonDaily.count);
-	packet->WriteUInt16_LE(wonDaily.period);
-	packet->WriteUInt32_LE(wonDaily.expirationTime);
+	packet->WriteUInt32_LE(wonDaily.enhance);
 	packet->WriteUInt8(wonDaily.isEvent);
 
 	packet->Send();
@@ -371,10 +405,13 @@ void AttendanceManager::ClaimAttendanceReward(User* user) {
 	auto charResult = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
 	packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, charResult.userCharacter });
 
+	std::string displayDaily = FormatRewardDisplay(wonDaily);
+	std::string displayCand = FormatRewardDisplay(wonCandidate);
+
 	std::string notice = format("[每日戰場補給] 簽到成功！連續登入第 {} 天！獲得「{}」與「{}」！",
-		newConsecutiveDays, wonDaily.name, wonCandidate.name);
+		newConsecutiveDays, displayDaily, displayCand);
 	packet_UMsgManager.SendPacket_UMsg_PublicNotice(connection, notice);
 
 	serverConsole.Print(PrefixType::Info, format("[ AttendanceManager ] User ({}) claimed Day {} attendance! Won '{}' and '{}'\n",
-		user->GetUserLogName(), newConsecutiveDays, wonDaily.name, wonCandidate.name));
+		user->GetUserLogName(), newConsecutiveDays, displayDaily, displayCand));
 }

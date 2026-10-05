@@ -1001,14 +1001,14 @@
     },
     {
       "ProductID": 55,
-      "Name": "Sozo",
+      "Name": "台灣霹靂小組",
       "IsPoints": 0,
       "Offers": [
         {
           "Duration": 30,
           "Count": 1,
           "Price": 99,
-		  "AdditionalPoints": 30000,
+		  "AdditionalPoints": 55000,
           "AdType": 4
         }
       ]

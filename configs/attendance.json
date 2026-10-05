@@ -1,118 +1,82 @@
 {
-  "enabled": true,
-  "autoPopupOnLogin": true,
-  "dailyRewards": [
+  "Enabled": true,
+  "AutoPopupOnLogin": true,
+  "DailyRewards": [
     {
-      "day": 1,
-      "name": "Point加倍卡 (1日) + 1000 Point",
-      "itemID": 108,
-      "count": 1,
-      "period": 1,
-      "expirationTime": 86400,
-      "isEvent": 0,
-      "points": 1000
+      "Day": 1,
+      "ItemID": 108,
+      "Duration": 1,
+      "Count": 0,
+      "Points": 1000
     },
     {
-      "day": 2,
-      "name": "普通密碼箱 (3個)",
-      "itemID": 166,
-      "count": 3,
-      "period": 0,
-      "expirationTime": 0,
-      "isEvent": 0,
-      "points": 0
+      "Day": 2,
+      "ItemID": 166,
+      "Duration": 0,
+      "Count": 3
     },
     {
-      "day": 3,
-      "name": "電子破譯晶片 (1個)",
-      "itemID": 173,
-      "count": 1,
-      "period": 0,
-      "expirationTime": 0,
-      "isEvent": 1,
-      "points": 0
+      "Day": 3,
+      "ItemID": 173,
+      "Duration": 0,
+      "Count": 1,
+      "IsEvent": 1
     },
     {
-      "day": 4,
-      "name": "雙持沙鷹 Infinity (3日) + 2000 Point",
-      "itemID": 242,
-      "count": 1,
-      "period": 3,
-      "expirationTime": 259200,
-      "isEvent": 0,
-      "points": 2000
+      "Day": 4,
+      "ItemID": 242,
+      "Duration": 3,
+      "Count": 0,
+      "Points": 2000
     },
     {
-      "day": 5,
-      "name": "普通密碼箱 (5個)",
-      "itemID": 166,
-      "count": 5,
-      "period": 0,
-      "expirationTime": 0,
-      "isEvent": 0,
-      "points": 0
+      "Day": 5,
+      "ItemID": 166,
+      "Duration": 0,
+      "Count": 5
     },
     {
-      "day": 6,
-      "name": "電子破譯晶片 (3個)",
-      "itemID": 173,
-      "count": 3,
-      "period": 0,
-      "expirationTime": 0,
-      "isEvent": 1,
-      "points": 0
+      "Day": 6,
+      "ItemID": 173,
+      "Duration": 0,
+      "Count": 3,
+      "IsEvent": 1
     },
     {
-      "day": 7,
-      "name": "精密破譯晶片 (1個) + 5000 Point",
-      "itemID": 396,
-      "count": 1,
-      "period": 0,
-      "expirationTime": 0,
-      "isEvent": 1,
-      "points": 5000
+      "Day": 7,
+      "ItemID": 396,
+      "Duration": 0,
+      "Count": 1,
+      "Points": 5000,
+      "IsEvent": 1
     }
   ],
-  "candidatePool": [
+  "CandidatePool": [
     {
-      "name": "領航者 M79 (3日)",
-      "itemID": 261,
-      "count": 1,
-      "period": 3,
-      "expirationTime": 259200,
-      "isEvent": 0,
-      "points": 0,
-      "weight": 25
+      "ItemID": 261,
+      "Duration": 3,
+      "Count": 0,
+      "Weight": 25
     },
     {
-      "name": "普通密碼箱 (2個)",
-      "itemID": 166,
-      "count": 2,
-      "period": 0,
-      "expirationTime": 0,
-      "isEvent": 0,
-      "points": 0,
-      "weight": 35
+      "ItemID": 166,
+      "Duration": 0,
+      "Count": 2,
+      "Weight": 35
     },
     {
-      "name": "電子破譯晶片 (1個)",
-      "itemID": 173,
-      "count": 1,
-      "period": 0,
-      "expirationTime": 0,
-      "isEvent": 1,
-      "points": 0,
-      "weight": 20
+      "ItemID": 173,
+      "Duration": 0,
+      "Count": 1,
+      "Weight": 20,
+      "IsEvent": 1
     },
     {
-      "name": "Point加倍卡 (1日) + 1500 Point",
-      "itemID": 108,
-      "count": 1,
-      "period": 1,
-      "expirationTime": 86400,
-      "isEvent": 0,
-      "points": 1500,
-      "weight": 20
+      "ItemID": 108,
+      "Duration": 1,
+      "Count": 0,
+      "Points": 1500,
+      "Weight": 20
     }
   ]
 }
