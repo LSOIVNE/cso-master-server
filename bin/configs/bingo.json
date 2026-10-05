@@ -8,36 +8,222 @@
     "TestRollNumber": -1
   },
   "Prizes": [
-    { "ItemID": 483, "Name": "青龍偃月刀", "Count": 1, "Duration": 0, "Weight": 5 },
-    { "ItemID": 281, "Name": "狂戰巨斧", "Count": 1, "Duration": 0, "Weight": 5 },
-    { "ItemID": 363, "Name": "九曲斷腸(SKULL-9)", "Count": 1, "Duration": 0, "Weight": 10 },
-    { "ItemID": 458, "Name": "爆能脈衝", "Count": 1, "Duration": 0, "Weight": 10 },
-    { "ItemID": 463, "Name": "連環殺神(M32)", "Count": 1, "Duration": 0, "Weight": 15 },
-    { "ItemID": 466, "Name": "熾獄火神(BALROG-VII)", "Count": 1, "Duration": 0, "Weight": 10 },
-    { "ItemID": 482, "Name": "煉獄炎神(BALROG-V)", "Count": 1, "Duration": 0, "Weight": 10 },
-    { "ItemID": 504, "Name": "冥獄滅神(BALROG-IX)", "Count": 1, "Duration": 0, "Weight": 10 },
-    { "ItemID": 327, "Name": "貝西摩斯之爪(SKULL-7)", "Count": 1, "Duration": 0, "Weight": 15 },
-    { "ItemID": 367, "Name": "死神之騎(SKULL-5)", "Count": 1, "Duration": 0, "Weight": 15 },
-    { "ItemID": 242, "Name": "瞬殺者(Infinity)", "Count": 1, "Duration": 0, "Weight": 20 },
-    { "ItemID": 261, "Name": "幽能百萬伏特(M79)", "Count": 1, "Duration": 0, "Weight": 20 },
-    { "ItemID": 304, "Name": "喋血狂殺(M14 EBR)", "Count": 1, "Duration": 0, "Weight": 25 },
-    { "ItemID": 355, "Name": "戰慄加農砲(M60)", "Count": 1, "Duration": 0, "Weight": 25 },
-    { "ItemID": 372, "Name": "煉獄之怒(MG36)", "Count": 1, "Duration": 0, "Weight": 25 },
-    { "ItemID": 237, "Name": "疾風之翼", "Count": 1, "Duration": 0, "Weight": 25 },
-    { "ItemID": 233, "Name": "影武者(M24)", "Count": 1, "Duration": 0, "Weight": 25 },
-    { "ItemID": 187, "Name": "幽能風暴(SL8)", "Count": 1, "Duration": 0, "Weight": 25 },
-    { "ItemID": 38,  "Name": "USAS-12", "Count": 1, "Duration": 0, "Weight": 30 },
-    { "ItemID": 65,  "Name": "暱稱變更券", "Count": 1, "Duration": 0, "Weight": 30 },
-    { "ItemID": 306, "Name": "致命重擊(30天)", "Count": 1, "Duration": 30, "Weight": 40 },
-    { "ItemID": 163, "Name": "達叔(殭屍角色 30天)", "Count": 1, "Duration": 30, "Weight": 40 },
-    { "ItemID": 164, "Name": "鋒利銀刃(30天)", "Count": 1, "Duration": 30, "Weight": 40 },
-    { "ItemID": 158, "Name": "獵戶戰斧(30天)", "Count": 1, "Duration": 30, "Weight": 40 },
-    { "ItemID": 73,  "Name": "經驗值雙倍(15天)", "Count": 1, "Duration": 15, "Weight": 50 },
-    { "ItemID": 59,  "Name": "經驗值加成(15天)", "Count": 1, "Duration": 15, "Weight": 50 },
-    { "ItemID": 108, "Name": "Point加成(15天)", "Count": 1, "Duration": 15, "Weight": 50 },
-    { "ItemID": 46,  "Name": "火線特戰部隊(VC 30天)", "Count": 1, "Duration": 30, "Weight": 50 },
-    { "ItemID": 48,  "Name": "皇家特勤隊(ARA 30天)", "Count": 1, "Duration": 30, "Weight": 50 },
-    { "ItemID": 376, "Name": "暗影獵手(30天)", "Count": 1, "Duration": 30, "Weight": 50 },
-    { "ItemID": 377, "Name": "紅心黑桃(30天)", "Count": 1, "Duration": 30, "Weight": 50 }
+    {
+      "ItemID": 483,
+      "Name": "青龍偃月刀",
+      "Count": 1,
+      "Duration": 0,
+      "Weight": 5
+    },
+    {
+      "ItemID": 281,
+      "Name": "龍牙刃",
+      "Count": 1,
+      "Duration": 0,
+      "Weight": 5
+    },
+    {
+      "ItemID": 363,
+      "Name": "狂戰巨斧(skull-9)",
+      "Count": 1,
+      "Duration": 0,
+      "Weight": 10
+    },
+    {
+      "ItemID": 458,
+      "Name": "古典黑幫",
+      "Count": 1,
+      "Duration": 0,
+      "Weight": 10
+    },
+    {
+      "ItemID": 463,
+      "Name": "救贖-M32",
+      "Count": 1,
+      "Duration": 0,
+      "Weight": 15
+    },
+    {
+      "ItemID": 466,
+      "Name": "赤獄魔龍(balrog-VII)",
+      "Count": 1,
+      "Duration": 0,
+      "Weight": 10
+    },
+    {
+      "ItemID": 482,
+      "Name": "噬魂者(balrog-V)",
+      "Count": 1,
+      "Duration": 0,
+      "Weight": 10
+    },
+    {
+      "ItemID": 504,
+      "Name": "影武者(BALROG-IX)",
+      "Count": 1,
+      "Duration": 0,
+      "Weight": 10
+    },
+    {
+      "ItemID": 327,
+      "Name": "命運金鑰(skull-7)",
+      "Count": 1,
+      "Duration": 0,
+      "Weight": 15
+    },
+    {
+      "ItemID": 367,
+      "Name": "貝西摩斯之爪(skull-5)",
+      "Count": 1,
+      "Duration": 0,
+      "Weight": 15
+    },
+    {
+      "ItemID": 242,
+      "Name": "黑白雙煞-Dual Infinity",
+      "Count": 1,
+      "Duration": 0,
+      "Weight": 20
+    },
+    {
+      "ItemID": 261,
+      "Name": "噬血榴炮-M79",
+      "Count": 1,
+      "Duration": 0,
+      "Weight": 20
+    },
+    {
+      "ItemID": 304,
+      "Name": "黑色旋風-M14",
+      "Count": 1,
+      "Duration": 0,
+      "Weight": 25
+    },
+    {
+      "ItemID": 355,
+      "Name": "征服者-M60E4",
+      "Count": 1,
+      "Duration": 0,
+      "Weight": 25
+    },
+    {
+      "ItemID": 372,
+      "Name": "突擊兵蜂-MG36",
+      "Count": 1,
+      "Duration": 0,
+      "Weight": 25
+    },
+    {
+      "ItemID": 237,
+      "Name": "命運金鑰(skull-7)",
+      "Count": 1,
+      "Duration": 0,
+      "Weight": 25
+    },
+    {
+      "ItemID": 233,
+      "Name": "獵戶座-M24",
+      "Count": 1,
+      "Duration": 0,
+      "Weight": 25
+    },
+    {
+      "ItemID": 187,
+      "Name": "審判之眼-SL8",
+      "Count": 1,
+      "Duration": 0,
+      "Weight": 25
+    },
+    {
+      "ItemID": 38,
+      "Name": "USAS12",
+      "Count": 1,
+      "Duration": 0,
+      "Weight": 30
+    },
+    {
+      "ItemID": 65,
+      "Name": "更改暱稱券",
+      "Count": 1,
+      "Duration": 0,
+      "Weight": 30
+    },
+    {
+      "ItemID": 306,
+      "Name": "精準射擊",
+      "Count": 1,
+      "Duration": 30,
+      "Weight": 40
+    },
+    {
+      "ItemID": 163,
+      "Name": "莎拉",
+      "Count": 1,
+      "Duration": 30,
+      "Weight": 40
+    },
+    {
+      "ItemID": 164,
+      "Name": "鋒利銀刃",
+      "Count": 1,
+      "Duration": 30,
+      "Weight": 40
+    },
+    {
+      "ItemID": 158,
+      "Name": "背刺短刀",
+      "Count": 1,
+      "Duration": 30,
+      "Weight": 40
+    },
+    {
+      "ItemID": 73,
+      "Name": "雙重加倍券",
+      "Count": 1,
+      "Duration": 15,
+      "Weight": 50
+    },
+    {
+      "ItemID": 59,
+      "Name": "經驗值加倍券",
+      "Count": 1,
+      "Duration": 15,
+      "Weight": 50
+    },
+    {
+      "ItemID": 108,
+      "Name": "Point加倍券",
+      "Count": 1,
+      "Duration": 15,
+      "Weight": 50
+    },
+    {
+      "ItemID": 46,
+      "Name": "歐洲治安維持部隊",
+      "Count": 1,
+      "Duration": 30,
+      "Weight": 50
+    },
+    {
+      "ItemID": 48,
+      "Name": "日本赤軍",
+      "Count": 1,
+      "Duration": 30,
+      "Weight": 50
+    },
+    {
+      "ItemID": 376,
+      "Name": "獵人․Ｈ․里斯曼",
+      "Count": 1,
+      "Duration": 30,
+      "Weight": 50
+    },
+    {
+      "ItemID": 377,
+      "Name": "黑桃․Ｓ․巴奇",
+      "Count": 1,
+      "Duration": 30,
+      "Weight": 50
+    }
   ]
 }

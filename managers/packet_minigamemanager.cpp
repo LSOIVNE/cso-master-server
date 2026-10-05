@@ -41,6 +41,11 @@ void Packet_MiniGameManager::parsePacket_MiniGame_Bingo(User* user, TCPConnectio
 	}
 
 	unsigned char action = packet->ReadUInt8();
+	if (!bingoManager.IsActive()) {
+		serverConsole.Print(PrefixType::Warn, format("[ Packet_MiniGameManager ] User ({}) sent Bingo action {}, but Bingo is inactive!\n", user->GetUserLogName(), (int)action));
+		return;
+	}
+
 	serverConsole.Print(PrefixType::Info, format("[ Packet_MiniGameManager ] User ({}) sent Bingo action {}\n", user->GetUserLogName(), (int)action));
 
 	switch (action) {

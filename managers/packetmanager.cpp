@@ -18,6 +18,7 @@
 #include "packet_userstartmanager.h"
 #include "packet_messengermanager.h"
 #include "packet_minigamemanager.h"
+#include "itemdefinitionmanager.h"
 #include "usermanager.h"
 #include "serverconsole.h"
 
@@ -131,7 +132,9 @@ void PacketManager::SendPacket_Inventory(TCPConnection::pointer connection, cons
 		packet->WriteUInt8(1); // status (1 = present)
 		packet->WriteUInt16_LE(item.itemID);
 		packet->WriteUInt16_LE(item.count);
-		packet->WriteUInt8(item.activeFlag == 0 ? 1 : item.activeFlag);
+		const auto* itemDef = itemDefinitionManager.GetItem(item.itemID);
+		bool isEquip = (itemDef != nullptr) ? itemDef->IsEquipment() : (item.activeFlag != 0);
+		packet->WriteUInt8(isEquip ? 1 : 0);
 		packet->WriteUInt8(item.inUse ? 1 : 0);
 		packet->WriteUInt32_LE(item.obtainTime);
 		packet->WriteUInt32_LE(item.expirationTime); // 0 = permanent

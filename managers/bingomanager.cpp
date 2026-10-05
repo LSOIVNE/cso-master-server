@@ -340,6 +340,11 @@ bool BingoManager::ResetBoard(TCPConnection::pointer connection, User* user) {
 		return false;
 	}
 
+	if (!IsActive()) {
+		serverConsole.Print(PrefixType::Warn, format("[ BingoManager ] User ({}) attempted to reset bingo board, but Bingo event is inactive!\n", user->GetUserLogName()));
+		return false;
+	}
+
 	unsigned long userID = user->GetUserID();
 	const UserCharacterResult& ucRes = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
 	if (!ucRes.result || ucRes.userCharacter.cash < _settings.resetCost) {
@@ -383,6 +388,11 @@ bool BingoManager::ResetBoard(TCPConnection::pointer connection, User* user) {
 
 bool BingoManager::ShuffleBoard(TCPConnection::pointer connection, User* user) {
 	if (!user || !userManager.IsUserLoggedIn(user)) {
+		return false;
+	}
+
+	if (!IsActive()) {
+		serverConsole.Print(PrefixType::Warn, format("[ BingoManager ] User ({}) attempted to shuffle bingo board, but Bingo event is inactive!\n", user->GetUserLogName()));
 		return false;
 	}
 
@@ -553,6 +563,10 @@ bool BingoManager::OnClientRequestSyncBoard(TCPConnection::pointer connection, U
 		return false;
 	}
 
+	if (!IsActive()) {
+		return false;
+	}
+
 	unsigned long userID = user->GetUserID();
 	BingoBoard board;
 	if (!GetOrInitBoard(userID, board)) {
@@ -702,7 +716,7 @@ void BingoManager::SendEventActive(TCPConnection::pointer connection) {
 	if (!packet) return;
 
 	packet->WriteUInt8(1); // subType 1 (Event active mask)
-	packet->WriteUInt32_LE(1); // Bit 0 = 1 (Bingo active!)
+	packet->WriteUInt32_LE(_settings.active ? 1 : 0); // Bit 0 = Bingo active flag!
 
 	packet->Send();
 }
