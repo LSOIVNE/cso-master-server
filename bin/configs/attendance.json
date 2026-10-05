@@ -1,0 +1,118 @@
+{
+  "enabled": true,
+  "autoPopupOnLogin": true,
+  "dailyRewards": [
+    {
+      "day": 1,
+      "name": "Point加倍卡 (1日) + 1000 Point",
+      "itemID": 108,
+      "count": 1,
+      "period": 1,
+      "expirationTime": 86400,
+      "isEvent": 0,
+      "points": 1000
+    },
+    {
+      "day": 2,
+      "name": "普通密碼箱 (3個)",
+      "itemID": 166,
+      "count": 3,
+      "period": 0,
+      "expirationTime": 0,
+      "isEvent": 0,
+      "points": 0
+    },
+    {
+      "day": 3,
+      "name": "電子破譯晶片 (1個)",
+      "itemID": 173,
+      "count": 1,
+      "period": 0,
+      "expirationTime": 0,
+      "isEvent": 1,
+      "points": 0
+    },
+    {
+      "day": 4,
+      "name": "雙持沙鷹 Infinity (3日) + 2000 Point",
+      "itemID": 242,
+      "count": 1,
+      "period": 3,
+      "expirationTime": 259200,
+      "isEvent": 0,
+      "points": 2000
+    },
+    {
+      "day": 5,
+      "name": "普通密碼箱 (5個)",
+      "itemID": 166,
+      "count": 5,
+      "period": 0,
+      "expirationTime": 0,
+      "isEvent": 0,
+      "points": 0
+    },
+    {
+      "day": 6,
+      "name": "電子破譯晶片 (3個)",
+      "itemID": 173,
+      "count": 3,
+      "period": 0,
+      "expirationTime": 0,
+      "isEvent": 1,
+      "points": 0
+    },
+    {
+      "day": 7,
+      "name": "精密破譯晶片 (1個) + 5000 Point",
+      "itemID": 396,
+      "count": 1,
+      "period": 0,
+      "expirationTime": 0,
+      "isEvent": 1,
+      "points": 5000
+    }
+  ],
+  "candidatePool": [
+    {
+      "name": "領航者 M79 (3日)",
+      "itemID": 261,
+      "count": 1,
+      "period": 3,
+      "expirationTime": 259200,
+      "isEvent": 0,
+      "points": 0,
+      "weight": 25
+    },
+    {
+      "name": "普通密碼箱 (2個)",
+      "itemID": 166,
+      "count": 2,
+      "period": 0,
+      "expirationTime": 0,
+      "isEvent": 0,
+      "points": 0,
+      "weight": 35
+    },
+    {
+      "name": "電子破譯晶片 (1個)",
+      "itemID": 173,
+      "count": 1,
+      "period": 0,
+      "expirationTime": 0,
+      "isEvent": 1,
+      "points": 0,
+      "weight": 20
+    },
+    {
+      "name": "Point加倍卡 (1日) + 1500 Point",
+      "itemID": 108,
+      "count": 1,
+      "period": 1,
+      "expirationTime": 86400,
+      "isEvent": 0,
+      "points": 1500,
+      "weight": 20
+    }
+  ]
+}

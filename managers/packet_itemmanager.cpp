@@ -6,6 +6,7 @@
 #include "serverconsole.h"
 #include "itemdefinitionmanager.h"
 #include "itemboxmanager.h"
+#include "attendancemanager.h"
 #include <unordered_set>
 
 Packet_ItemManager packet_ItemManager;
@@ -45,6 +46,10 @@ void Packet_ItemManager::ParsePacket_Item(TCPConnection::Packet::pointer packet)
 		}
 		case Packet_ItemType::OpenBox: {
 			parsePacket_Item_OpenBox(user, packet);
+			break;
+		}
+		case Packet_ItemType::Roulette: {
+			parsePacket_Item_Roulette(user, packet);
 			break;
 		}
 		case Packet_ItemType::Tattoo: {
@@ -289,3 +294,29 @@ void Packet_ItemManager::parsePacket_Item_OpenBox(User* user, TCPConnection::Pac
 
 	itemBoxManager.OpenBox(user, decoderSlotID, 0, 0);
 }
+
+void Packet_ItemManager::parsePacket_Item_Roulette(User* user, TCPConnection::Packet::pointer packet) {
+	if (user == NULL || packet == NULL) {
+		return;
+	}
+
+	auto& connection = user->GetConnection();
+	if (connection == NULL) {
+		return;
+	}
+
+	unsigned char action = packet->ReadUInt8();
+	serverConsole.Print(PrefixType::Info, format("[ Packet_ItemManager ] User ({}) sent Packet_Item Roulette action {}\n",
+		user->GetUserLogName(), action));
+
+	if (action == 0) {
+		attendanceManager.SendAttendanceInfo(user);
+	}
+	else if (action == 1) {
+		attendanceManager.ClaimAttendanceReward(user);
+	}
+	else {
+		serverConsole.Print(PrefixType::Warn, format("[ Packet_ItemManager ] User ({}) sent unknown Roulette action {}\n",
+			user->GetUserLogName(), action));
+	}
+}

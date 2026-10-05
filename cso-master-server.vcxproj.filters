@@ -64,6 +64,9 @@
     <ClCompile Include="managers\bingomanager.cpp">
       <Filter>managers</Filter>
     </ClCompile>
+    <ClCompile Include="managers\attendancemanager.cpp">
+      <Filter>managers</Filter>
+    </ClCompile>
     <ClCompile Include="managers\packet_minigamemanager.cpp">
       <Filter>managers</Filter>
     </ClCompile>
@@ -180,6 +183,9 @@
       <Filter>managers</Filter>
     </ClInclude>
     <ClInclude Include="managers\bingomanager.h">
+      <Filter>managers</Filter>
+    </ClInclude>
+    <ClInclude Include="managers\attendancemanager.h">
       <Filter>managers</Filter>
     </ClInclude>
     <ClInclude Include="managers\packet_minigamemanager.h">

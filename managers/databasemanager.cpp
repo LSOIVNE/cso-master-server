@@ -31,6 +31,7 @@ bool DatabaseManager::Init(const string& server, const string& user, const strin
 
     if (success) {
         EnsureBingoTables();
+        EnsureAttendanceTables();
     }
 
     return success;
@@ -1427,6 +1428,107 @@ bool DatabaseManager::ResetUserBingoBoard(unsigned long userID, const BingoBoard
     string d2 = format("DELETE FROM user_bingo_prizes WHERE userID = {};", userID);
     mysql_query(_connection, d2.c_str());
     return SaveUserBingoBoard(newBoard);
+}
+
+bool DatabaseManager::EnsureAttendanceTables() {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    const char* query =
+        "CREATE TABLE IF NOT EXISTS user_attendance ("
+        "    userID INT UNSIGNED NOT NULL PRIMARY KEY,"
+        "    consecutiveDays TINYINT UNSIGNED NOT NULL DEFAULT 0,"
+        "    totalCheckIns INT UNSIGNED NOT NULL DEFAULT 0,"
+        "    lastCheckInDate DATE DEFAULT NULL,"
+        "    createdTime DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+        "    updatedTime DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,"
+        "    FOREIGN KEY (userID) REFERENCES user_characters(userID) ON DELETE CASCADE"
+        ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+
+    if (mysql_query(_connection, query)) {
+        serverConsole.Print(PrefixType::Warn, format("[ DatabaseManager ] EnsureAttendanceTables warning: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    return true;
+}
+
+bool DatabaseManager::GetUserAttendance(unsigned long userID, AttendanceRecord& outRecord) {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    outRecord.userID = userID;
+    outRecord.consecutiveDays = 0;
+    outRecord.totalCheckIns = 0;
+    outRecord.lastCheckInDate = "";
+    outRecord.canCheckIn = true;
+    outRecord.daysSinceLast = 999;
+
+    string query = format(
+        "SELECT consecutiveDays, totalCheckIns, "
+        "       COALESCE(DATE_FORMAT(lastCheckInDate, '%Y-%m-%d'), ''), "
+        "       IF(lastCheckInDate IS NULL, 1, IF(lastCheckInDate < CURDATE(), 1, 0)) AS canCheckIn, "
+        "       IF(lastCheckInDate IS NULL, 999, DATEDIFF(CURDATE(), lastCheckInDate)) AS daysSinceLast "
+        "FROM user_attendance WHERE userID = {};", userID);
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on GetUserAttendance: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    MYSQL_RES* result = mysql_store_result(_connection);
+    if (!result) {
+        return false;
+    }
+
+    MYSQL_ROW row = mysql_fetch_row(result);
+    if (row) {
+        outRecord.consecutiveDays = (unsigned char)(row[0] ? atoi(row[0]) : 0);
+        outRecord.totalCheckIns = (unsigned int)(row[1] ? strtoul(row[1], NULL, 10) : 0);
+        outRecord.lastCheckInDate = row[2] ? row[2] : "";
+        outRecord.canCheckIn = (row[3] ? atoi(row[3]) : 1) != 0;
+        outRecord.daysSinceLast = row[4] ? atoi(row[4]) : 999;
+    } else {
+        mysql_free_result(result);
+        string insertQ = format(
+            "INSERT INTO user_attendance (userID, consecutiveDays, totalCheckIns, lastCheckInDate) "
+            "VALUES ({}, 0, 0, NULL) "
+            "ON DUPLICATE KEY UPDATE userID=userID;", userID);
+        mysql_query(_connection, insertQ.c_str());
+        return true;
+    }
+
+    mysql_free_result(result);
+    return true;
+}
+
+bool DatabaseManager::RecordUserAttendance(unsigned long userID, unsigned char newConsecutiveDays) {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    string query = format(
+        "INSERT INTO user_attendance (userID, consecutiveDays, totalCheckIns, lastCheckInDate) "
+        "VALUES ({0}, {1}, 1, CURDATE()) "
+        "ON DUPLICATE KEY UPDATE "
+        "    consecutiveDays = IF(lastCheckInDate IS NULL OR lastCheckInDate < CURDATE(), {1}, consecutiveDays), "
+        "    totalCheckIns = IF(lastCheckInDate IS NULL OR lastCheckInDate < CURDATE(), totalCheckIns + 1, totalCheckIns), "
+        "    lastCheckInDate = IF(lastCheckInDate IS NULL OR lastCheckInDate < CURDATE(), CURDATE(), lastCheckInDate);",
+        userID, (int)newConsecutiveDays);
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on RecordUserAttendance: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    my_ulonglong affected = mysql_affected_rows(_connection);
+    if (affected == 0) {
+        return false;
+    }
+
+    return true;
 }
 
 

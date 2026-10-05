@@ -15,6 +15,7 @@
 #include "noticemanager.h"
 #include "packet_shopmanager.h"
 #include "bingomanager.h"
+#include "attendancemanager.h"
 
 UserManager userManager;
 
@@ -235,6 +236,7 @@ bool UserManager::SendLoginPackets(User* user, Packet_ReplyType reply) {
 		}
 		noticeManager.SendChannelLoginNotice(user, channelLoginMsg);
 		noticeManager.SendChannelChatNotice(user, channelLoginMsg);
+		attendanceManager.OnUserEnterLobby(user);
 	}
 
 	return true;

@@ -35,6 +35,15 @@ struct BingoBoard {
 	vector<BingoPrize> prizes; // 12 items
 };
 
+struct AttendanceRecord {
+	unsigned long userID = 0;
+	unsigned char consecutiveDays = 0;
+	unsigned int totalCheckIns = 0;
+	string lastCheckInDate = "";
+	bool canCheckIn = true;
+	int daysSinceLast = 999;
+};
+
 class DatabaseManager {
 public:
 	DatabaseManager();
@@ -86,6 +95,9 @@ public:
 	bool UpdateUserBingoSlot(unsigned long userID, unsigned char slotIdx, unsigned char opened);
 	bool UpdateUserBingoPrize(unsigned long userID, unsigned char lineIdx, unsigned char opened);
 	bool ResetUserBingoBoard(unsigned long userID, const BingoBoard& newBoard);
+	bool EnsureAttendanceTables();
+	bool GetUserAttendance(unsigned long userID, AttendanceRecord& outRecord);
+	bool RecordUserAttendance(unsigned long userID, unsigned char newConsecutiveDays);
 
 private:
 	MYSQL* _connection;
