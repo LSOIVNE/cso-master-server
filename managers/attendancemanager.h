@@ -22,6 +22,8 @@ struct AttendanceDailyReward {
 struct AttendanceConfig {
 	bool enabled = true;
 	bool autoPopupOnLogin = true;
+	bool serverMessageEnabled = true;
+	std::string title = "新戰場補給";
 	std::vector<AttendanceDailyReward> dailyRewards;
 	std::vector<AttendanceRewardItem> candidatePool;
 };

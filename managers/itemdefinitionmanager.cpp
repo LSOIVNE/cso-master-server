@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <algorithm>
 #include <format>
+#include "nlohmann/json.hpp"
 
 ItemDefinitionManager itemDefinitionManager;
 
@@ -133,7 +134,38 @@ bool ItemDefinitionManager::Init() {
 	}
 
 	file.close();
-	serverConsole.Print(PrefixType::Info, format("[ ItemDefinitionManager ] Successfully loaded {} item definitions.\n", _items.size()));
+	serverConsole.Print(PrefixType::Info, format("[ ItemDefinitionManager ] Successfully loaded {} item definitions from item.csv.\n", _items.size()));
+
+	// Load authentic Traditional Chinese item names mapping if available
+	const std::vector<std::string> namePaths = {
+		"configs\\item_names_tw.json",
+		"configs/item_names_tw.json",
+		"item_names_tw.json",
+		"..\\configs\\item_names_tw.json"
+	};
+	for (const auto& np : namePaths) {
+		std::ifstream nFile(np);
+		if (nFile.is_open()) {
+			try {
+				nlohmann::json j;
+				nFile >> j;
+				size_t twCount = 0;
+				for (auto& [key, val] : j.items()) {
+					unsigned short id = (unsigned short)std::stoul(key);
+					if (_items.find(id) != _items.end() && val.is_string()) {
+						_items[id].name = val.get<std::string>();
+						twCount++;
+					}
+				}
+				serverConsole.Print(PrefixType::Info, format("[ ItemDefinitionManager ] Loaded {} authentic Chinese item names from {}\n", twCount, np));
+				break;
+			}
+			catch (const std::exception& e) {
+				serverConsole.Print(PrefixType::Warn, format("[ ItemDefinitionManager ] Failed to parse {}: {}\n", np, e.what()));
+			}
+		}
+	}
+
 	return true;
 }
 

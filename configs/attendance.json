@@ -1,6 +1,8 @@
 {
   "Enabled": true,
   "AutoPopupOnLogin": true,
+  "ServerMessageEnabled": true,
+  "Title": "新戰場補給",
   "DailyRewards": [
     {
       "Day": 1,

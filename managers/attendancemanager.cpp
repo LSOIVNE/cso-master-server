@@ -90,6 +90,8 @@ bool AttendanceManager::LoadConfig(const std::string& configPath) {
 
 		_config.enabled = root.contains("Enabled") ? root["Enabled"].get<bool>() : root.value("enabled", true);
 		_config.autoPopupOnLogin = root.contains("AutoPopupOnLogin") ? root["AutoPopupOnLogin"].get<bool>() : root.value("autoPopupOnLogin", true);
+		_config.serverMessageEnabled = root.contains("ServerMessageEnabled") ? root["ServerMessageEnabled"].get<bool>() : root.value("serverMessageEnabled", true);
+		_config.title = root.contains("Title") ? root["Title"].get<std::string>() : root.value("title", std::string("新戰場補給"));
 		_config.dailyRewards.clear();
 		_config.candidatePool.clear();
 
@@ -351,7 +353,7 @@ void AttendanceManager::ClaimAttendanceReward(User* user) {
 	if (!connection) return;
 
 	if (!_config.enabled) {
-		packet_UMsgManager.SendPacket_UMsg_ServerMessageText(connection, "[每日戰場補給] 活動目前未開啟。");
+		packet_UMsgManager.SendPacket_UMsg_ServerMessageText(connection, format("[{}] 活動目前未開啟。", _config.title));
 		return;
 	}
 
@@ -361,7 +363,7 @@ void AttendanceManager::ClaimAttendanceReward(User* user) {
 
 	if (!record.canCheckIn) {
 		serverConsole.Print(PrefixType::Warn, format("[ AttendanceManager ] User ({}) attempted duplicate claim today!\n", user->GetUserLogName()));
-		packet_UMsgManager.SendPacket_UMsg_ServerMessageText(connection, "[每日戰場補給] 您今天已經領取過簽到獎勵囉，請明天再來！");
+		packet_UMsgManager.SendPacket_UMsg_ServerMessageText(connection, format("[{}] 您今天已經領取過簽到獎勵囉，請明天再來！", _config.title));
 		return;
 	}
 
@@ -375,7 +377,7 @@ void AttendanceManager::ClaimAttendanceReward(User* user) {
 
 	if (!databaseManager.RecordUserAttendance(userID, newConsecutiveDays)) {
 		serverConsole.Print(PrefixType::Warn, format("[ AttendanceManager ] User ({}) atomic check-in rejected (already claimed)!\n", user->GetUserLogName()));
-		packet_UMsgManager.SendPacket_UMsg_ServerMessageText(connection, "[每日戰場補給] 您今天已經領取過簽到獎勵囉，請明天再來！");
+		packet_UMsgManager.SendPacket_UMsg_ServerMessageText(connection, format("[{}] 您今天已經領取過簽到獎勵囉，請明天再來！", _config.title));
 		return;
 	}
 
@@ -449,9 +451,11 @@ void AttendanceManager::ClaimAttendanceReward(User* user) {
 	std::string displayDaily = FormatRewardDisplay(wonDaily);
 	std::string displayCand = FormatRewardDisplay(wonCandidate);
 
-	std::string notice = format("[每日戰場補給] 簽到成功！連續登入第 {} 天！獲得「{}」與「{}」！",
-		newConsecutiveDays, displayDaily, displayCand);
-	packet_UMsgManager.SendPacket_UMsg_ServerMessageText(connection, notice);
+	if (_config.serverMessageEnabled) {
+		std::string notice = format("[{}] 簽到成功！連續登入第 {} 天！獲得「{}」與「{}」！",
+			_config.title, newConsecutiveDays, displayDaily, displayCand);
+		packet_UMsgManager.SendPacket_UMsg_ServerMessageText(connection, notice);
+	}
 
 	serverConsole.Print(PrefixType::Info, format("[ AttendanceManager ] User ({}) claimed Day {} attendance! Won '{}' and '{}'\n",
 		user->GetUserLogName(), newConsecutiveDays, displayDaily, displayCand));
