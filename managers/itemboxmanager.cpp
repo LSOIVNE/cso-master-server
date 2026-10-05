@@ -14,6 +14,7 @@
 #include <format>
 #include <random>
 #include <ctime>
+#include <unordered_set>
 
 using json = nlohmann::json;
 
@@ -68,10 +69,24 @@ bool ItemBoxManager::LoadConfig(const std::string& configPath) {
 		// 1. Parse Settings
 		if (root.contains("Settings") && root["Settings"].is_object()) {
 			const auto& s = root["Settings"];
-			_settings.broadcastGoldGrade = s.value("BroadcastGoldGrade", true);
-			_settings.broadcastFormat = s.value("BroadcastFormat", "[伺服器訊息] ***** 恭喜[{PlayerName}]使用[{DecoderName}]獲得[{GradeName}][{ItemName}] *****");
-			_settings.goldGradeName = s.value("GoldGradeName", "金獎勳");
-			_settings.silverGradeName = s.value("SilverGradeName", "銀獎勳");
+			if (s.contains("BroadcastMinGrade")) {
+				_settings.broadcastMinGrade = s.value("BroadcastMinGrade", 3);
+			}
+			else if (s.contains("BroadcastGoldGrade")) {
+				_settings.broadcastMinGrade = s.value("BroadcastGoldGrade", true) ? 3 : 999;
+			}
+			if (s.contains("SkipOwnedPermanent")) {
+				_settings.skipOwnedPermanent = s.value("SkipOwnedPermanent", true);
+			}
+			else if (s.contains("AllowOwnedPermanent")) {
+				_settings.skipOwnedPermanent = !s.value("AllowOwnedPermanent", false);
+			}
+			if (s.contains("SkipPeriodIfPermanentOwned")) {
+				_settings.skipPeriodIfPermanentOwned = s.value("SkipPeriodIfPermanentOwned", true);
+			}
+			else {
+				_settings.skipPeriodIfPermanentOwned = _settings.skipOwnedPermanent;
+			}
 		}
 
 		// 2. Parse Boxes
@@ -82,8 +97,6 @@ bool ItemBoxManager::LoadConfig(const std::string& configPath) {
 				ItemBoxConfig cfg;
 				cfg.decoderID = decoderID;
 				cfg.name = boxVal.value("Name", "");
-				cfg.boxName = boxVal.value("BoxName", "");
-				cfg.requireBoxID = boxVal.value("RequireBoxID", (unsigned short)0);
 
 				if (boxVal.contains("Rates") && boxVal["Rates"].is_object()) {
 					const auto& r = boxVal["Rates"];
@@ -101,7 +114,14 @@ bool ItemBoxManager::LoadConfig(const std::string& configPath) {
 						item.duration = itemVal.value("Duration", -1);
 						item.count = itemVal.value("Count", (unsigned short)1);
 						item.grade = itemVal.value("Grade", 1);
-						item.broadcast = itemVal.value("Broadcast", false);
+						if (itemVal.contains("Broadcast")) {
+							if (itemVal["Broadcast"].is_boolean()) {
+								item.broadcast = itemVal["Broadcast"].get<bool>() ? 1 : 0;
+							}
+							else if (itemVal["Broadcast"].is_number()) {
+								item.broadcast = (itemVal["Broadcast"].get<int>() != 0) ? 1 : 0;
+							}
+						}
 						cfg.items.push_back(item);
 					}
 				}
@@ -147,55 +167,105 @@ const ItemBoxConfig* ItemBoxManager::GetBoxConfig(unsigned short decoderID) cons
 	return nullptr;
 }
 
-const ItemBoxReward* ItemBoxManager::RollReward(const ItemBoxConfig& boxDef) const {
+const ItemBoxReward* ItemBoxManager::RollReward(const ItemBoxConfig& boxDef, const std::vector<InventoryItem>* userInventory) const {
 	if (boxDef.items.empty()) {
 		return nullptr;
 	}
 
+	std::unordered_set<unsigned short> permanentlyOwned;
+	if (userInventory != nullptr) {
+		for (const auto& it : *userInventory) {
+			if (it.count > 0 && it.expirationTime == 0) {
+				const auto* def = itemDefinitionManager.GetItem(it.itemID);
+				if (def != nullptr && def->isPeriod) {
+					permanentlyOwned.insert(it.itemID);
+				}
+				else if (def == nullptr) {
+					permanentlyOwned.insert(it.itemID);
+				}
+			}
+		}
+	}
+
+	auto isEligible = [&](const ItemBoxReward& item) -> bool {
+		bool isUserPermOwned = (permanentlyOwned.count(item.itemID) > 0);
+		if (isUserPermOwned) {
+			const auto* def = itemDefinitionManager.GetItem(item.itemID);
+			bool isPermReward = (item.duration == -1) || (item.duration == 0 && def != nullptr && def->isPeriod);
+			bool isPeriodReward = (item.duration > 0);
+
+			if (isPermReward && _settings.skipOwnedPermanent) {
+				return false;
+			}
+			if (isPeriodReward && _settings.skipPeriodIfPermanentOwned) {
+				return false;
+			}
+		}
+		return true;
+	};
+
+	std::vector<const ItemBoxReward*> gradeCandidates[5]; // index 1..4
+	for (const auto& item : boxDef.items) {
+		int g = item.grade;
+		if (g < 1 || g > 4) g = 1;
+		if (isEligible(item)) {
+			gradeCandidates[g].push_back(&item);
+		}
+	}
+
+	double w4 = gradeCandidates[4].empty() ? 0.0 : boxDef.rates.grade4;
+	double w3 = gradeCandidates[3].empty() ? 0.0 : boxDef.rates.grade3;
+	double w2 = gradeCandidates[2].empty() ? 0.0 : boxDef.rates.grade2;
+	double w1 = gradeCandidates[1].empty() ? 0.0 : boxDef.rates.grade1;
+
+	double totalWeight = w4 + w3 + w2 + w1;
+
 	thread_local std::mt19937_64 rng(std::random_device{}());
 
-	double sumRates = boxDef.rates.grade1 + boxDef.rates.grade2 + boxDef.rates.grade3 + boxDef.rates.grade4;
-	if (sumRates <= 0.0) {
-		sumRates = 100.0;
+	if (totalWeight > 0.0) {
+		std::uniform_real_distribution<double> dist(0.0, totalWeight);
+		double roll = dist(rng);
+
+		int selectedGrade = 1;
+		if (w4 > 0.0 && roll < w4) {
+			selectedGrade = 4;
+		}
+		else if (w3 > 0.0 && roll < (w4 + w3)) {
+			selectedGrade = 3;
+		}
+		else if (w2 > 0.0 && roll < (w4 + w3 + w2)) {
+			selectedGrade = 2;
+		}
+		else if (w1 > 0.0) {
+			selectedGrade = 1;
+		}
+		else {
+			for (int g = 4; g >= 1; --g) {
+				if (!gradeCandidates[g].empty()) {
+					selectedGrade = g;
+					break;
+				}
+			}
+		}
+
+		const auto& pool = gradeCandidates[selectedGrade];
+		if (!pool.empty()) {
+			std::uniform_int_distribution<size_t> itemDist(0, pool.size() - 1);
+			return pool[itemDist(rng)];
+		}
 	}
 
-	std::uniform_real_distribution<double> dist(0.0, sumRates);
-	double roll = dist(rng);
-
-	int targetGrade = 1;
-	// Grade 4 (Top Gold) checked first
-	if (roll < boxDef.rates.grade4) {
-		targetGrade = 4;
-	}
-	else if (roll < (boxDef.rates.grade4 + boxDef.rates.grade3)) {
-		targetGrade = 3;
-	}
-	else if (roll < (boxDef.rates.grade4 + boxDef.rates.grade3 + boxDef.rates.grade2)) {
-		targetGrade = 2;
-	}
-	else {
-		targetGrade = 1;
-	}
-
-	std::vector<const ItemBoxReward*> candidates;
+	// Fallback only if all items across all grades are ineligible (e.g. user owns entire box pool)
+	std::vector<const ItemBoxReward*> allCandidates;
 	for (const auto& item : boxDef.items) {
-		if (item.grade == targetGrade) {
-			candidates.push_back(&item);
-		}
+		allCandidates.push_back(&item);
+	}
+	if (!allCandidates.empty()) {
+		std::uniform_int_distribution<size_t> itemDist(0, allCandidates.size() - 1);
+		return allCandidates[itemDist(rng)];
 	}
 
-	if (candidates.empty()) {
-		for (const auto& item : boxDef.items) {
-			candidates.push_back(&item);
-		}
-	}
-
-	if (candidates.empty()) {
-		return nullptr;
-	}
-
-	std::uniform_int_distribution<size_t> itemDist(0, candidates.size() - 1);
-	return candidates[itemDist(rng)];
+	return nullptr;
 }
 
 bool ItemBoxManager::OpenBox(User* user, unsigned short decoderSlotID, unsigned short boxSlotID, unsigned char flag) {
@@ -256,36 +326,35 @@ bool ItemBoxManager::OpenBox(User* user, unsigned short decoderSlotID, unsigned 
 		return false;
 	}
 
-	// 2. Locate required box item if needed
+	// 2. Locate required C-Box item (All decoders require C-Box itemID 166 in this version)
+	const unsigned short CBOX_ITEM_ID = 166;
 	const InventoryItem* boxItem = nullptr;
-	if (boxDef->requireBoxID != 0) {
-		for (const auto& it : inv) {
-			if (it.slotID == boxSlotID && it.itemID == boxDef->requireBoxID && it.count > 0) {
-				boxItem = &it;
-				break;
-			}
-		}
-
-		if (!boxItem) {
-			for (const auto& it : inv) {
-				if (it.itemID == boxDef->requireBoxID && it.count > 0) {
-					boxItem = &it;
-					boxSlotID = it.slotID;
-					break;
-				}
-			}
-		}
-
-		if (!boxItem || boxItem->count == 0) {
-			serverConsole.Print(PrefixType::Warn, format("[ ItemBoxManager ] User ({}) lacks required box itemID {} for decoder {}!\n",
-				user->GetUserLogName(), boxDef->requireBoxID, boxDef->decoderID));
-			SendPacket_Item_OpenBoxResult(connection, 0, 1);
-			return false;
+	for (const auto& it : inv) {
+		if (it.slotID == boxSlotID && it.itemID == CBOX_ITEM_ID && it.count > 0) {
+			boxItem = &it;
+			break;
 		}
 	}
 
-	// 3. Roll reward
-	const ItemBoxReward* wonItem = RollReward(*boxDef);
+	if (!boxItem) {
+		for (const auto& it : inv) {
+			if (it.itemID == CBOX_ITEM_ID && it.count > 0) {
+				boxItem = &it;
+				boxSlotID = it.slotID;
+				break;
+			}
+		}
+	}
+
+	if (!boxItem || boxItem->count == 0) {
+		serverConsole.Print(PrefixType::Warn, format("[ ItemBoxManager ] User ({}) lacks required C-Box (166) for decoder {}!\n",
+			user->GetUserLogName(), boxDef->decoderID));
+		SendPacket_Item_OpenBoxResult(connection, 0, 1);
+		return false;
+	}
+
+	// 3. Roll reward (filters permanently owned items if configured)
+	const ItemBoxReward* wonItem = RollReward(*boxDef, &inv);
 	if (!wonItem) {
 		serverConsole.Print(PrefixType::Error, format("[ ItemBoxManager ] Failed to roll reward for decoder {}!\n", boxDef->decoderID));
 		SendPacket_Item_OpenBoxResult(connection, 0, 1);
@@ -300,11 +369,11 @@ bool ItemBoxManager::OpenBox(User* user, unsigned short decoderSlotID, unsigned 
 		return false;
 	}
 
-	// 5. Consume box item if required
+	// 5. Consume C-Box item (166)
 	bool boxDeleted = false;
-	if (boxDef->requireBoxID != 0 && boxItem != nullptr) {
+	if (boxItem != nullptr) {
 		if (!databaseManager.ConsumeUserInventoryItemBySlot(userID, boxSlotID, 1, boxDeleted)) {
-			serverConsole.Print(PrefixType::Error, format("[ ItemBoxManager ] Failed to consume box slot {} for user ({})\n", boxSlotID, user->GetUserLogName()));
+			serverConsole.Print(PrefixType::Error, format("[ ItemBoxManager ] Failed to consume C-Box slot {} for user ({})\n", boxSlotID, user->GetUserLogName()));
 		}
 	}
 
@@ -379,13 +448,13 @@ bool ItemBoxManager::OpenBox(User* user, unsigned short decoderSlotID, unsigned 
 	// 7. Check canOpenAgain
 	vector<InventoryItem> updatedInv = user->GetUserInventory();
 	bool hasDecoderRemaining = false;
-	bool hasBoxRemaining = (boxDef->requireBoxID == 0);
+	bool hasBoxRemaining = false;
 
 	for (const auto& it : updatedInv) {
 		if (it.itemID == decoderItem->itemID && it.count > 0) {
 			hasDecoderRemaining = true;
 		}
-		if (boxDef->requireBoxID != 0 && it.itemID == boxDef->requireBoxID && it.count > 0) {
+		if (it.itemID == CBOX_ITEM_ID && it.count > 0) {
 			hasBoxRemaining = true;
 		}
 	}
@@ -404,8 +473,8 @@ bool ItemBoxManager::OpenBox(User* user, unsigned short decoderSlotID, unsigned 
 	if (boxDeleted) deletedSlots.push_back(boxSlotID);
 	packetManager.SendPacket_Inventory(connection, updatedInv, deletedSlots);
 
-	// 10. Broadcast announcement if gold grade (4) or silver grade (3) or marked broadcast
-	bool shouldBroadcast = wonItem->broadcast || (wonItem->grade >= 3 && _settings.broadcastGoldGrade);
+	// 10. Broadcast announcement if won item qualifies (by default, grade >= broadcastMinGrade)
+	bool shouldBroadcast = (wonItem->broadcast == 1) || (wonItem->broadcast == -1 && wonItem->grade >= _settings.broadcastMinGrade);
 	if (shouldBroadcast) {
 		string playerName = user->GetUserName();
 		auto charResult = user->GetUserCharacter(USERCHARACTER_FLAG_NICKNAME);
@@ -413,7 +482,7 @@ bool ItemBoxManager::OpenBox(User* user, unsigned short decoderSlotID, unsigned 
 			playerName = charResult.userCharacter.nickName;
 		}
 
-		bool isEvent = (boxDef->decoderID == 555 || boxDef->name.find("活動") != string::npos);
+		bool isEvent = (boxDef->decoderID == 555 || boxDef->decoderID == 552 || boxDef->name.find("活動") != string::npos);
 		string keyPrefix = isEvent ? "EVENT_LOTTERY_WIN_" : "LOTTERY_WIN_";
 		string gradeKey = (wonItem->grade >= 4) ? "SPREMIUM" : "PREMIUM";
 		string fullKey = keyPrefix + gradeKey;
