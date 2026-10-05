@@ -16,7 +16,7 @@ enum Packet_UMsgType {
 	SystemDialog = 20,
 	SystemReply_Red = 20,
 	SystemReply_Green = 21,
-	WarningMessage = 20,
+	WarningMessage = 30,
 	RollingBanner = 10,
 	SystemReply_MsgBox = 30,
 	GMMessage = 40,

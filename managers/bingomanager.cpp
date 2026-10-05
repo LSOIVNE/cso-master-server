@@ -266,12 +266,12 @@ bool BingoManager::ResetBoard(TCPConnection::pointer connection, User* user) {
 	if (!ucRes.result || ucRes.userCharacter.cash < _settings.resetCost) {
 		serverConsole.Print(PrefixType::Warn, format("[ BingoManager ] User ({}) lacks cash to reset bingo board (has {}, needs {})!\n",
 			user->GetUserLogName(), ucRes.userCharacter.cash, _settings.resetCost));
-		packet_UMsgManager.SendPacket_UMsg_ServerMessage(connection, Packet_UMsgType::WarningMessage, "Shop_BUY_FAIL_NO_CASH");
+		packet_UMsgManager.SendPacket_UMsg_PublicNotice(connection, "樂豆點不足，無法重置賓果盤！");
 		return false;
 	}
 
 	if (!databaseManager.DeductUserFunds(userID, false, _settings.resetCost)) {
-		packet_UMsgManager.SendPacket_UMsg_ServerMessage(connection, Packet_UMsgType::WarningMessage, "Shop_BUY_FAIL_NO_CASH");
+		packet_UMsgManager.SendPacket_UMsg_PublicNotice(connection, "樂豆點不足，無法重置賓果盤！");
 		return false;
 	}
 
@@ -327,12 +327,12 @@ bool BingoManager::ShuffleBoard(TCPConnection::pointer connection, User* user) {
 	if (!ucRes.result || ucRes.userCharacter.cash < _settings.shuffleCost) {
 		serverConsole.Print(PrefixType::Warn, format("[ BingoManager ] User ({}) lacks cash to shuffle bingo board (has {}, needs {})!\n",
 			user->GetUserLogName(), ucRes.userCharacter.cash, _settings.shuffleCost));
-		packet_UMsgManager.SendPacket_UMsg_ServerMessage(connection, Packet_UMsgType::WarningMessage, "Shop_BUY_FAIL_NO_CASH");
+		packet_UMsgManager.SendPacket_UMsg_PublicNotice(connection, "樂豆點不足，無法移位賓果盤！");
 		return false;
 	}
 
 	if (!databaseManager.DeductUserFunds(userID, false, _settings.shuffleCost)) {
-		packet_UMsgManager.SendPacket_UMsg_ServerMessage(connection, Packet_UMsgType::WarningMessage, "Shop_BUY_FAIL_NO_CASH");
+		packet_UMsgManager.SendPacket_UMsg_PublicNotice(connection, "樂豆點不足，無法移位賓果盤！");
 		return false;
 	}
 
