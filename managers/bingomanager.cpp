@@ -3,6 +3,7 @@
 #include "serverconsole.h"
 #include "packetmanager.h"
 #include "packet_updateinfomanager.h"
+#include "packet_umsgmanager.h"
 #include "itemdefinitionmanager.h"
 #include "nlohmann/json.hpp"
 #include <fstream>
@@ -261,33 +262,31 @@ bool BingoManager::ResetBoard(TCPConnection::pointer connection, User* user) {
 	}
 
 	unsigned long userID = user->GetUserID();
-	const UserCharacterResult& ucRes = user->GetUserCharacter(USERCHARACTER_FLAG_CASH);
+	const UserCharacterResult& ucRes = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
 	if (!ucRes.result || ucRes.userCharacter.cash < _settings.resetCost) {
 		serverConsole.Print(PrefixType::Warn, format("[ BingoManager ] User ({}) lacks cash to reset bingo board (has {}, needs {})!\n",
 			user->GetUserLogName(), ucRes.userCharacter.cash, _settings.resetCost));
-		SendPacket_Bingo_Result(connection, false);
+		packet_UMsgManager.SendPacket_UMsg_ServerMessage(connection, Packet_UMsgType::WarningMessage, "Shop_BUY_FAIL_NO_CASH");
 		return false;
 	}
 
 	if (!databaseManager.DeductUserFunds(userID, false, _settings.resetCost)) {
-		SendPacket_Bingo_Result(connection, false);
+		packet_UMsgManager.SendPacket_UMsg_ServerMessage(connection, Packet_UMsgType::WarningMessage, "Shop_BUY_FAIL_NO_CASH");
 		return false;
 	}
 
-	// Sync deducted cash to client
-	UserCharacterResult updatedUC = user->GetUserCharacter(USERCHARACTER_FLAG_CASH);
-	if (updatedUC.result) {
-		packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, updatedUC.userCharacter });
+	// Sync deducted cash to client HUD immediately (requires USERCHARACTER_FLAG_ALL for 0x400 flag)
+	auto charResult = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
+	if (charResult.result) {
+		packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, charResult.userCharacter });
 	}
 
 	BingoBoard newBoard;
 	if (!GenerateNewBoard(userID, newBoard)) {
-		SendPacket_Bingo_Result(connection, false);
 		return false;
 	}
 
 	if (!databaseManager.ResetUserBingoBoard(userID, newBoard)) {
-		SendPacket_Bingo_Result(connection, false);
 		return false;
 	}
 
@@ -299,7 +298,6 @@ bool BingoManager::ResetBoard(TCPConnection::pointer connection, User* user) {
 	serverConsole.Print(PrefixType::Info, format("[ BingoManager ] User ({}) successfully reset bingo board (spent {} cash)\n",
 		user->GetUserLogName(), _settings.resetCost));
 
-	SendPacket_Bingo_Result(connection, true);
 	SendPacket_Bingo_SyncBoard(connection, newBoard);
 	return true;
 }
@@ -312,7 +310,6 @@ bool BingoManager::ShuffleBoard(TCPConnection::pointer connection, User* user) {
 	unsigned long userID = user->GetUserID();
 	BingoBoard board;
 	if (!GetOrInitBoard(userID, board)) {
-		SendPacket_Bingo_Result(connection, false);
 		return false;
 	}
 
@@ -322,26 +319,27 @@ bool BingoManager::ShuffleBoard(TCPConnection::pointer connection, User* user) {
 	if (completedLines > _settings.maxShuffleCompletedLines || openedNumbers > _settings.maxShuffleOpenedNumbers) {
 		serverConsole.Print(PrefixType::Warn, format("[ BingoManager ] User ({}) cannot shuffle: completedLines={}, openedNumbers={}\n",
 			user->GetUserLogName(), completedLines, openedNumbers));
-		SendPacket_Bingo_Result(connection, false);
+		packet_UMsgManager.SendPacket_UMsg_ServerMessage(connection, Packet_UMsgType::WarningMessage, "BINGO_SHUFFLE_NUMBERS_FAILED_SHUFFLE_LIMIT_EXCEED");
 		return false;
 	}
 
-	const UserCharacterResult& ucRes = user->GetUserCharacter(USERCHARACTER_FLAG_CASH);
+	const UserCharacterResult& ucRes = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
 	if (!ucRes.result || ucRes.userCharacter.cash < _settings.shuffleCost) {
 		serverConsole.Print(PrefixType::Warn, format("[ BingoManager ] User ({}) lacks cash to shuffle bingo board (has {}, needs {})!\n",
 			user->GetUserLogName(), ucRes.userCharacter.cash, _settings.shuffleCost));
-		SendPacket_Bingo_Result(connection, false);
+		packet_UMsgManager.SendPacket_UMsg_ServerMessage(connection, Packet_UMsgType::WarningMessage, "Shop_BUY_FAIL_NO_CASH");
 		return false;
 	}
 
 	if (!databaseManager.DeductUserFunds(userID, false, _settings.shuffleCost)) {
-		SendPacket_Bingo_Result(connection, false);
+		packet_UMsgManager.SendPacket_UMsg_ServerMessage(connection, Packet_UMsgType::WarningMessage, "Shop_BUY_FAIL_NO_CASH");
 		return false;
 	}
 
-	UserCharacterResult updatedUC = user->GetUserCharacter(USERCHARACTER_FLAG_CASH);
-	if (updatedUC.result) {
-		packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, updatedUC.userCharacter });
+	// Sync deducted cash to client HUD immediately (requires USERCHARACTER_FLAG_ALL for 0x400 flag)
+	auto charResult = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
+	if (charResult.result) {
+		packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, charResult.userCharacter });
 	}
 
 	// Shuffle the 25 slot contents
@@ -405,7 +403,6 @@ bool BingoManager::ShuffleBoard(TCPConnection::pointer connection, User* user) {
 	serverConsole.Print(PrefixType::Info, format("[ BingoManager ] User ({}) successfully shuffled bingo board (spent {} cash)\n",
 		user->GetUserLogName(), _settings.shuffleCost));
 
-	SendPacket_Bingo_Result(connection, true);
 	SendPacket_Bingo_SyncBoard(connection, board);
 	return true;
 }

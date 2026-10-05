@@ -1127,7 +1127,7 @@ bool DatabaseManager::DeductUserFunds(unsigned long userID, bool isPoints, unsig
             amount, userID, amount);
     }
     else {
-        query = format("UPDATE user_characters SET cash = cash - {}, unk400 = cash - {} WHERE userID = {} AND cash >= {};",
+        query = format("UPDATE user_characters SET cash = cash - {}, unk400 = unk400 - {} WHERE userID = {} AND cash >= {};",
             amount, amount, userID, amount);
     }
 
@@ -1161,7 +1161,7 @@ bool DatabaseManager::AddUserFunds(unsigned long userID, bool isPoints, unsigned
             amount, userID);
     }
     else {
-        query = format("UPDATE user_characters SET cash = cash + {}, unk400 = cash + {} WHERE userID = {};",
+        query = format("UPDATE user_characters SET cash = cash + {}, unk400 = unk400 + {} WHERE userID = {};",
             amount, amount, userID);
     }
 

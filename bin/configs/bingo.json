@@ -5,7 +5,7 @@
     "ShuffleCost": 35,
     "MaxShuffleCompletedLines": 0,
     "MaxShuffleOpenedNumbers": 10,
-    "TestRollNumber": 38
+    "TestRollNumber": -1
   },
   "Prizes": [
     { "ItemID": 483, "Name": "青龍偃月刀", "Count": 1, "Duration": 0, "Weight": 5 },
