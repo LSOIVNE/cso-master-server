@@ -49,6 +49,14 @@ char User::CreateUserCharacter(const string& nickName) const noexcept {
 	return databaseManager.CreateUserCharacter(_userID, nickName);
 }
 
+bool User::UpdateUserNickName(const string& nickName) const noexcept {
+	return databaseManager.UpdateUserNickName(_userID, nickName);
+}
+
+bool User::UpdateUserCamoNickName(const string& camoNickName) const noexcept {
+	return databaseManager.UpdateUserCamoNickName(_userID, camoNickName);
+}
+
 UserCharacterResult User::GetUserCharacter(unsigned long flag) const noexcept {
 	return databaseManager.GetUserCharacter(_userID, flag);
 }

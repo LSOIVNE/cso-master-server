@@ -97,6 +97,66 @@ const LoginResult DatabaseManager::Login(const string& userName, const string& p
     return loginResult;
 }
 
+bool DatabaseManager::IsNickNameExists(const string& nickName) {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    char escaped[64] = {};
+    mysql_real_escape_string(_connection, escaped, nickName.c_str(), (unsigned long)nickName.size());
+
+    string query = format("SELECT userID FROM user_characters WHERE nickName = '{}' LIMIT 1;", escaped);
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on IsNickNameExists: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    MYSQL_RES* res = mysql_store_result(_connection);
+    if (res == NULL) {
+        return false;
+    }
+
+    bool exists = (mysql_num_rows(res) > 0);
+    mysql_free_result(res);
+    return exists;
+}
+
+bool DatabaseManager::UpdateUserNickName(unsigned long userID, const string& nickName) {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    char escaped[64] = {};
+    mysql_real_escape_string(_connection, escaped, nickName.c_str(), (unsigned long)nickName.size());
+
+    string query = format("UPDATE user_characters SET nickName = '{}' WHERE userID = {};", escaped, userID);
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on UpdateUserNickName: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Updated nickName for userID {} to '{}'\n", userID, nickName));
+    return true;
+}
+
+bool DatabaseManager::UpdateUserCamoNickName(unsigned long userID, const string& camoNickName) {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    char escaped[64] = {};
+    mysql_real_escape_string(_connection, escaped, camoNickName.c_str(), (unsigned long)camoNickName.size());
+
+    string query = format("UPDATE user_characters SET unk4_1 = '{}' WHERE userID = {};", escaped, userID);
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on UpdateUserCamoNickName: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Updated camoNickName (unk4_1) for userID {} to '{}'\n", userID, camoNickName));
+    return true;
+}
+
 char DatabaseManager::CreateUserCharacter(unsigned long userID, const string& nickName) {
     string query = format("INSERT INTO user_characters (userID, nickName) VALUES ({}, '{}');", userID, nickName);
 

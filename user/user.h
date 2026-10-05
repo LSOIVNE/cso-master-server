@@ -138,6 +138,8 @@ public:
 	}
 
 	char CreateUserCharacter(const string& nickName) const noexcept;
+	bool UpdateUserNickName(const string& nickName) const noexcept;
+	bool UpdateUserCamoNickName(const string& camoNickName) const noexcept;
 	UserCharacterResult GetUserCharacter(unsigned long flag) const noexcept;
 	char CreateUserBuymenus() const noexcept;
 	char CreateUserBookmarks() const noexcept;

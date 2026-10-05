@@ -43,6 +43,9 @@ public:
 	bool Init(const string& server, const string& user, const string& password, const string& database);
 	void Shutdown();
 	const LoginResult Login(const string& userName, const string& password);
+	bool IsNickNameExists(const string& nickName);
+	bool UpdateUserNickName(unsigned long userID, const string& nickName);
+	bool UpdateUserCamoNickName(unsigned long userID, const string& camoNickName);
 	char CreateUserCharacter(unsigned long userID, const string& nickName);
 	const UserCharacterResult GetUserCharacter(unsigned long userID, unsigned long flag);
 	bool CreateUserBuymenus(unsigned long userID);
