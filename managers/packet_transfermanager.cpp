@@ -125,6 +125,11 @@ void Packet_TransferManager::ParsePacket_RequestTransfer(TCPConnection::Packet::
 
 			bingoManager.SendEventActive(connection);
 
+			BingoBoard initialBoard;
+			if (bingoManager.GetOrInitBoard(user->GetUserID(), initialBoard)) {
+				bingoManager.SendPacket_Bingo_SyncBoard(connection, initialBoard);
+			}
+
 			packet_UpdateInfoManager.SendPacket_UserUpdateInfo_ChatCount(connection, user->GetUserID(), 255);
 
 			string channelLoginMsg = "";

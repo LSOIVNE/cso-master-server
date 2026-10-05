@@ -15,7 +15,7 @@
           "Count": 1,
           "Price": 400,
           "AdType": 6,
-          "IsCount": 0
+          "IsCount": 1
         }
       ]
     },
@@ -268,7 +268,7 @@
           "Price": 149,
 		  "AdditionalPoints": 50000,
           "AdType": 6,
-		  "IsCount": 1
+		  "IsCount": 0
         }
       ]
     },
@@ -323,6 +323,61 @@
           "Count": 1,
           "Price": 199,
           "AdType": 6,
+          "IsCount": 1
+        }
+      ]
+    },
+	{
+      "ProductID": 30076,
+      "Name": "窈窕淑女強化包",
+      "IsPoints": 0,
+      "PackageItems": [
+        { "ItemID": 425, "Duration": 0, "Count": 1 },
+        { "ItemID": 426, "Duration": 0, "Count": 1 },
+		{ "ItemID": 5204, "Duration": 0, "Count": 100 }
+      ],
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 499,
+          "AdType": 5,
+          "IsCount": 1
+        }
+      ]
+    },
+	{
+      "ProductID": 30017,
+      "Name": "性感雙蝶",
+      "IsPoints": 0,
+      "PackageItems": [
+        { "ItemID": 152, "Duration": 0, "Count": 1 },
+        { "ItemID": 154, "Duration": 0, "Count": 1 }
+      ],
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 299,
+          "AdType": 5,
+          "IsCount": 1
+        }
+      ]
+    },
+	{
+      "ProductID": 30016,
+      "Name": "清純雙嬌",
+      "IsPoints": 0,
+      "PackageItems": [
+        { "ItemID": 150, "Duration": 0, "Count": 1 },
+        { "ItemID": 155, "Duration": 0, "Count": 1 }
+      ],
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 299,
+          "AdType": 5,
           "IsCount": 1
         }
       ]
@@ -398,7 +453,8 @@
           "Duration": 0,
           "Count": 1,
           "Price": 719,
-          "AdType": 6
+          "AdType": 6,
+		  "IsCount": 1
         }
       ]
     },
@@ -417,7 +473,8 @@
           "Duration": 0,
           "Count": 1,
           "Price": 719,
-          "AdType": 6
+          "AdType": 6,
+		  "IsCount": 1
         }
       ]
     },
@@ -454,7 +511,8 @@
 		  "IsCount": 0,
           "Price": 149,
 		  "AdditionalPoints": 50000,
-          "AdType": 7
+          "AdType": 7,
+		  "IsCount": 1
         }
       ]
     },
@@ -756,7 +814,7 @@
     },
     {
       "ProductID": 212,
-      "Name": "M24Grenade",
+      "Name": "德軍手榴彈",
       "IsPoints": 1,
       "Offers": [
         {

@@ -11,6 +11,7 @@
 #include <random>
 #include <algorithm>
 #include <ctime>
+#include <thread>
 
 using json = nlohmann::json;
 
@@ -534,25 +535,44 @@ bool BingoManager::OnClientRequestSyncBoard(TCPConnection::pointer connection, U
 		serverConsole.Print(PrefixType::Info, format("[ BingoManager ] User ({}) syncing board with pending roll: num={}, hitSlot={}, lines={}\n",
 			user->GetUserLogName(), (int)pendingRoll.winNumber, pendingRoll.hitSlotIdx, pendingRoll.newlyCompletedLines.size()));
 
-		BingoBoard maskedBoard = board;
-		if (pendingRoll.hitSlotIdx >= 0 && pendingRoll.hitSlotIdx < (int)maskedBoard.slots.size()) {
-			maskedBoard.slots[pendingRoll.hitSlotIdx].opened = 0;
-		}
-		for (unsigned char lineIdx : pendingRoll.newlyCompletedLines) {
-			if (lineIdx < maskedBoard.prizes.size()) {
-				maskedBoard.prizes[lineIdx].opened = 0;
+		if (pendingRoll.hitSlotIdx >= 0) {
+			BingoBoard maskedBoard = board;
+			if (pendingRoll.hitSlotIdx < (int)maskedBoard.slots.size()) {
+				maskedBoard.slots[pendingRoll.hitSlotIdx].opened = 0;
 			}
+			for (unsigned char lineIdx : pendingRoll.newlyCompletedLines) {
+				if (lineIdx < maskedBoard.prizes.size()) {
+					maskedBoard.prizes[lineIdx].opened = 0;
+				}
+			}
+
+			// 1. Send masked board so client memory has the target slot & prize unopened
+			SendPacket_Bingo_SyncBoard(connection, maskedBoard);
+
+			// 2. Send RollNumber animation
+			SendPacket_Bingo_RollNumber(connection, pendingRoll.winNumber);
+
+			// 3. If lines completed, send LineCompleted animation
+			if (!pendingRoll.newlyCompletedLines.empty()) {
+				SendPacket_Bingo_LineCompleted(connection, pendingRoll.newlyCompletedLines);
+			}
+
+			// 4. Delayed sync of the real board:
+			// While bingo_number.bik (1.6s) is playing, sub_100619E0 is blocked.
+			// Sending the real board during playback ensures client memory gets opened = 1.
+			// When animations finish, sub_100619E0 runs and maintains the dark / stamped state!
+			std::thread([connection, board, userID]() {
+				std::this_thread::sleep_for(std::chrono::milliseconds(400));
+				User* u = userManager.GetUserByConnection(connection);
+				if (u && userManager.IsUserLoggedIn(u) && u->GetUserID() == userID) {
+					bingoManager.SendPacket_Bingo_SyncBoard(connection, board);
+				}
+			}).detach();
 		}
-
-		// 1. Send the pre-roll board (with hit slot & newly completed lines masked as unopened)
-		SendPacket_Bingo_SyncBoard(connection, maskedBoard);
-
-		// 2. Send RollNumber animation
-		SendPacket_Bingo_RollNumber(connection, pendingRoll.winNumber);
-
-		// 3. If lines completed, send LineCompleted animation
-		if (!pendingRoll.newlyCompletedLines.empty()) {
-			SendPacket_Bingo_LineCompleted(connection, pendingRoll.newlyCompletedLines);
+		else {
+			// Duplicate or miss: no animation needed
+			SendPacket_Bingo_SyncBoard(connection, board);
+			SendPacket_Bingo_RollNumber(connection, pendingRoll.winNumber);
 		}
 	}
 	else {
