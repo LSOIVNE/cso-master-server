@@ -98,6 +98,8 @@ public:
 	bool EnsureAttendanceTables();
 	bool GetUserAttendance(unsigned long userID, AttendanceRecord& outRecord);
 	bool RecordUserAttendance(unsigned long userID, unsigned char newConsecutiveDays);
+	bool ResetUserAttendance(unsigned long userID, unsigned char targetStreak = 255);
+	bool AdvanceUserAttendanceNextDay(unsigned long userID);
 
 private:
 	MYSQL* _connection;

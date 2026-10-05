@@ -128,33 +128,71 @@ bool AttendanceManager::LoadConfig(const std::string& configPath) {
 	}
 }
 
-std::vector<AttendanceRewardItem> AttendanceManager::selectCandidateItems() {
-	std::vector<AttendanceRewardItem> candidates;
-	if (_config.candidatePool.size() >= 4) {
-		for (size_t i = 0; i < 4; ++i) {
-			candidates.push_back(_config.candidatePool[i]);
+void AttendanceManager::ClearUserCandidates(unsigned long userID) {
+	_userCandidates.erase(userID);
+}
+
+std::vector<AttendanceRewardItem> AttendanceManager::selectCandidateItems(User* user) {
+	if (user != nullptr) {
+		auto it = _userCandidates.find(user->GetUserID());
+		if (it != _userCandidates.end() && it->second.size() == 4) {
+			return it->second;
 		}
+	}
+
+	std::vector<AttendanceRewardItem> candidates;
+	if (_config.candidatePool.size() <= 4) {
+		candidates = _config.candidatePool;
 	}
 	else {
-		candidates = _config.candidatePool;
-		// Pad with defaults if less than 4
-		while (candidates.size() < 4) {
-			AttendanceRewardItem fallback;
-			if (candidates.size() == 0) {
-				fallback = { 261, 3, 0, 0, 0, 0, 25, "領航者 M79" };
+		// Randomly select 4 distinct items from CandidatePool (weighted sampling without replacement)
+		std::vector<AttendanceRewardItem> poolCopy = _config.candidatePool;
+		std::random_device rd;
+		std::mt19937 gen(rd());
+
+		for (int i = 0; i < 4 && !poolCopy.empty(); ++i) {
+			unsigned int totalWeight = 0;
+			for (const auto& item : poolCopy) {
+				totalWeight += (item.weight > 0 ? item.weight : 1);
 			}
-			else if (candidates.size() == 1) {
-				fallback = { 166, 0, 2, 0, 0, 0, 35, "普通密碼箱" };
+			std::uniform_int_distribution<unsigned int> dist(0, totalWeight > 0 ? totalWeight - 1 : 0);
+			unsigned int roll = dist(gen);
+			unsigned int currentW = 0;
+			size_t chosenIdx = 0;
+			for (size_t j = 0; j < poolCopy.size(); ++j) {
+				currentW += (poolCopy[j].weight > 0 ? poolCopy[j].weight : 1);
+				if (roll < currentW) {
+					chosenIdx = j;
+					break;
+				}
 			}
-			else if (candidates.size() == 2) {
-				fallback = { 173, 0, 1, 0, 1, 0, 20, "電子破譯晶片" };
-			}
-			else {
-				fallback = { 108, 1, 0, 0, 0, 1500, 20, "Point加倍卡" };
-			}
-			candidates.push_back(fallback);
+			candidates.push_back(poolCopy[chosenIdx]);
+			poolCopy.erase(poolCopy.begin() + chosenIdx);
 		}
 	}
+
+	// Pad with defaults if less than 4
+	while (candidates.size() < 4) {
+		AttendanceRewardItem fallback;
+		if (candidates.size() == 0) {
+			fallback = { 261, 3, 0, 0, 0, 0, 25, "領航者 M79" };
+		}
+		else if (candidates.size() == 1) {
+			fallback = { 166, 0, 2, 0, 0, 0, 35, "普通密碼箱" };
+		}
+		else if (candidates.size() == 2) {
+			fallback = { 173, 0, 1, 0, 1, 0, 20, "電子破譯晶片" };
+		}
+		else {
+			fallback = { 108, 1, 0, 0, 0, 1500, 20, "Point加倍卡" };
+		}
+		candidates.push_back(fallback);
+	}
+
+	if (user != nullptr) {
+		_userCandidates[user->GetUserID()] = candidates;
+	}
+
 	return candidates;
 }
 
@@ -263,7 +301,7 @@ void AttendanceManager::SendAttendanceInfo(User* user, bool forceOpen) {
 		}
 	}
 
-	auto candidates = selectCandidateItems();
+	auto candidates = selectCandidateItems(user);
 
 	auto packet = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::Item });
 	packet->WriteUInt8(Packet_ItemType::Roulette); // 8
@@ -313,7 +351,7 @@ void AttendanceManager::ClaimAttendanceReward(User* user) {
 	if (!connection) return;
 
 	if (!_config.enabled) {
-		packet_UMsgManager.SendPacket_UMsg_PublicNotice(connection, "[每日戰場補給] 活動目前未開啟。");
+		packet_UMsgManager.SendPacket_UMsg_ServerMessageText(connection, "[每日戰場補給] 活動目前未開啟。");
 		return;
 	}
 
@@ -323,7 +361,7 @@ void AttendanceManager::ClaimAttendanceReward(User* user) {
 
 	if (!record.canCheckIn) {
 		serverConsole.Print(PrefixType::Warn, format("[ AttendanceManager ] User ({}) attempted duplicate claim today!\n", user->GetUserLogName()));
-		packet_UMsgManager.SendPacket_UMsg_PublicNotice(connection, "[每日戰場補給] 您今天已經領取過簽到獎勵囉，請明天再來！");
+		packet_UMsgManager.SendPacket_UMsg_ServerMessageText(connection, "[每日戰場補給] 您今天已經領取過簽到獎勵囉，請明天再來！");
 		return;
 	}
 
@@ -337,11 +375,11 @@ void AttendanceManager::ClaimAttendanceReward(User* user) {
 
 	if (!databaseManager.RecordUserAttendance(userID, newConsecutiveDays)) {
 		serverConsole.Print(PrefixType::Warn, format("[ AttendanceManager ] User ({}) atomic check-in rejected (already claimed)!\n", user->GetUserLogName()));
-		packet_UMsgManager.SendPacket_UMsg_PublicNotice(connection, "[每日戰場補給] 您今天已經領取過簽到獎勵囉，請明天再來！");
+		packet_UMsgManager.SendPacket_UMsg_ServerMessageText(connection, "[每日戰場補給] 您今天已經領取過簽到獎勵囉，請明天再來！");
 		return;
 	}
 
-	auto candidates = selectCandidateItems();
+	auto candidates = selectCandidateItems(user);
 	unsigned int totalWeight = 0;
 	for (const auto& c : candidates) {
 		totalWeight += (c.weight > 0 ? c.weight : 1);
@@ -400,6 +438,9 @@ void AttendanceManager::ClaimAttendanceReward(User* user) {
 
 	packet->Send();
 
+	// Clear cached candidate items so next claim opportunity will sample a fresh set
+	ClearUserCandidates(userID);
+
 	// Sync inventory and currency
 	packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
 	auto charResult = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
@@ -410,7 +451,7 @@ void AttendanceManager::ClaimAttendanceReward(User* user) {
 
 	std::string notice = format("[每日戰場補給] 簽到成功！連續登入第 {} 天！獲得「{}」與「{}」！",
 		newConsecutiveDays, displayDaily, displayCand);
-	packet_UMsgManager.SendPacket_UMsg_PublicNotice(connection, notice);
+	packet_UMsgManager.SendPacket_UMsg_ServerMessageText(connection, notice);
 
 	serverConsole.Print(PrefixType::Info, format("[ AttendanceManager ] User ({}) claimed Day {} attendance! Won '{}' and '{}'\n",
 		user->GetUserLogName(), newConsecutiveDays, displayDaily, displayCand));

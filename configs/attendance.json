@@ -56,19 +56,19 @@
       "ItemID": 261,
       "Duration": 3,
       "Count": 0,
-      "Weight": 25
+      "Weight": 20
     },
     {
       "ItemID": 166,
       "Duration": 0,
       "Count": 2,
-      "Weight": 35
+      "Weight": 30
     },
     {
       "ItemID": 173,
       "Duration": 0,
       "Count": 1,
-      "Weight": 20,
+      "Weight": 25,
       "IsEvent": 1
     },
     {
@@ -76,6 +76,70 @@
       "Duration": 1,
       "Count": 0,
       "Points": 1500,
+      "Weight": 25
+    },
+    {
+      "ItemID": 242,
+      "Duration": 3,
+      "Count": 0,
+      "Weight": 15
+    },
+    {
+      "ItemID": 170,
+      "Duration": 1,
+      "Count": 0,
+      "Weight": 10,
+      "IsEvent": 1
+    },
+    {
+      "ItemID": 244,
+      "Duration": 1,
+      "Count": 0,
+      "Weight": 10,
+      "IsEvent": 1
+    },
+    {
+      "ItemID": 220,
+      "Duration": 1,
+      "Count": 0,
+      "Weight": 10,
+      "IsEvent": 1
+    },
+    {
+      "ItemID": 172,
+      "Duration": 1,
+      "Count": 0,
+      "Weight": 15,
+      "IsEvent": 1
+    },
+    {
+      "ItemID": 307,
+      "Duration": 3,
+      "Count": 0,
+      "Weight": 15
+    },
+    {
+      "ItemID": 308,
+      "Duration": 3,
+      "Count": 0,
+      "Weight": 15
+    },
+    {
+      "ItemID": 259,
+      "Duration": 0,
+      "Count": 10,
+      "Weight": 20
+    },
+    {
+      "ItemID": 260,
+      "Duration": 0,
+      "Count": 5,
+      "Weight": 20
+    },
+    {
+      "ItemID": 138,
+      "Duration": 3,
+      "Count": 0,
       "Weight": 20
     }
   ]

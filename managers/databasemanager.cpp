@@ -1531,5 +1531,67 @@ bool DatabaseManager::RecordUserAttendance(unsigned long userID, unsigned char n
     return true;
 }
 
+bool DatabaseManager::ResetUserAttendance(unsigned long userID, unsigned char targetStreak) {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    string query;
+    if (targetStreak == 255) {
+        // Revert today's check-in so today can be claimed again
+        query = format(
+            "UPDATE user_attendance "
+            "SET consecutiveDays = IF(lastCheckInDate = CURDATE() AND consecutiveDays > 0, consecutiveDays - 1, consecutiveDays), "
+            "    totalCheckIns = IF(lastCheckInDate = CURDATE() AND totalCheckIns > 0, totalCheckIns - 1, totalCheckIns), "
+            "    lastCheckInDate = DATE_SUB(CURDATE(), INTERVAL 1 DAY) "
+            "WHERE userID = {};", userID);
+    }
+    else {
+        // Set exact streak (0 = Day 1 next, 1 = Day 2 next, etc.) and unlock
+        query = format(
+            "UPDATE user_attendance "
+            "SET consecutiveDays = {}, "
+            "    lastCheckInDate = DATE_SUB(CURDATE(), INTERVAL 1 DAY) "
+            "WHERE userID = {};", (int)targetStreak, userID);
+    }
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on ResetUserAttendance: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    return true;
+}
+
+bool DatabaseManager::AdvanceUserAttendanceNextDay(unsigned long userID) {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    AttendanceRecord record;
+    if (!GetUserAttendance(userID, record)) {
+        return false;
+    }
+
+    unsigned char newStreak = record.consecutiveDays;
+    if (record.canCheckIn) {
+        newStreak = (record.consecutiveDays % 7) + 1;
+    }
+
+    string query = format(
+        "UPDATE user_attendance "
+        "SET consecutiveDays = {}, "
+        "    lastCheckInDate = DATE_SUB(CURDATE(), INTERVAL 1 DAY) "
+        "WHERE userID = {};", (int)newStreak, userID);
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on AdvanceUserAttendanceNextDay: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    return true;
+}
+
+
 
 

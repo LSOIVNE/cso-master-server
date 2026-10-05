@@ -8,6 +8,7 @@
 #include "noticemanager.h"
 #include "packet_shopmanager.h"
 #include "packet_updateinfomanager.h"
+#include "attendancemanager.h"
 #include "serverconfig.h"
 #include <sstream>
 #include <unordered_set>
@@ -488,7 +489,9 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		cmdLower != "/notice" && cmdLower != "/msg" && cmdLower != "/gm" && cmdLower != "/dialog" &&
 		cmdLower != "/banner" && cmdLower != "/yell" && cmdLower != "/reloadnotice" &&
 		cmdLower != "/addpoints" && cmdLower != "/addgash" &&
-		cmdLower != "/reloadshop") {
+		cmdLower != "/reloadshop" &&
+		cmdLower != "/resetdaily" && cmdLower != "/resetday" && cmdLower != "/resetattendance" &&
+		cmdLower != "/nextdaily" && cmdLower != "/nextday" && cmdLower != "/nextattendance") {
 		return false;
 	}
 
@@ -505,7 +508,9 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 	};
 
 	if (cmdLower == "/additem" || cmdLower == "/addallitem" || cmdLower == "/resetinv" || cmdLower == "/resetitem" ||
-		cmdLower == "/addpoints" || cmdLower == "/addgash") {
+		cmdLower == "/addpoints" || cmdLower == "/addgash" ||
+		cmdLower == "/resetdaily" || cmdLower == "/resetday" || cmdLower == "/resetattendance" ||
+		cmdLower == "/nextdaily" || cmdLower == "/nextday" || cmdLower == "/nextattendance") {
 		if (!serverConfig.permissions.allowPlayerItemCommands && !isGM) {
 			SendNotice("權限不足：測試指令已被管理員停用！");
 			return true;
@@ -1106,6 +1111,70 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		}
 		else {
 			SendNotice("[系統] 加載商城配置失敗，請檢查 configs/shop.json！");
+		}
+		return true;
+	}
+	else if (cmdLower == "/resetdaily" || cmdLower == "/resetday" || cmdLower == "/resetattendance") {
+		string dayStr;
+		unsigned char targetStreak = 255;
+		if (ss >> dayStr) {
+			try {
+				int d = stoi(dayStr);
+				if (d >= 1 && d <= 7) {
+					targetStreak = (unsigned char)(d - 1);
+				}
+			}
+			catch (...) {}
+		}
+
+		if (databaseManager.ResetUserAttendance(userID, targetStreak)) {
+			attendanceManager.ClearUserCandidates(userID);
+			attendanceManager.SendAttendanceInfo(user, true);
+
+			AttendanceRecord record;
+			databaseManager.GetUserAttendance(userID, record);
+			unsigned char nextDay = (record.consecutiveDays % 7) + 1;
+			SendNotice(format("[系統] 今日簽到抽獎已重置！當前已解鎖第 {} 天簽到獎勵，簽到介面已刷新。", nextDay));
+		}
+		else {
+			SendNotice("[系統] 重置今日簽到失敗，數據庫寫入錯誤！");
+		}
+		return true;
+	}
+	else if (cmdLower == "/nextdaily" || cmdLower == "/nextday" || cmdLower == "/nextattendance") {
+		string dayStr;
+		bool specificDay = false;
+		unsigned char targetStreak = 0;
+		if (ss >> dayStr) {
+			try {
+				int d = stoi(dayStr);
+				if (d >= 1 && d <= 7) {
+					specificDay = true;
+					targetStreak = (unsigned char)(d - 1);
+				}
+			}
+			catch (...) {}
+		}
+
+		bool ok = false;
+		if (specificDay) {
+			ok = databaseManager.ResetUserAttendance(userID, targetStreak);
+		}
+		else {
+			ok = databaseManager.AdvanceUserAttendanceNextDay(userID);
+		}
+
+		if (ok) {
+			attendanceManager.ClearUserCandidates(userID);
+			attendanceManager.SendAttendanceInfo(user, true);
+
+			AttendanceRecord record;
+			databaseManager.GetUserAttendance(userID, record);
+			unsigned char nextDay = (record.consecutiveDays % 7) + 1;
+			SendNotice(format("[系統] 已開啟下一天簽到抽獎！當前已解鎖第 {} 天簽到獎勵，簽到介面已刷新。", nextDay));
+		}
+		else {
+			SendNotice("[系統] 開啟下一天簽到失敗，數據庫寫入錯誤！");
 		}
 		return true;
 	}

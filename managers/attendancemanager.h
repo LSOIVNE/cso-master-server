@@ -26,6 +26,8 @@ struct AttendanceConfig {
 	std::vector<AttendanceRewardItem> candidatePool;
 };
 
+#include <unordered_map>
+
 class AttendanceManager {
 public:
 	bool Init(const std::string& configPath = "configs/attendance.json");
@@ -40,11 +42,15 @@ public:
 	// Handles Packet 78 Subtype 8 Action 1 (claim reward / spin)
 	void ClaimAttendanceReward(User* user);
 
+	// Clears cached candidate items for a user (e.g. after claim or test reset)
+	void ClearUserCandidates(unsigned long userID);
+
 private:
 	bool grantRewardItem(User* user, const AttendanceRewardItem& item);
-	std::vector<AttendanceRewardItem> selectCandidateItems();
+	std::vector<AttendanceRewardItem> selectCandidateItems(User* user = nullptr);
 
 	AttendanceConfig _config;
+	std::unordered_map<unsigned long, std::vector<AttendanceRewardItem>> _userCandidates;
 };
 
 extern AttendanceManager attendanceManager;
