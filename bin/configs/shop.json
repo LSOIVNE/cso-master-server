@@ -24,50 +24,50 @@
       "Name": "豪華經典槍組:內容包含了應有盡有的武器，內含: 228 緊緻型 , ES FIVE-SEVEN , .40 槍神雙槍 , 夜鷹 .50C , LEONE 12 GAUGE SUPER , LEONE YG1265 連發散彈槍 , USAS12 , KM UMP45 , ES C90 , 英格倫 MAC-10 , SCHMIDT 衝鋒槍 , MP7A1 , K1A , 麥格農狙擊槍 , CV-47 , MAVERICK M4A1 卡賓 , SVD , D3/AU-1 , KRIEG 550 COMMANDO , BULLPUP , KRIEG 552 , Clarion 5.56 , IDF 防衛者 , SCAR (強化版) , XM-8 (強化版) , VSK94 , M249 , QBB95.",
       "IsPoints": 1,
       "PackageItems": [
-        { "ItemID": 2, "Duration": 1, "Count": 1 },
-        { "ItemID": 5, "Duration": 1, "Count": 1 },
-        { "ItemID": 4, "Duration": 1, "Count": 1 },
-		{ "ItemID": 7, "Duration": 1, "Count": 1 },
-        { "ItemID": 8, "Duration": 1, "Count": 1 },
-		{ "ItemID": 38, "Duration": 1, "Count": 1 },
-        { "ItemID": 13, "Duration": 1, "Count": 1 },
-		{ "ItemID": 11, "Duration": 1, "Count": 1 },
-        { "ItemID": 10, "Duration": 1, "Count": 1 },
-		{ "ItemID": 9, "Duration": 1, "Count": 1 },
-        { "ItemID": 37, "Duration": 1, "Count": 1 },
-		{ "ItemID": 36, "Duration": 1, "Count": 1 },
-        { "ItemID": 14, "Duration": 1, "Count": 1 },
-		{ "ItemID": 21, "Duration": 1, "Count": 1 },
-        { "ItemID": 15, "Duration": 1, "Count": 1 },
-		{ "ItemID": 39, "Duration": 1, "Count": 1 },
-        { "ItemID": 22, "Duration": 1, "Count": 1 },
-		{ "ItemID": 18, "Duration": 1, "Count": 1 },
-        { "ItemID": 16, "Duration": 1, "Count": 1 },
-		{ "ItemID": 19, "Duration": 1, "Count": 1 },
-        { "ItemID": 20, "Duration": 1, "Count": 1 },
-		{ "ItemID": 23, "Duration": 1, "Count": 1 },
-        { "ItemID": 33, "Duration": 1, "Count": 1 },
-		{ "ItemID": 34, "Duration": 1, "Count": 1 },
-        { "ItemID": 35, "Duration": 1, "Count": 1 },
-		{ "ItemID": 24, "Duration": 1, "Count": 1 },
-        { "ItemID": 32, "Duration": 1, "Count": 1 }
+        { "ItemID": 2 },
+        { "ItemID": 5 },
+        { "ItemID": 4 },
+		{ "ItemID": 7 },
+        { "ItemID": 8 },
+		{ "ItemID": 38 },
+        { "ItemID": 13 },
+		{ "ItemID": 11 },
+        { "ItemID": 10 },
+		{ "ItemID": 9 },
+        { "ItemID": 37 },
+		{ "ItemID": 36 },
+        { "ItemID": 14 },
+		{ "ItemID": 21 },
+        { "ItemID": 15 },
+		{ "ItemID": 39 },
+        { "ItemID": 22 },
+		{ "ItemID": 18 },
+        { "ItemID": 16 },
+		{ "ItemID": 19 },
+        { "ItemID": 20 },
+		{ "ItemID": 23 },
+        { "ItemID": 33 },
+		{ "ItemID": 34 },
+        { "ItemID": 35 },
+		{ "ItemID": 24 },
+        { "ItemID": 32 }
       ],
       "Offers": [
         {
           "Duration": 3,
-          "Count": 3,
+          "Count": 1,
           "Price": 999,
           "AdType": 4
         },
 		{
           "Duration": 10,
-          "Count": 10,
+          "Count": 1,
           "Price": 2790,
           "AdType": 4
         },
         {
           "Duration": 30,
-          "Count": 30,
+          "Count": 1,
           "Price": 9999,
           "AdType": 4
         }
@@ -78,26 +78,26 @@
       "Name": "散彈槍組",
       "IsPoints": 1,
       "PackageItems": [
-        { "ItemID": 7, "Duration": 1, "Count": 1 },
-        { "ItemID": 8, "Duration": 1, "Count": 1 },
-        { "ItemID": 38, "Duration": 1, "Count": 1 }
+        { "ItemID": 7 },
+        { "ItemID": 8 },
+        { "ItemID": 38 }
       ],
       "Offers": [
         {
           "Duration": 3,
-          "Count": 3,
+          "Count": 1,
           "Price": 149,
           "AdType": 4
         },
-		{
+        {
           "Duration": 10,
-          "Count": 10,
+          "Count": 1,
           "Price": 399,
           "AdType": 4
         },
         {
           "Duration": 30,
-          "Count": 30,
+          "Count": 1,
           "Price": 999,
           "AdType": 4
         }
@@ -115,7 +115,25 @@
         {
           "Duration": 0,
           "Count": 1,
-          "Price": 399,
+          "Price": 1299,
+          "AdType": 6,
+          "IsCount": 1
+        }
+      ]
+    },
+	{
+      "ProductID": 20051,
+      "Name": "電子優惠包",
+      "IsPoints": 0,
+      "PackageItems": [
+        { "ItemID": 173, "Duration": 0, "Count": 50 },
+        { "ItemID": 166, "Duration": 0, "Count": 50 }
+      ],
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 1099,
           "AdType": 6,
           "IsCount": 1
         }
@@ -491,7 +509,7 @@
         {
           "Duration": 0,
           "Count": 1,
-          "Price": 880,
+          "Price": 1299,
           "AdType": 6,
           "IsCount": 1
         }
@@ -646,27 +664,15 @@
       ]
     },
     {
-      "ProductID": 422,
-      "Name": "戰魂-SPAS12",
-      "IsPoints": 1,
+      "ProductID": 517,
+      "Name": "獵魔者(BALROG-I)",
+      "IsPoints": 0,
       "Offers": [
         {
-          "Duration": 3,
+          "Duration": 0,
           "Count": 1,
-          "Price": 2457,
-          "AdType": 4
-        },
-        {
-          "Duration": 10,
-          "Count": 1,
-          "Price": 7280,
-          "AdType": 4
-        },
-        {
-          "Duration": 30,
-          "Count": 1,
-          "Price": 19110,
-          "AdType": 4
+          "Price": 349,
+          "AdType": 6
         }
       ]
     },
@@ -793,21 +799,49 @@
           "Duration": 0,
           "Count": 1,
           "Price": 29,
-          "AdType": 4,
-          "IsCount": 1
-        },
-        {
-          "Duration": 0,
-          "Count": 5,
-          "Price": 139,
-          "AdType": 4,
+          "AdType": 6,
           "IsCount": 1
         },
         {
           "Duration": 0,
           "Count": 10,
-          "Price": 270,
-          "AdType": 4,
+          "Price": 261,
+          "AdType": 6,
+          "IsCount": 1
+        },
+        {
+          "Duration": 0,
+          "Count": 20,
+          "Price": 499,
+          "AdType": 6,
+          "IsCount": 1
+        }
+      ]
+    },
+	{
+      "ProductID": 166,
+      "Name": "C-Box",
+      "IsPoints": 1,
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 10,
+          "Price": 299,
+          "AdType": 0,
+          "IsCount": 1
+        },
+        {
+          "Duration": 0,
+          "Count": 50,
+          "Price": 1290,
+          "AdType": 0,
+          "IsCount": 1
+        },
+        {
+          "Duration": 0,
+          "Count": 100,
+          "Price": 9999,
+          "AdType": 0,
           "IsCount": 1
         }
       ]
@@ -1653,21 +1687,21 @@
           "Duration": 0,
           "Count": 1,
           "Price": 29,
-          "AdType": 4,
-          "IsCount": 1
-        },
-        {
-          "Duration": 0,
-          "Count": 5,
-          "Price": 139,
-          "AdType": 4,
+          "AdType": 6,
           "IsCount": 1
         },
         {
           "Duration": 0,
           "Count": 10,
-          "Price": 270,
-          "AdType": 4,
+          "Price": 261,
+          "AdType": 6,
+          "IsCount": 1
+        },
+        {
+          "Duration": 0,
+          "Count": 20,
+          "Price": 499,
+          "AdType": 6,
           "IsCount": 1
         }
       ]
@@ -1681,21 +1715,21 @@
           "Duration": 0,
           "Count": 1,
           "Price": 29,
-          "AdType": 4,
-          "IsCount": 1
-        },
-        {
-          "Duration": 0,
-          "Count": 5,
-          "Price": 139,
-          "AdType": 4,
+          "AdType": 6,
           "IsCount": 1
         },
         {
           "Duration": 0,
           "Count": 10,
-          "Price": 270,
-          "AdType": 4,
+          "Price": 261,
+          "AdType": 6,
+          "IsCount": 1
+        },
+        {
+          "Duration": 0,
+          "Count": 20,
+          "Price": 499,
+          "AdType": 6,
           "IsCount": 1
         }
       ]

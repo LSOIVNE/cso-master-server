@@ -319,18 +319,23 @@ void Packet_ShopManager::parsePacket_Shop_Buy(User* user, TCPConnection::Packet:
 			bool isPeriod = (itemDef != nullptr) ? itemDef->isPeriod : (reward.duration > 0 || (reward.duration == 0 && reward.count == 1));
 
 			if (isPeriod) {
+				unsigned short effectiveDuration = reward.duration;
+				if (offer.duration > 0 && (reward.duration <= 1 || reward.duration == offer.duration)) {
+					effectiveDuration = offer.duration;
+				}
+
 				if (itemOwned) {
 					if (ownedItem.expirationTime == 0) {
 						// Already permanent
 					}
-					else if (reward.duration == 0 || reward.duration == 0xFFFF) {
+					else if (effectiveDuration == 0 || effectiveDuration == 0xFFFF) {
 						// Upgrade to permanent
 						databaseManager.UpdateUserInventoryExpiration(userID, reward.itemID, 0);
 					}
 					else {
 						// Extend expiration
 						unsigned long baseTime = (ownedItem.expirationTime > (unsigned long)now) ? ownedItem.expirationTime : (unsigned long)now;
-						unsigned long newExp = baseTime + (unsigned long)reward.duration * 86400;
+						unsigned long newExp = baseTime + (unsigned long)effectiveDuration * 86400;
 						databaseManager.UpdateUserInventoryExpiration(userID, reward.itemID, newExp);
 					}
 				}
@@ -342,7 +347,7 @@ void Packet_ShopManager::parsePacket_Shop_Buy(User* user, TCPConnection::Packet:
 					newItem.activeFlag = 1;
 					newItem.inUse = false;
 					newItem.obtainTime = (unsigned long)now;
-					newItem.expirationTime = (reward.duration == 0 || reward.duration == 0xFFFF) ? 0 : (unsigned long)(now + (unsigned long)reward.duration * 86400);
+					newItem.expirationTime = (effectiveDuration == 0 || effectiveDuration == 0xFFFF) ? 0 : (unsigned long)(now + (unsigned long)effectiveDuration * 86400);
 					newItem.enhanceBits = 0;
 					itemsToAdd.push_back(newItem);
 					currentInventory.push_back(newItem);
@@ -395,6 +400,10 @@ void Packet_ShopManager::parsePacket_Shop_Buy(User* user, TCPConnection::Packet:
 			if (i > 0) itemsStr += "、";
 			itemsStr += rewardedNames[i];
 		}
+		std::string durationNotice = "";
+		if (offer.duration > 0) {
+			durationNotice = format(" ({}日)", offer.duration);
+		}
 		std::string bonusNotice;
 		if (offer.additionalPoints > 0) {
 			bonusNotice += format("，額外獲贈 +{} Points", offer.additionalPoints);
@@ -402,12 +411,12 @@ void Packet_ShopManager::parsePacket_Shop_Buy(User* user, TCPConnection::Packet:
 		if (offer.additionalClanPoints > 0) {
 			bonusNotice += format("，額外獲贈 +{} 軍團點數", offer.additionalClanPoints);
 		}
-		std::string notice = format("[系統] 成功購買「{}」！獲得：[{}]。扣除 {} {}{}。",
-			offer.productName, itemsStr, offer.price, currencyName, bonusNotice);
+		std::string notice = format("[系統] 成功購買「{}」{}！獲得：[{}]。扣除 {} {}{}。",
+			offer.productName, durationNotice, itemsStr, offer.price, currencyName, bonusNotice);
 		packet_UMsgManager.SendPacket_UMsg_PublicNotice(connection, notice);
 
-		serverConsole.Print(PrefixType::Info, format("[ Packet_ShopManager ] User ({}) successfully purchased package offer {} ('{}', [{}], {} {}{})\n",
-			user->GetUserLogName(), offer.subProductID, offer.productName, itemsStr, offer.price, currencyName, bonusNotice));
+		serverConsole.Print(PrefixType::Info, format("[ Packet_ShopManager ] User ({}) successfully purchased package offer {} ('{}'{}, [{}], {} {}{})\n",
+			user->GetUserLogName(), offer.subProductID, offer.productName, durationNotice, itemsStr, offer.price, currencyName, bonusNotice));
 		return;
 	}
 

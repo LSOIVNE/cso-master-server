@@ -78,26 +78,26 @@
       "Name": "散彈槍組",
       "IsPoints": 1,
       "PackageItems": [
-        { "ItemID": 7, "Duration": 1, "Count": 1 },
-        { "ItemID": 8, "Duration": 1, "Count": 1 },
-        { "ItemID": 38, "Duration": 1, "Count": 1 }
+        { "ItemID": 7 },
+        { "ItemID": 8 },
+        { "ItemID": 38 }
       ],
       "Offers": [
         {
           "Duration": 3,
-          "Count": 3,
+          "Count": 1,
           "Price": 149,
           "AdType": 4
         },
-		{
+        {
           "Duration": 10,
-          "Count": 10,
+          "Count": 1,
           "Price": 399,
           "AdType": 4
         },
         {
           "Duration": 30,
-          "Count": 30,
+          "Count": 1,
           "Price": 999,
           "AdType": 4
         }
