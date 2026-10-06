@@ -1766,6 +1766,122 @@
           "AdType": 0
         }
       ]
+    },
+    {
+      "ProductID": 5001,
+      "Name": "一般手槍設計圖",
+      "IsPoints": 1,
+      "Offers": [
+        { "Duration": 0, "Count": 1, "Price": 1000, "AdType": 0, "IsCount": 1 },
+        { "Duration": 0, "Count": 5, "Price": 4500, "AdType": 0, "IsCount": 1 }
+      ]
+    },
+    {
+      "ProductID": 5004,
+      "Name": "一般步槍設計圖",
+      "IsPoints": 1,
+      "Offers": [
+        { "Duration": 0, "Count": 1, "Price": 1500, "AdType": 0, "IsCount": 1 },
+        { "Duration": 0, "Count": 5, "Price": 6500, "AdType": 0, "IsCount": 1 }
+      ]
+    },
+    {
+      "ProductID": 5005,
+      "Name": "一般狙擊槍設計圖",
+      "IsPoints": 1,
+      "Offers": [
+        { "Duration": 0, "Count": 1, "Price": 1500, "AdType": 0, "IsCount": 1 },
+        { "Duration": 0, "Count": 5, "Price": 6500, "AdType": 0, "IsCount": 1 }
+      ]
+    },
+    {
+      "ProductID": 5008,
+      "Name": "高級手槍設計圖",
+      "IsPoints": 0,
+      "Offers": [
+        { "Duration": 0, "Count": 1, "Price": 29, "AdType": 2, "IsCount": 1 },
+        { "Duration": 0, "Count": 5, "Price": 129, "AdType": 2, "IsCount": 1 }
+      ]
+    },
+    {
+      "ProductID": 5011,
+      "Name": "高級步槍設計圖",
+      "IsPoints": 0,
+      "Offers": [
+        { "Duration": 0, "Count": 1, "Price": 39, "AdType": 2, "IsCount": 1 },
+        { "Duration": 0, "Count": 5, "Price": 169, "AdType": 2, "IsCount": 1 }
+      ]
+    },
+    {
+      "ProductID": 5012,
+      "Name": "高級狙擊槍設計圖",
+      "IsPoints": 0,
+      "Offers": [
+        { "Duration": 0, "Count": 1, "Price": 39, "AdType": 2, "IsCount": 1 },
+        { "Duration": 0, "Count": 5, "Price": 169, "AdType": 2, "IsCount": 1 }
+      ]
+    },
+    {
+      "ProductID": 5101,
+      "Name": "1日耐久材料",
+      "IsPoints": 1,
+      "Offers": [
+        { "Duration": 0, "Count": 1, "Price": 500, "AdType": 0, "IsCount": 1 },
+        { "Duration": 0, "Count": 10, "Price": 4500, "AdType": 0, "IsCount": 1 }
+      ]
+    },
+    {
+      "ProductID": 5103,
+      "Name": "10日耐久材料",
+      "IsPoints": 1,
+      "Offers": [
+        { "Duration": 0, "Count": 1, "Price": 3000, "AdType": 0, "IsCount": 1 },
+        { "Duration": 0, "Count": 5, "Price": 13500, "AdType": 0, "IsCount": 1 }
+      ]
+    },
+    {
+      "ProductID": 5104,
+      "Name": "30日耐久材料",
+      "IsPoints": 1,
+      "Offers": [
+        { "Duration": 0, "Count": 1, "Price": 8000, "AdType": 0, "IsCount": 1 }
+      ]
+    },
+    {
+      "ProductID": 5106,
+      "Name": "永久耐久材料",
+      "IsPoints": 0,
+      "Offers": [
+        { "Duration": 0, "Count": 1, "Price": 99, "AdType": 2, "IsCount": 1 },
+        { "Duration": 0, "Count": 5, "Price": 399, "AdType": 2, "IsCount": 1 }
+      ]
+    },
+    {
+      "ProductID": 5201,
+      "Name": "祝福的合成道具",
+      "IsPoints": 0,
+      "Offers": [
+        { "Duration": 0, "Count": 1, "Price": 25, "AdType": 0, "IsCount": 1 },
+        { "Duration": 0, "Count": 5, "Price": 99, "AdType": 0, "IsCount": 1 }
+      ]
+    },
+    {
+      "ProductID": 5202,
+      "Name": "祝福的強化道具",
+      "IsPoints": 0,
+      "Offers": [
+        { "Duration": 0, "Count": 1, "Price": 25, "AdType": 0, "IsCount": 1 },
+        { "Duration": 0, "Count": 5, "Price": 99, "AdType": 0, "IsCount": 1 }
+      ]
+    },
+    {
+      "ProductID": 5203,
+      "Name": "一般強化零件",
+      "IsPoints": 1,
+      "Offers": [
+        { "Duration": 0, "Count": 5, "Price": 2000, "AdType": 0, "IsCount": 1 },
+        { "Duration": 0, "Count": 20, "Price": 7500, "AdType": 0, "IsCount": 1 }
+      ]
     }
   ]
 }

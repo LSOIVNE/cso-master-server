@@ -125,6 +125,16 @@ bool ItemDefinitionManager::Init() {
 			itemDef.category = category;
 			itemDef.isPeriod = isPeriod;
 
+			if (fields.size() > 38 && !fields[38].empty()) {
+				try { itemDef.disReward1 = (unsigned short)std::stoul(fields[38]); } catch (...) {}
+			}
+			if (fields.size() > 39 && !fields[39].empty()) {
+				try { itemDef.disReward2 = (unsigned short)std::stoul(fields[39]); } catch (...) {}
+			}
+			if (fields.size() > 40 && !fields[40].empty()) {
+				try { itemDef.disReward3 = (unsigned short)std::stoul(fields[40]); } catch (...) {}
+			}
+
 			_items[id] = itemDef;
 			_itemOrder.push_back(id);
 		}

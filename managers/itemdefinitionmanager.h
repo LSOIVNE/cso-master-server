@@ -19,6 +19,13 @@ struct ItemDefinition {
 	std::string className;
 	unsigned char category = 0;
 	bool isPeriod = false; // true: duration-based (Period=1), false: count-based (Period=0)
+	unsigned short disReward1 = 0;
+	unsigned short disReward2 = 0;
+	unsigned short disReward3 = 0;
+
+	bool CanDisassemble() const {
+		return disReward1 > 0 || disReward2 > 0 || disReward3 > 0 || (category >= 1 && category <= 5) || category == 11;
+	}
 
 	bool IsCostume() const {
 		return category == 12;

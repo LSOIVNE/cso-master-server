@@ -6,6 +6,7 @@
 #include "serverconsole.h"
 #include "itemdefinitionmanager.h"
 #include "itemboxmanager.h"
+#include "craftmanager.h"
 #include "attendancemanager.h"
 #include <unordered_set>
 
@@ -46,6 +47,14 @@ void Packet_ItemManager::ParsePacket_Item(TCPConnection::Packet::pointer packet)
 		}
 		case Packet_ItemType::OpenBox: {
 			parsePacket_Item_OpenBox(user, packet);
+			break;
+		}
+		case Packet_ItemType::Craft: {
+			parsePacket_Item_Craft(user, packet);
+			break;
+		}
+		case Packet_ItemType::Disassemble: {
+			parsePacket_Item_Disassemble(user, packet);
 			break;
 		}
 		case Packet_ItemType::Roulette: {
@@ -319,4 +328,47 @@ void Packet_ItemManager::parsePacket_Item_Roulette(User* user, TCPConnection::Pa
 		serverConsole.Print(PrefixType::Warn, format("[ Packet_ItemManager ] User ({}) sent unknown Roulette action {}\n",
 			user->GetUserLogName(), action));
 	}
-}
+}
+
+void Packet_ItemManager::parsePacket_Item_Craft(User* user, TCPConnection::Packet::pointer packet) {
+	if (user == nullptr || packet == nullptr) {
+		return;
+	}
+
+	unsigned char action = packet->ReadUInt8(); // 1 = confirm craft
+	unsigned short bpSlotID = packet->ReadUInt16_LE();
+	unsigned short durSlotID = packet->ReadUInt16_LE();
+	unsigned short secSlotID1 = packet->ReadUInt16_LE();
+	unsigned short secSlotID2 = packet->ReadUInt16_LE();
+
+	serverConsole.Print(PrefixType::Info, format("[ Packet_ItemManager ] User ({}) craft request: action={}, bpSlot={}, durSlot={}, sec1={}, sec2={}\n",
+		user->GetUserLogName(), action, bpSlotID, durSlotID, secSlotID1, secSlotID2));
+
+	craftManager.CraftWeapon(user, bpSlotID, durSlotID, secSlotID1, secSlotID2);
+}
+
+void Packet_ItemManager::parsePacket_Item_Disassemble(User* user, TCPConnection::Packet::pointer packet) {
+	if (user == nullptr || packet == nullptr) {
+		return;
+	}
+
+	unsigned char count = packet->ReadUInt8();
+	std::vector<unsigned short> slots;
+	for (unsigned char i = 0; i < count; ++i) {
+		slots.push_back(packet->ReadUInt16_LE());
+	}
+
+	unsigned char extraCount = 0;
+	if ((size_t)packet->GetReadOffset() < packet->GetBuffer().size()) {
+		extraCount = packet->ReadUInt8();
+		for (unsigned char i = 0; i < extraCount; ++i) {
+			packet->ReadUInt16_LE();
+		}
+	}
+
+	serverConsole.Print(PrefixType::Info, format("[ Packet_ItemManager ] User ({}) disassemble request: count={}\n",
+		user->GetUserLogName(), count));
+
+	craftManager.DisassembleItems(user, slots);
+}
+

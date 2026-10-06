@@ -180,6 +180,7 @@ copy /Y "$(TargetDir)$(ProjectName).pdb" "$(SolutionDir)bin\$(ProjectName).pdb"<
     <ClCompile Include="managers\packet_favoritemanager.cpp" />
     <ClCompile Include="managers\packet_itemmanager.cpp" />
     <ClCompile Include="managers\itemboxmanager.cpp" />
+    <ClCompile Include="managers\craftmanager.cpp" />
     <ClCompile Include="managers\itemdefinitionmanager.cpp" />
     <ClCompile Include="managers\bingomanager.cpp" />
     <ClCompile Include="managers\attendancemanager.cpp" />
@@ -223,6 +224,7 @@ copy /Y "$(TargetDir)$(ProjectName).pdb" "$(SolutionDir)bin\$(ProjectName).pdb"<
     <ClInclude Include="managers\packet_favoritemanager.h" />
     <ClInclude Include="managers\packet_itemmanager.h" />
     <ClInclude Include="managers\itemboxmanager.h" />
+    <ClInclude Include="managers\craftmanager.h" />
     <ClInclude Include="managers\itemdefinitionmanager.h" />
     <ClInclude Include="managers\bingomanager.h" />
     <ClInclude Include="managers\attendancemanager.h" />

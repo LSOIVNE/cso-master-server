@@ -1,0 +1,248 @@
+{
+  "Settings": {
+    "NormalSuccessChance": 50,
+    "AdvancedSuccessChance": 80,
+    "LuckyBonusChance": 20,
+    "BroadcastMinGrade": 3
+  },
+  "DurabilityMapping": {
+    "5101": 1,
+    "5102": 3,
+    "5103": 10,
+    "5104": 30,
+    "5105": 90,
+    "5106": 0
+  },
+  "FailureRecycle": {
+    "NormalRecycleItems": [
+      { "ItemID": 5203, "Count": 1 }
+    ],
+    "BonusRecycleItems": [
+      { "ItemID": 5203, "Count": 2 },
+      { "ItemID": 5101, "Count": 1 }
+    ]
+  },
+  "Blueprints": {
+    "5001": {
+      "Name": "一般手槍設計圖",
+      "Type": "Pistol",
+      "Grade": "Normal",
+      "SuccessChance": 50,
+      "Items": [
+        { "ItemID": 371, "Name": "魯格 P08", "Weight": 15 },
+        { "ItemID": 242, "Name": "精準唯我 (Dual Infinity)", "Weight": 12 },
+        { "ItemID": 469, "Name": "巨蟒眼鏡蛇 (King Cobra)", "Weight": 12 },
+        { "ItemID": 149, "Name": "巨蟒 (Anaconda)", "Weight": 15 },
+        { "ItemID": 445, "Name": "自動麥格農 (AutoMag V)", "Weight": 15 },
+        { "ItemID": 308, "Name": "銀色審判", "Weight": 10 },
+        { "ItemID": 1,   "Name": "雙槍 .40 Dual Elites", "Weight": 10 },
+        { "ItemID": 4,   "Name": "沙漠之鷹 Night Hawk .50C", "Weight": 11 }
+      ]
+    },
+    "5008": {
+      "Name": "高級手槍設計圖",
+      "Type": "Pistol",
+      "Grade": "Advanced",
+      "SuccessChance": 80,
+      "Items": [
+        { "ItemID": 407, "Name": "喋血 SKULL-1", "Weight": 10 },
+        { "ItemID": 517, "Name": "紅蓮 BALROG-I", "Weight": 10 },
+        { "ItemID": 245, "Name": "紅白雙星 (Infinity Custom)", "Weight": 15 },
+        { "ItemID": 270, "Name": "極限雙星 (Infinity Final)", "Weight": 10 },
+        { "ItemID": 341, "Name": "黃金魯格", "Weight": 15 },
+        { "ItemID": 549, "Name": "黃金巨蟒眼鏡蛇", "Weight": 10 },
+        { "ItemID": 261, "Name": "M79 榴彈槍", "Weight": 15 },
+        { "ItemID": 469, "Name": "巨蟒眼鏡蛇 (King Cobra)", "Weight": 15 }
+      ]
+    },
+    "5002": {
+      "Name": "一般散彈槍設計圖",
+      "Type": "Shotgun",
+      "Grade": "Normal",
+      "SuccessChance": 50,
+      "Items": [
+        { "ItemID": 7,   "Name": "精準射手 (M3)", "Weight": 15 },
+        { "ItemID": 8,   "Name": "連發散彈 (XM1014)", "Weight": 15 },
+        { "ItemID": 38,  "Name": "USAS-12 自動散彈槍", "Weight": 15 },
+        { "ItemID": 197, "Name": "M1887 溫徹斯特", "Weight": 15 },
+        { "ItemID": 307, "Name": "雙管散彈槍 (Double Barrel)", "Weight": 12 },
+        { "ItemID": 384, "Name": "KSG-12 散彈槍", "Weight": 12 },
+        { "ItemID": 422, "Name": "SPAS-12 散彈槍", "Weight": 16 }
+      ]
+    },
+    "5009": {
+      "Name": "高級散彈槍設計圖",
+      "Type": "Shotgun",
+      "Grade": "Advanced",
+      "SuccessChance": 80,
+      "Items": [
+        { "ItemID": 437, "Name": "幻影騎士 SKULL-11", "Weight": 12 },
+        { "ItemID": 554, "Name": "深淵 BALROG-XI", "Weight": 12 },
+        { "ItemID": 220, "Name": "黃金 M1887", "Weight": 15 },
+        { "ItemID": 496, "Name": "黃金雙管散彈槍", "Weight": 15 },
+        { "ItemID": 441, "Name": "黃金 KSG-12", "Weight": 15 },
+        { "ItemID": 430, "Name": "SPAS-12 豪華版", "Weight": 15 },
+        { "ItemID": 523, "Name": "三管散彈槍 (Triple Barrel)", "Weight": 16 }
+      ]
+    },
+    "5003": {
+      "Name": "一般衝鋒槍設計圖",
+      "Type": "SMG",
+      "Grade": "Normal",
+      "SuccessChance": 50,
+      "Items": [
+        { "ItemID": 9,   "Name": "戰術衝鋒槍 (TMP)", "Weight": 12 },
+        { "ItemID": 10,  "Name": "烏茲衝鋒槍 (MAC-10)", "Weight": 12 },
+        { "ItemID": 11,  "Name": "比利時衝鋒槍 (P90)", "Weight": 12 },
+        { "ItemID": 13,  "Name": "黑克勒 UMP45", "Weight": 12 },
+        { "ItemID": 36,  "Name": "K1A 衝鋒槍", "Weight": 14 },
+        { "ItemID": 37,  "Name": "HK MP7A1", "Weight": 14 },
+        { "ItemID": 322, "Name": "短劍衝鋒槍 (Kriss Super V)", "Weight": 12 },
+        { "ItemID": 370, "Name": "芝加哥打字機 (Thompson)", "Weight": 12 }
+      ]
+    },
+    "5010": {
+      "Name": "高級衝鋒槍設計圖",
+      "Type": "SMG",
+      "Grade": "Advanced",
+      "SuccessChance": 80,
+      "Items": [
+        { "ItemID": 427, "Name": "瞬狩者 SKULL-3", "Weight": 12 },
+        { "ItemID": 532, "Name": "雷霆 BALROG-III", "Weight": 12 },
+        { "ItemID": 347, "Name": "雙持短劍 (Dual Kriss)", "Weight": 15 },
+        { "ItemID": 309, "Name": "黃金芝加哥打字機", "Weight": 15 },
+        { "ItemID": 346, "Name": "黃金 MP5", "Weight": 16 },
+        { "ItemID": 519, "Name": "蛇姬之吻", "Weight": 15 },
+        { "ItemID": 548, "Name": "電磁衝鋒槍 (Coilgun)", "Weight": 15 }
+      ]
+    },
+    "5004": {
+      "Name": "一般步槍設計圖",
+      "Type": "Rifle",
+      "Grade": "Normal",
+      "SuccessChance": 50,
+      "Items": [
+        { "ItemID": 15,  "Name": "M4A1 卡賓槍", "Weight": 10 },
+        { "ItemID": 21,  "Name": "AK-47 突擊步槍", "Weight": 10 },
+        { "ItemID": 16,  "Name": "AUG 突擊步槍", "Weight": 8 },
+        { "ItemID": 19,  "Name": "SG552 突擊步槍", "Weight": 8 },
+        { "ItemID": 20,  "Name": "Famas 法瑪斯", "Weight": 10 },
+        { "ItemID": 23,  "Name": "Galil 加利爾", "Weight": 10 },
+        { "ItemID": 33,  "Name": "特戰英豪 FN SCAR", "Weight": 10 },
+        { "ItemID": 34,  "Name": "突擊先鋒 XM-8", "Weight": 10 },
+        { "ItemID": 343, "Name": "塔沃爾 TAR-21", "Weight": 8 },
+        { "ItemID": 446, "Name": "卡拉什尼科夫 AKM", "Weight": 8 },
+        { "ItemID": 486, "Name": "M16A1 突擊步槍", "Weight": 8 }
+      ]
+    },
+    "5011": {
+      "Name": "高級步槍設計圖",
+      "Type": "Rifle",
+      "Grade": "Advanced",
+      "SuccessChance": 80,
+      "Items": [
+        { "ItemID": 482, "Name": "炎魔 BALROG-V", "Weight": 12 },
+        { "ItemID": 538, "Name": "傲慢騎士 SKULL-4", "Weight": 12 },
+        { "ItemID": 170, "Name": "黃金 AK-47", "Weight": 14 },
+        { "ItemID": 171, "Name": "黃金 M4A1", "Weight": 14 },
+        { "ItemID": 113, "Name": "強化限量版 SCAR", "Weight": 12 },
+        { "ItemID": 114, "Name": "強化限量版 XM-8", "Weight": 12 },
+        { "ItemID": 280, "Name": "火麒麟 AK-47", "Weight": 12 },
+        { "ItemID": 457, "Name": "幽能離子步槍 (Ethereal)", "Weight": 12 }
+      ]
+    },
+    "5005": {
+      "Name": "一般狙擊槍設計圖",
+      "Type": "Sniper",
+      "Grade": "Normal",
+      "SuccessChance": 50,
+      "Items": [
+        { "ItemID": 14,  "Name": "重型狙擊槍 AWP", "Weight": 12 },
+        { "ItemID": 17,  "Name": "斥候步槍 Scout", "Weight": 10 },
+        { "ItemID": 18,  "Name": "SG550 連狙", "Weight": 10 },
+        { "ItemID": 22,  "Name": "G3SG1 連狙", "Weight": 10 },
+        { "ItemID": 35,  "Name": "VSK-94 匿蹤狙擊槍", "Weight": 12 },
+        { "ItemID": 39,  "Name": "德拉古諾夫 SVD", "Weight": 12 },
+        { "ItemID": 187, "Name": "SL8 連狙", "Weight": 12 },
+        { "ItemID": 233, "Name": "M24 狙擊步槍", "Weight": 12 },
+        { "ItemID": 385, "Name": "AS50 半自動狙擊槍", "Weight": 10 }
+      ]
+    },
+    "5012": {
+      "Name": "高級狙擊槍設計圖",
+      "Type": "Sniper",
+      "Grade": "Advanced",
+      "SuccessChance": 80,
+      "Items": [
+        { "ItemID": 367, "Name": "死亡騎士 SKULL-5", "Weight": 15 },
+        { "ItemID": 344, "Name": "巨蟒咆哮 巴雷特 M95", "Weight": 12 },
+        { "ItemID": 337, "Name": "瓦爾特 WA2000", "Weight": 15 },
+        { "ItemID": 380, "Name": "黃金 WA2000", "Weight": 12 },
+        { "ItemID": 221, "Name": "黃金 SL8", "Weight": 15 },
+        { "ItemID": 484, "Name": "黃金 AS50", "Weight": 15 },
+        { "ItemID": 448, "Name": "AW50 反器材狙擊步槍", "Weight": 16 }
+      ]
+    },
+    "5006": {
+      "Name": "一般機關槍設計圖",
+      "Type": "MG",
+      "Grade": "Normal",
+      "SuccessChance": 50,
+      "Items": [
+        { "ItemID": 24,  "Name": "M249 傘兵機槍", "Weight": 14 },
+        { "ItemID": 32,  "Name": "QBB-95 班用機槍", "Weight": 14 },
+        { "ItemID": 148, "Name": "MG3 毀滅者", "Weight": 14 },
+        { "ItemID": 213, "Name": "M134 迷你火神機槍", "Weight": 12 },
+        { "ItemID": 271, "Name": "HK23 機槍", "Weight": 12 },
+        { "ItemID": 355, "Name": "M60 經典重機槍", "Weight": 12 },
+        { "ItemID": 372, "Name": "MG36 輕機槍", "Weight": 12 },
+        { "ItemID": 431, "Name": "MK48 輕機槍", "Weight": 10 }
+      ]
+    },
+    "5013": {
+      "Name": "高級機關槍設計圖",
+      "Type": "MG",
+      "Grade": "Advanced",
+      "SuccessChance": 80,
+      "Items": [
+        { "ItemID": 327, "Name": "狂怒騎士 SKULL-7", "Weight": 12 },
+        { "ItemID": 466, "Name": "火神 BALROG-VII", "Weight": 12 },
+        { "ItemID": 354, "Name": "黃金毀滅者 MG3", "Weight": 15 },
+        { "ItemID": 397, "Name": "火神機槍 Predator M134 EX", "Weight": 15 },
+        { "ItemID": 406, "Name": "黃金 HK23", "Weight": 16 },
+        { "ItemID": 488, "Name": "黃金 M60", "Weight": 15 },
+        { "ItemID": 531, "Name": "黃金 MG36", "Weight": 15 }
+      ]
+    },
+    "5007": {
+      "Name": "一般近戰武器設計圖",
+      "Type": "Melee",
+      "Grade": "Normal",
+      "SuccessChance": 50,
+      "Items": [
+        { "ItemID": 158, "Name": "獵戶座匕首 (Hdagger)", "Weight": 15 },
+        { "ItemID": 164, "Name": "銀刃開山刀 (NataKnife)", "Weight": 15 },
+        { "ItemID": 176, "Name": "狂暴巨錘 (Hammer)", "Weight": 12 },
+        { "ItemID": 211, "Name": "軍刀 (JKnife)", "Weight": 15 },
+        { "ItemID": 237, "Name": "戰斧 (Axe)", "Weight": 15 },
+        { "ItemID": 248, "Name": "野戰匕首 (Combat Knife)", "Weight": 14 },
+        { "ItemID": 345, "Name": "武士刀 (Katana)", "Weight": 14 }
+      ]
+    },
+    "5014": {
+      "Name": "高級近戰武器設計圖",
+      "Type": "Melee",
+      "Grade": "Advanced",
+      "SuccessChance": 80,
+      "Items": [
+        { "ItemID": 363, "Name": "風暴騎士 SKULL-9", "Weight": 12 },
+        { "ItemID": 504, "Name": "獄火 BALROG-IX", "Weight": 12 },
+        { "ItemID": 281, "Name": "青龍偃月刀", "Weight": 14 },
+        { "ItemID": 405, "Name": "龍形短劍 (Dragontail)", "Weight": 16 },
+        { "ItemID": 462, "Name": "真·狂暴開山刀 (NataKnifeD)", "Weight": 16 },
+        { "ItemID": 480, "Name": "真·武士刀 (KatanaD)", "Weight": 15 },
+        { "ItemID": 520, "Name": "蛇紋巨劍 (Snakesword)", "Weight": 15 }
+      ]
+    }
+  }
+}

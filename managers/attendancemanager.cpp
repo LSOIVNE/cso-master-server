@@ -37,7 +37,10 @@ static void ParseRewardItemJson(const json& j, AttendanceRewardItem& item) {
 
 static std::string FormatRewardDisplay(const AttendanceRewardItem& it) {
 	std::string s = it.name.empty() ? format("道具 #{}", it.itemID) : it.name;
-	if (it.duration > 0) {
+	if (it.duration > 0 && it.count > 0) {
+		s += format(" ({}日 {}個)", it.duration, it.count);
+	}
+	else if (it.duration > 0) {
 		s += format(" ({}日)", it.duration);
 	}
 	else if (it.count > 0) {

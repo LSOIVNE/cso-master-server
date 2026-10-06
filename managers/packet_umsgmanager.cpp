@@ -9,6 +9,7 @@
 #include "packet_shopmanager.h"
 #include "packet_updateinfomanager.h"
 #include "attendancemanager.h"
+#include "craftmanager.h"
 #include "serverconfig.h"
 #include <sstream>
 #include <unordered_set>
@@ -490,6 +491,7 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		cmdLower != "/banner" && cmdLower != "/yell" && cmdLower != "/reloadnotice" &&
 		cmdLower != "/addpoints" && cmdLower != "/addgash" &&
 		cmdLower != "/reloadshop" &&
+		cmdLower != "/reloadcraft" &&
 		cmdLower != "/resetdaily" &&
 		cmdLower != "/nextdaily") {
 		return false;
@@ -520,9 +522,9 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 			return true;
 		}
 	}
-	else if (cmdLower == "/reloadshop") {
+	else if (cmdLower == "/reloadshop" || cmdLower == "/reloadcraft") {
 		if (!serverConfig.permissions.allowPlayerReloadShop && !isGM) {
-			SendNotice("權限不足：商城配置重載指令已被管理員限制，僅限 GM 使用！");
+			SendNotice("權限不足：配置重載指令已被管理員限制，僅限 GM 使用！");
 			return true;
 		}
 	}
@@ -1115,6 +1117,15 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		}
 		else {
 			SendNotice("[系統] 加載商城配置失敗，請檢查 configs/shop.json！");
+		}
+		return true;
+	}
+	else if (cmdLower == "/reloadcraft") {
+		if (craftManager.Reload()) {
+			SendNotice("[系統] 工坊製造配置已成功重載！(configs/craft.json)");
+		}
+		else {
+			SendNotice("[系統] 重載工坊製造配置失敗，請檢查 configs/craft.json 格式！");
 		}
 		return true;
 	}
