@@ -24,7 +24,6 @@ struct CraftSettings {
 	int normalSuccessChance = 50;
 	int advancedSuccessChance = 80;
 	int luckyBonusChance = 20;
-	int broadcastMinGrade = 3;
 	unsigned long normalCraftFee = 500;
 	unsigned long advancedCraftFee = 1000;
 	unsigned long disassembleFeePerItem = 50;
@@ -52,6 +51,7 @@ private:
 	void sendCraftPreview(TCPConnection::pointer connection, unsigned char successLevel, unsigned long feePoint);
 	void sendCraftResultSuccess(TCPConnection::pointer connection, unsigned short itemID, unsigned short durationDays);
 	void sendCraftResultFailure(TCPConnection::pointer connection, const std::vector<unsigned short>& returnedItemIDs);
+	void sendDisassembleResult(TCPConnection::pointer connection, unsigned short itemID, unsigned short count);
 
 private:
 	CraftSettings _settings;

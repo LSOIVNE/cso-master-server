@@ -54,7 +54,6 @@ bool CraftManager::Reload() {
 			_settings.normalSuccessChance = s.value("NormalSuccessChance", 50);
 			_settings.advancedSuccessChance = s.value("AdvancedSuccessChance", 80);
 			_settings.luckyBonusChance = s.value("LuckyBonusChance", 20);
-			_settings.broadcastMinGrade = s.value("BroadcastMinGrade", 3);
 			_settings.normalCraftFee = s.value("NormalCraftFeePoint", 500UL);
 			_settings.advancedCraftFee = s.value("AdvancedCraftFeePoint", 1000UL);
 			_settings.disassembleFeePerItem = s.value("DisassembleFeePerItem", 50UL);
@@ -326,14 +325,21 @@ bool CraftManager::CraftWeapon(User* user, unsigned short bpSlotID, unsigned sho
 	if (finalChance < 1) finalChance = 1;
 
 	// Consume ingredients atomically
+	std::vector<unsigned short> deletedSlots;
 	bool deleted = false;
 	databaseManager.ConsumeUserInventoryItemBySlot(userID, bpSlotID, 1, deleted);
+	if (deleted) deletedSlots.push_back(bpSlotID);
+
 	databaseManager.ConsumeUserInventoryItemBySlot(userID, durSlotID, 1, deleted);
+	if (deleted) deletedSlots.push_back(durSlotID);
+
 	if (secItem1 != nullptr) {
 		databaseManager.ConsumeUserInventoryItemBySlot(userID, secSlotID1, 1, deleted);
+		if (deleted) deletedSlots.push_back(secSlotID1);
 	}
 	if (secItem2 != nullptr) {
 		databaseManager.ConsumeUserInventoryItemBySlot(userID, secSlotID2, 1, deleted);
+		if (deleted) deletedSlots.push_back(secSlotID2);
 	}
 
 	// Roll RNG
@@ -431,8 +437,8 @@ bool CraftManager::CraftWeapon(User* user, unsigned short bpSlotID, unsigned sho
 		// Reply Craft Result Success: Packet 78, Type 5, Status 1, ResultFlag 1
 		sendCraftResultSuccess(connection, wonItemID, (unsigned short)durationDays);
 
-		// Refresh client inventory
-		packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
+		// Refresh client inventory with deleted slots
+		packetManager.SendPacket_Inventory(connection, user->GetUserInventory(), deletedSlots);
 		return true;
 	}
 	else {
@@ -477,8 +483,8 @@ bool CraftManager::CraftWeapon(User* user, unsigned short bpSlotID, unsigned sho
 		// Reply Craft Result Failure: Packet 78, Type 5, Status 1, ResultFlag 0
 		sendCraftResultFailure(connection, returnedItemIDs);
 
-		// Refresh client inventory
-		packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
+		// Refresh client inventory with deleted slots
+		packetManager.SendPacket_Inventory(connection, user->GetUserInventory(), deletedSlots);
 		return true;
 	}
 }
@@ -621,6 +627,22 @@ bool CraftManager::DisassembleItems(User* user, const std::vector<unsigned short
 
 	// Send refreshed inventory with deleted slots
 	packetManager.SendPacket_Inventory(connection, user->GetUserInventory(), deletedSlots);
+
+	// Send Disassemble Result packet: Packet 78, Type 6, Status 1 -> Pops up CItemFarmResultDlg
+	unsigned short mainRewardItemID = 5203;
+	unsigned short mainRewardCount = 1;
+	if (!rewardsToGrant.empty()) {
+		auto it = rewardsToGrant.find(5203);
+		if (it != rewardsToGrant.end()) {
+			mainRewardItemID = 5203;
+			mainRewardCount = it->second;
+		}
+		else {
+			mainRewardItemID = rewardsToGrant.begin()->first;
+			mainRewardCount = rewardsToGrant.begin()->second;
+		}
+	}
+	sendDisassembleResult(connection, mainRewardItemID, mainRewardCount);
 	return true;
 }
 
@@ -671,6 +693,22 @@ void CraftManager::sendCraftResultFailure(TCPConnection::pointer connection, con
 			replyPacket->WriteUInt16_LE(id);
 		}
 		replyPacket->WriteString(""); // message = ""
+		replyPacket->Send();
+	}
+}
+
+void CraftManager::sendDisassembleResult(TCPConnection::pointer connection, unsigned short itemID, unsigned short count) {
+	if (connection == nullptr) {
+		return;
+	}
+
+	auto replyPacket = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::Item });
+	if (replyPacket != nullptr) {
+		replyPacket->WriteUInt8(6); // Packet_ItemType = 6 (MaterialAssem / Disassemble Result)
+		replyPacket->WriteUInt8(1); // status = 1 (Success)
+		replyPacket->WriteUInt32_LE(itemID); // ItemID (4 bytes)
+		replyPacket->WriteUInt16_LE(0); // duration = 0 (count-based)
+		replyPacket->WriteUInt16_LE(count); // count
 		replyPacket->Send();
 	}
 }

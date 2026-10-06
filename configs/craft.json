@@ -3,7 +3,6 @@
     "NormalSuccessChance": 50,
     "AdvancedSuccessChance": 80,
     "LuckyBonusChance": 20,
-    "BroadcastMinGrade": 3,
     "NormalCraftFeePoint": 500,
     "AdvancedCraftFeePoint": 1000,
     "DisassembleFeePerItem": 50
