@@ -149,6 +149,83 @@ int CraftManager::GetDurabilityDays(unsigned short durID) const {
 	}
 }
 
+bool CraftManager::QueryCraftPreview(User* user, unsigned short bpSlotID, unsigned short durSlotID, unsigned short secSlotID1, unsigned short secSlotID2) {
+	if (user == nullptr) {
+		return false;
+	}
+
+	auto& connection = user->GetConnection();
+	if (connection == nullptr) {
+		return false;
+	}
+
+	auto inv = user->GetUserInventory();
+	const InventoryItem* bpItem = nullptr;
+	const InventoryItem* durItem = nullptr;
+	const InventoryItem* secItem1 = nullptr;
+	const InventoryItem* secItem2 = nullptr;
+
+	for (const auto& it : inv) {
+		if (it.slotID == bpSlotID && it.count > 0) {
+			bpItem = &it;
+		}
+		if (it.slotID == durSlotID && it.count > 0) {
+			durItem = &it;
+		}
+		if (secSlotID1 != 0xFFFF && it.slotID == secSlotID1 && it.count > 0) {
+			secItem1 = &it;
+		}
+		if (secSlotID2 != 0xFFFF && it.slotID == secSlotID2 && it.count > 0) {
+			secItem2 = &it;
+		}
+	}
+
+	if (bpItem == nullptr || durItem == nullptr) {
+		sendCraftPreview(connection, 0, 0);
+		return false;
+	}
+
+	const BlueprintConfig* bpCfg = GetBlueprintConfig(bpItem->itemID);
+	if (bpCfg == nullptr) {
+		sendCraftPreview(connection, 0, 0);
+		return false;
+	}
+
+	int finalChance = bpCfg->successChance;
+	if ((secItem1 != nullptr && secItem1->itemID == 5201) ||
+		(secItem2 != nullptr && secItem2->itemID == 5201)) {
+		finalChance += _settings.luckyBonusChance;
+	}
+
+	if (finalChance > 100) finalChance = 100;
+	if (finalChance < 1) finalChance = 1;
+
+	// Success level: 0 (#CSO_SuccessLevel_0 很低) ~ 4 (很高)
+	// 0: <= 20%, 1: <= 40%, 2: <= 60%, 3: <= 80%, 4: > 80%
+	unsigned char level = 2; // Default 普通
+	if (finalChance <= 20) {
+		level = 0; // 很低
+	}
+	else if (finalChance <= 40) {
+		level = 1; // 低
+	}
+	else if (finalChance <= 60) {
+		level = 2; // 普通
+	}
+	else if (finalChance <= 80) {
+		level = 3; // 高
+	}
+	else {
+		level = 4; // 很高
+	}
+
+	serverConsole.Print(PrefixType::Info, format("[ CraftManager ] User ({}) preview craft bp={} dur={} -> chance={}% (level={})\n",
+		user->GetUserLogName(), bpItem->itemID, durItem->itemID, finalChance, (int)level));
+
+	sendCraftPreview(connection, level, 0);
+	return true;
+}
+
 bool CraftManager::CraftWeapon(User* user, unsigned short bpSlotID, unsigned short durSlotID, unsigned short secSlotID1, unsigned short secSlotID2) {
 	if (user == nullptr) {
 		return false;
@@ -509,7 +586,38 @@ bool CraftManager::DisassembleItems(User* user, const std::vector<unsigned short
 
 	// Send refreshed inventory with deleted slots
 	packetManager.SendPacket_Inventory(connection, user->GetUserInventory(), deletedSlots);
+
+	// Send Disassemble Result packet: Packet 78, Type 6, Status 1 -> Pops up CItemFarmResultDlg
+	unsigned short mainRewardItemID = 5203;
+	unsigned short mainRewardCount = 1;
+	if (!rewardsToGrant.empty()) {
+		auto it = rewardsToGrant.find(5203);
+		if (it != rewardsToGrant.end()) {
+			mainRewardItemID = 5203;
+			mainRewardCount = it->second;
+		}
+		else {
+			mainRewardItemID = rewardsToGrant.begin()->first;
+			mainRewardCount = rewardsToGrant.begin()->second;
+		}
+	}
+	sendDisassembleResult(connection, mainRewardItemID, mainRewardCount);
 	return true;
+}
+
+void CraftManager::sendCraftPreview(TCPConnection::pointer connection, unsigned char successLevel, unsigned long feePoint) {
+	if (connection == nullptr) {
+		return;
+	}
+
+	auto replyPacket = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::Item });
+	if (replyPacket != nullptr) {
+		replyPacket->WriteUInt8(5); // Packet_ItemType = 5 (WeaponCraft)
+		replyPacket->WriteUInt8(0); // status = 0 (Preview / Query response)
+		replyPacket->WriteUInt8(successLevel); // 0~4 (#CSO_SuccessLevel_0 ~ 4)
+		replyPacket->WriteUInt32_LE(feePoint); // fee Point
+		replyPacket->Send();
+	}
 }
 
 void CraftManager::sendCraftResultSuccess(TCPConnection::pointer connection, unsigned short itemID, unsigned short durationDays) {
@@ -544,6 +652,23 @@ void CraftManager::sendCraftResultFailure(TCPConnection::pointer connection, con
 			replyPacket->WriteUInt16_LE(id);
 		}
 		replyPacket->WriteString(""); // message = ""
+		replyPacket->Send();
+	}
+}
+
+void CraftManager::sendDisassembleResult(TCPConnection::pointer connection, unsigned short itemID, unsigned short count) {
+	if (connection == nullptr) {
+		return;
+	}
+
+	// Packet 78, Type 6, Status 1, itemID, duration=0 (count-based), count
+	auto replyPacket = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::Item });
+	if (replyPacket != nullptr) {
+		replyPacket->WriteUInt8(6); // Packet_ItemType = 6 (MaterialAssem / Disassemble Result)
+		replyPacket->WriteUInt8(1); // status = 1 (Success)
+		replyPacket->WriteUInt32_LE(itemID); // ItemID (4 bytes)
+		replyPacket->WriteUInt16_LE(0); // duration = 0 (count-based)
+		replyPacket->WriteUInt16_LE(count); // count (N個)
 		replyPacket->Send();
 	}
 }

@@ -344,7 +344,18 @@ void Packet_ItemManager::parsePacket_Item_Craft(User* user, TCPConnection::Packe
 	serverConsole.Print(PrefixType::Info, format("[ Packet_ItemManager ] User ({}) craft request: action={}, bpSlot={}, durSlot={}, sec1={}, sec2={}\n",
 		user->GetUserLogName(), action, bpSlotID, durSlotID, secSlotID1, secSlotID2));
 
-	craftManager.CraftWeapon(user, bpSlotID, durSlotID, secSlotID1, secSlotID2);
+	if (action == 0) {
+		// Action 0: Client preview / query success rate and fee
+		craftManager.QueryCraftPreview(user, bpSlotID, durSlotID, secSlotID1, secSlotID2);
+	}
+	else if (action == 1) {
+		// Action 1: Client confirmed craft ("make_done")
+		craftManager.CraftWeapon(user, bpSlotID, durSlotID, secSlotID1, secSlotID2);
+	}
+	else {
+		serverConsole.Print(PrefixType::Warn, format("[ Packet_ItemManager ] User ({}) sent unknown craft action {}\n",
+			user->GetUserLogName(), action));
+	}
 }
 
 void Packet_ItemManager::parsePacket_Item_Disassemble(User* user, TCPConnection::Packet::pointer packet) {

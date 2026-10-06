@@ -36,6 +36,7 @@ public:
 	bool Init();
 	bool Reload();
 
+	bool QueryCraftPreview(User* user, unsigned short bpSlotID, unsigned short durSlotID, unsigned short secSlotID1, unsigned short secSlotID2);
 	bool CraftWeapon(User* user, unsigned short bpSlotID, unsigned short durSlotID, unsigned short secSlotID1, unsigned short secSlotID2);
 	bool DisassembleItems(User* user, const std::vector<unsigned short>& weaponSlots);
 
@@ -43,8 +44,10 @@ public:
 	int GetDurabilityDays(unsigned short durID) const;
 
 private:
+	void sendCraftPreview(TCPConnection::pointer connection, unsigned char successLevel, unsigned long feePoint);
 	void sendCraftResultSuccess(TCPConnection::pointer connection, unsigned short itemID, unsigned short durationDays);
 	void sendCraftResultFailure(TCPConnection::pointer connection, const std::vector<unsigned short>& returnedItemIDs);
+	void sendDisassembleResult(TCPConnection::pointer connection, unsigned short itemID, unsigned short count);
 
 private:
 	CraftSettings _settings;
