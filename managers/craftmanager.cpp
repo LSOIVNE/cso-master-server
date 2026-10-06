@@ -325,24 +325,6 @@ bool CraftManager::CraftWeapon(User* user, unsigned short bpSlotID, unsigned sho
 	if (finalChance > 100) finalChance = 100;
 	if (finalChance < 1) finalChance = 1;
 
-	// Consume ingredients atomically
-	std::vector<unsigned short> deletedSlots;
-	bool deleted = false;
-	databaseManager.ConsumeUserInventoryItemBySlot(userID, bpSlotID, 1, deleted);
-	if (deleted) deletedSlots.push_back(bpSlotID);
-
-	databaseManager.ConsumeUserInventoryItemBySlot(userID, durSlotID, 1, deleted);
-	if (deleted) deletedSlots.push_back(durSlotID);
-
-	if (secItem1 != nullptr) {
-		databaseManager.ConsumeUserInventoryItemBySlot(userID, secSlotID1, 1, deleted);
-		if (deleted) deletedSlots.push_back(secSlotID1);
-	}
-	if (secItem2 != nullptr) {
-		databaseManager.ConsumeUserInventoryItemBySlot(userID, secSlotID2, 1, deleted);
-		if (deleted) deletedSlots.push_back(secSlotID2);
-	}
-
 	// Roll RNG
 	thread_local std::mt19937 rng(std::random_device{}());
 	std::uniform_int_distribution<int> dist100(1, 100);
@@ -351,6 +333,54 @@ bool CraftManager::CraftWeapon(User* user, unsigned short bpSlotID, unsigned sho
 
 	serverConsole.Print(PrefixType::Info, format("[ CraftManager ] User ({}) craft bp={} dur={} lucky={} recycle={} -> roll={}/{} -> {}\n",
 		user->GetUserLogName(), bpItem->itemID, durItem->itemID, hasLucky, hasRecycle, roll, finalChance, success ? "SUCCESS" : "FAILURE"));
+
+	// Build instant memory delta updates to eliminate client display latency
+	std::vector<InventoryItem> deltaUpdatedItems;
+	std::vector<unsigned short> deltaDeletedSlots;
+
+	// 1. Blueprint slot delta
+	if (bpItem->count > 1) {
+		InventoryItem item = *bpItem;
+		item.count -= 1;
+		deltaUpdatedItems.push_back(item);
+	}
+	else {
+		deltaDeletedSlots.push_back(bpSlotID);
+	}
+
+	// 2. Durability slot delta
+	if (durItem->count > 1) {
+		InventoryItem item = *durItem;
+		item.count -= 1;
+		deltaUpdatedItems.push_back(item);
+	}
+	else {
+		deltaDeletedSlots.push_back(durSlotID);
+	}
+
+	// 3. Aux slot 1 delta
+	if (secItem1 != nullptr) {
+		if (secItem1->count > 1) {
+			InventoryItem item = *secItem1;
+			item.count -= 1;
+			deltaUpdatedItems.push_back(item);
+		}
+		else {
+			deltaDeletedSlots.push_back(secSlotID1);
+		}
+	}
+
+	// 4. Aux slot 2 delta
+	if (secItem2 != nullptr) {
+		if (secItem2->count > 1) {
+			InventoryItem item = *secItem2;
+			item.count -= 1;
+			deltaUpdatedItems.push_back(item);
+		}
+		else {
+			deltaDeletedSlots.push_back(secSlotID2);
+		}
+	}
 
 	if (success) {
 		// Pick weapon based on weights
@@ -382,7 +412,7 @@ bool CraftManager::CraftWeapon(User* user, unsigned short bpSlotID, unsigned sho
 		unsigned short maxSlotID = 0;
 		bool alreadyOwned = false;
 		InventoryItem ownedItem;
-		for (const auto& it : user->GetUserInventory()) {
+		for (const auto& it : inv) {
 			if (it.slotID > maxSlotID) maxSlotID = it.slotID;
 			if (it.itemID == wonItemID) {
 				alreadyOwned = true;
@@ -391,78 +421,108 @@ bool CraftManager::CraftWeapon(User* user, unsigned short bpSlotID, unsigned sho
 		}
 
 		time_t now = time(nullptr);
+		InventoryItem grantedItem;
+		bool isNewItem = false;
+
 		if (durationDays == 0) {
 			// Permanent weapon
 			if (alreadyOwned) {
-				databaseManager.UpdateUserInventoryExpiration(userID, wonItemID, 0);
+				grantedItem = ownedItem;
+				grantedItem.expirationTime = 0;
 			}
 			else {
-				InventoryItem newItem;
-				newItem.slotID = ++maxSlotID;
-				newItem.itemID = wonItemID;
-				newItem.count = 1;
-				newItem.activeFlag = 1;
-				newItem.inUse = false;
-				newItem.obtainTime = (unsigned long)now;
-				newItem.expirationTime = 0;
-				newItem.enhanceBits = 0;
-				databaseManager.AddUserInventoryItems(userID, { newItem });
+				isNewItem = true;
+				grantedItem.slotID = ++maxSlotID;
+				grantedItem.itemID = wonItemID;
+				grantedItem.count = 1;
+				grantedItem.activeFlag = 1;
+				grantedItem.inUse = false;
+				grantedItem.obtainTime = (unsigned long)now;
+				grantedItem.expirationTime = 0;
+				grantedItem.enhanceBits = 0;
 			}
 		}
 		else {
 			// Period weapon
 			unsigned long addSecs = (unsigned long)durationDays * 86400;
 			if (alreadyOwned) {
-				if (ownedItem.expirationTime == 0) {
-					// Already permanent, keep permanent
-				}
-				else {
-					unsigned long baseTime = (ownedItem.expirationTime > (unsigned long)now) ? ownedItem.expirationTime : (unsigned long)now;
-					databaseManager.UpdateUserInventoryExpiration(userID, wonItemID, baseTime + addSecs);
+				grantedItem = ownedItem;
+				if (grantedItem.expirationTime != 0) {
+					unsigned long baseTime = (grantedItem.expirationTime > (unsigned long)now) ? grantedItem.expirationTime : (unsigned long)now;
+					grantedItem.expirationTime = baseTime + addSecs;
 				}
 			}
 			else {
-				InventoryItem newItem;
-				newItem.slotID = ++maxSlotID;
-				newItem.itemID = wonItemID;
-				newItem.count = 1;
-				newItem.activeFlag = 1;
-				newItem.inUse = false;
-				newItem.obtainTime = (unsigned long)now;
-				newItem.expirationTime = (unsigned long)now + addSecs;
-				newItem.enhanceBits = 0;
-				databaseManager.AddUserInventoryItems(userID, { newItem });
+				isNewItem = true;
+				grantedItem.slotID = ++maxSlotID;
+				grantedItem.itemID = wonItemID;
+				grantedItem.count = 1;
+				grantedItem.activeFlag = 1;
+				grantedItem.inUse = false;
+				grantedItem.obtainTime = (unsigned long)now;
+				grantedItem.expirationTime = (unsigned long)now + addSecs;
+				grantedItem.enhanceBits = 0;
 			}
 		}
 
-		// Refresh client inventory with deleted slots BEFORE triggering result dialog
-		packetManager.SendPacket_Inventory(connection, user->GetUserInventory(), deletedSlots);
+		deltaUpdatedItems.push_back(grantedItem);
+
+		// Send instant delta update FIRST with microsecond latency!
+		packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, deltaDeletedSlots);
 
 		// Reply Craft Result Success: Packet 78, Type 5, Status 1, ResultFlag 1
 		sendCraftResultSuccess(connection, wonItemID, (unsigned short)durationDays);
+
+		// Persist changes to MySQL asynchronously / sequentially
+		bool deleted = false;
+		databaseManager.ConsumeUserInventoryItemBySlot(userID, bpSlotID, 1, deleted);
+		databaseManager.ConsumeUserInventoryItemBySlot(userID, durSlotID, 1, deleted);
+		if (secItem1 != nullptr) databaseManager.ConsumeUserInventoryItemBySlot(userID, secSlotID1, 1, deleted);
+		if (secItem2 != nullptr) databaseManager.ConsumeUserInventoryItemBySlot(userID, secSlotID2, 1, deleted);
+
+		if (durationDays == 0) {
+			if (alreadyOwned) {
+				databaseManager.UpdateUserInventoryExpiration(userID, wonItemID, 0);
+			}
+			else {
+				databaseManager.AddUserInventoryItems(userID, { grantedItem });
+			}
+		}
+		else {
+			if (alreadyOwned) {
+				if (ownedItem.expirationTime != 0) {
+					databaseManager.UpdateUserInventoryExpiration(userID, wonItemID, grantedItem.expirationTime);
+				}
+			}
+			else {
+				databaseManager.AddUserInventoryItems(userID, { grantedItem });
+			}
+		}
+
 		return true;
 	}
 	else {
 		// Craft Failed: Only return recycling parts when user actually used auxiliary item 5202 (再生工法)
-		// If 5202 was not used, returnedItemIDs is empty -> client displays standard "#CSO_WeaponAssem_Failure"
-		// If 5202 was used, returnedItemIDs has items -> client displays "#CSO_WeaponAssem_Failure_Recycle"
 		std::vector<unsigned short> returnedItemIDs;
+		std::vector<InventoryItem> itemsToAddDB;
+
 		if (hasRecycle) {
 			const auto& recyclePool = _bonusRecycleItems.empty() ? _normalRecycleItems : _bonusRecycleItems;
 
 			unsigned short maxSlotID = 0;
-			auto currentInv = user->GetUserInventory();
-			for (const auto& it : currentInv) {
+			for (const auto& it : inv) {
 				if (it.slotID > maxSlotID) maxSlotID = it.slotID;
 			}
 
 			for (const auto& rItem : recyclePool) {
 				returnedItemIDs.push_back(rItem.itemID);
 				bool found = false;
-				for (const auto& it : currentInv) {
+				for (const auto& it : inv) {
 					if (it.itemID == rItem.itemID) {
 						found = true;
-						databaseManager.UpdateUserInventoryItemCount(userID, rItem.itemID, rItem.count);
+						InventoryItem updated = it;
+						updated.count += rItem.count;
+						deltaUpdatedItems.push_back(updated);
 						break;
 					}
 				}
@@ -476,16 +536,42 @@ bool CraftManager::CraftWeapon(User* user, unsigned short bpSlotID, unsigned sho
 					newItem.obtainTime = (unsigned long)time(nullptr);
 					newItem.expirationTime = 0;
 					newItem.enhanceBits = 0;
-					databaseManager.AddUserInventoryItems(userID, { newItem });
+					deltaUpdatedItems.push_back(newItem);
+					itemsToAddDB.push_back(newItem);
 				}
 			}
 		}
 
-		// Refresh client inventory with deleted slots BEFORE triggering result dialog
-		packetManager.SendPacket_Inventory(connection, user->GetUserInventory(), deletedSlots);
+		// Send instant delta update FIRST with microsecond latency!
+		packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, deltaDeletedSlots);
 
 		// Reply Craft Result Failure: Packet 78, Type 5, Status 1, ResultFlag 0
 		sendCraftResultFailure(connection, returnedItemIDs);
+
+		// Persist changes to MySQL
+		bool deleted = false;
+		databaseManager.ConsumeUserInventoryItemBySlot(userID, bpSlotID, 1, deleted);
+		databaseManager.ConsumeUserInventoryItemBySlot(userID, durSlotID, 1, deleted);
+		if (secItem1 != nullptr) databaseManager.ConsumeUserInventoryItemBySlot(userID, secSlotID1, 1, deleted);
+		if (secItem2 != nullptr) databaseManager.ConsumeUserInventoryItemBySlot(userID, secSlotID2, 1, deleted);
+
+		if (hasRecycle) {
+			const auto& recyclePool = _bonusRecycleItems.empty() ? _normalRecycleItems : _bonusRecycleItems;
+			for (const auto& rItem : recyclePool) {
+				bool found = false;
+				for (const auto& it : inv) {
+					if (it.itemID == rItem.itemID) {
+						found = true;
+						databaseManager.UpdateUserInventoryItemCount(userID, rItem.itemID, rItem.count);
+						break;
+					}
+				}
+			}
+			if (!itemsToAddDB.empty()) {
+				databaseManager.AddUserInventoryItems(userID, itemsToAddDB);
+			}
+		}
+
 		return true;
 	}
 }
@@ -508,8 +594,8 @@ bool CraftManager::DisassembleItems(User* user, const std::vector<unsigned short
 		if (!databaseManager.DeductUserFunds(userID, true, disFee)) {
 			serverConsole.Print(PrefixType::Warn, format("[ CraftManager ] User ({}) has insufficient Point for disassemble: need {}\n",
 				user->GetUserLogName(), disFee));
-			sendDisassembleFailure(connection, "DIS_NOT_ENOUGH_POINT");
-			packet_UMsgManager.SendPacket_UMsg_SystemReply(connection, Packet_UMsgType::WarningMessage, "DIS_NOT_ENOUGH_POINT", {});
+			// Pop up Dismantle failure dialog via ItemAwardNotice
+			packet_UMsgManager.SendPacket_UMsg_ItemAwardNotice(connection, {}, "Dismantlefail_TITLE", "Dismantlefail_MSG");
 			return false;
 		}
 		auto charResult = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
@@ -595,6 +681,13 @@ bool CraftManager::DisassembleItems(User* user, const std::vector<unsigned short
 	}
 
 	if (deletedSlots.empty()) {
+		if (disFee > 0) {
+			// Refund fee
+			databaseManager.DeductUserFunds(userID, false, disFee);
+			auto charResult = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
+			packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, charResult.userCharacter });
+		}
+		packet_UMsgManager.SendPacket_UMsg_ItemAwardNotice(connection, {}, "Dismantlefail_TITLE", "Dismantlefail_MSG");
 		return false;
 	}
 
@@ -631,31 +724,17 @@ bool CraftManager::DisassembleItems(User* user, const std::vector<unsigned short
 	// 1. Send refreshed inventory with deleted slots FIRST
 	packetManager.SendPacket_Inventory(connection, user->GetUserInventory(), deletedSlots);
 
-	// 2. Send Disassemble Result packet: Packet 78, Type 4, Status 1 (Disassemble Success)
-	unsigned short mainRewardItemID = 5203;
-	unsigned short mainRewardCount = 1;
-	if (!rewardsToGrant.empty()) {
-		auto it = rewardsToGrant.find(5203);
-		if (it != rewardsToGrant.end()) {
-			mainRewardItemID = 5203;
-			mainRewardCount = it->second;
-		}
-		else {
-			mainRewardItemID = rewardsToGrant.begin()->first;
-			mainRewardCount = rewardsToGrant.begin()->second;
-		}
-	}
-	sendDisassembleResult(connection, mainRewardItemID, mainRewardCount);
-
-	// 3. Pop up Disassemble Result dialog via BulletinNotice (Packet 65)
-	std::string noticeTitle = "分解結果";
-	std::string noticeMsg = "分解道具後獲得下列材料\n";
+	// 2. Pop up Disassemble Result dialog via ItemAwardNotice (Packet 67 Type 60)
+	std::vector<AwardItem> awardItems;
 	for (const auto& [rItemID, rCount] : rewardsToGrant) {
-		const auto* def = itemDefinitionManager.GetItem(rItemID);
-		std::string rName = (def != nullptr && !def->name.empty()) ? def->name : ("道具 " + std::to_string(rItemID));
-		noticeMsg += format("\n- {} x{}", rName, rCount);
+		AwardItem item;
+		item.itemID = rItemID;
+		item.duration = 0;
+		item.count = rCount;
+		item.flags = 0;
+		awardItems.push_back(item);
 	}
-	packet_UMsgManager.SendPacket_UMsg_BulletinNotice(connection, 0, 1, noticeTitle, noticeMsg);
+	packet_UMsgManager.SendPacket_UMsg_ItemAwardNotice(connection, awardItems, "Dismantle_TITLE", "Dismantle_MSG");
 
 	return true;
 }

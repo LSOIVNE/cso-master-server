@@ -29,6 +29,13 @@ enum Packet_UMsgType {
 std::string Utf8ToCp950(const std::string& utf8Str);
 std::string Cp950ToUtf8(const std::string& cp950Str);
 
+struct AwardItem {
+	unsigned short itemID = 0;
+	unsigned short duration = 0; // 天數 (0 表示計數/永久)
+	unsigned short count = 0;    // 數量
+	unsigned int flags = 0;      // 0
+};
+
 class Packet_UMsgManager {
 public:
 	void ParsePacket_UMsg(TCPConnection::Packet::pointer packet);
@@ -38,6 +45,7 @@ public:
 	void SendPacket_UMsg_RollingBanner(TCPConnection::pointer connection, const string& text);
 	void SendPacket_UMsg_ServerYell(TCPConnection::pointer connection, const string& senderNickName, const string& text);
 	void SendPacket_UMsg_BulletinNotice(TCPConnection::pointer connection, unsigned short noticeID, unsigned char flags, const string& title, const string& content);
+	void SendPacket_UMsg_ItemAwardNotice(TCPConnection::pointer connection, const vector<AwardItem>& items, const string& titleKey, const string& msgKey, const vector<string>& args = {});
 	void SendPacket_UMsg_NoticeMessage(TCPConnection::pointer connection, const string& text);
 	void SendPacket_UMsg_ServerMessage(TCPConnection::pointer connection, Packet_UMsgType type, const string& text, const vector<string>& additionalText = {});
 	void SendPacket_UMsg_SystemReply(TCPConnection::pointer connection, Packet_UMsgType type, const string& replyKey, const vector<string>& args);

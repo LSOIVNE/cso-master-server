@@ -11,6 +11,7 @@ public:
 	void QueuePacket(TCPConnection::Packet::pointer packet);
 	void SendPacket_Reply(TCPConnection::pointer connection, Packet_ReplyType type, const vector<string>& additionalText = {});
 	void SendPacket_Inventory(TCPConnection::pointer connection, const vector<InventoryItem>& userInventory, const vector<unsigned short>& deletedSlots = {});
+	void SendPacket_InventoryDelta(TCPConnection::pointer connection, const vector<InventoryItem>& updatedItems, const vector<unsigned short>& deletedSlots = {});
 	void BuildUserCharacter(TCPConnection::Packet::pointer packet, const UserCharacter& userCharacter);
 
 private:

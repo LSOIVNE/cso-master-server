@@ -170,6 +170,49 @@ void Packet_UMsgManager::SendPacket_UMsg_BulletinNotice(TCPConnection::pointer c
 	packet->Send();
 }
 
+void Packet_UMsgManager::SendPacket_UMsg_ItemAwardNotice(TCPConnection::pointer connection, const vector<AwardItem>& items, const string& titleKey, const string& msgKey, const vector<string>& args) {
+	if (connection == NULL) {
+		return;
+	}
+
+	auto packet = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::UMsg });
+	if (packet == NULL) {
+		return;
+	}
+
+	packet->WriteUInt8(Packet_UMsgType::ItemAwardNotice);
+
+	// 1. List 1: Award Items
+	packet->WriteUInt8((unsigned char)items.size());
+	for (const auto& item : items) {
+		packet->WriteUInt16_LE(item.itemID);
+		packet->WriteUInt16_LE(item.duration);
+		packet->WriteUInt16_LE(item.count);
+		packet->WriteUInt32_LE(item.flags);
+	}
+
+	// 2 ~ 6. Five empty lists (Lists 2, 3, 4, 5, 6)
+	packet->WriteUInt8(0);
+	packet->WriteUInt8(0);
+	packet->WriteUInt8(0);
+	packet->WriteUInt8(0);
+	packet->WriteUInt8(0);
+
+	// 7. titleKey (client formats as "#CSO_Warning_%s")
+	packet->WriteString(titleKey);
+
+	// 8. msgKey (client formats as "#CSO_Warning_%s")
+	packet->WriteString(msgKey);
+
+	// 9. Formatted arguments list
+	packet->WriteUInt8((unsigned char)args.size());
+	for (const auto& arg : args) {
+		packet->WriteString(Utf8ToCp950(arg));
+	}
+
+	packet->Send();
+}
+
 void Packet_UMsgManager::SendPacket_UMsg_ServerYell(TCPConnection::pointer connection, const string& senderNickName, const string& text) {
 	if (connection == NULL) {
 		return;

@@ -150,6 +150,40 @@ void PacketManager::SendPacket_Inventory(TCPConnection::pointer connection, cons
 	}
 }
 
+void PacketManager::SendPacket_InventoryDelta(TCPConnection::pointer connection, const vector<InventoryItem>& updatedItems, const vector<unsigned short>& deletedSlots) {
+	if (connection == NULL) {
+		return;
+	}
+
+	auto packet = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::Inventory });
+	if (packet == NULL) {
+		return;
+	}
+
+	packet->WriteUInt16_LE((unsigned short)(updatedItems.size() + deletedSlots.size()));
+
+	for (unsigned short slotID : deletedSlots) {
+		packet->WriteUInt16_LE(slotID);
+		packet->WriteUInt8(0); // status (0 = removed / deleted from client inventory)
+	}
+
+	for (const auto& item : updatedItems) {
+		packet->WriteUInt16_LE(item.slotID);
+		packet->WriteUInt8(1); // status (1 = present)
+		packet->WriteUInt16_LE(item.itemID);
+		packet->WriteUInt16_LE(item.count);
+		const auto* itemDef = itemDefinitionManager.GetItem(item.itemID);
+		bool isEquip = (itemDef != nullptr) ? itemDef->IsEquipment() : (item.activeFlag != 0);
+		packet->WriteUInt8(isEquip ? 1 : 0);
+		packet->WriteUInt8(item.inUse ? 1 : 0);
+		packet->WriteUInt32_LE(item.obtainTime);
+		packet->WriteUInt32_LE(item.expirationTime); // 0 = permanent
+		packet->WriteUInt32_LE(item.enhanceBits);
+	}
+
+	packet->Send();
+}
+
 void PacketManager::BuildUserCharacter(TCPConnection::Packet::pointer packet, const UserCharacter& userCharacter) {
 	if (packet == NULL) {
 		return;
