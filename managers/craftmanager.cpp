@@ -3,6 +3,7 @@
 #include "itemdefinitionmanager.h"
 #include "packetmanager.h"
 #include "packet_umsgmanager.h"
+#include "packet_updateinfomanager.h"
 #include "serverconsole.h"
 #include "usermanager.h"
 #include "nlohmann/json.hpp"
@@ -54,6 +55,9 @@ bool CraftManager::Reload() {
 			_settings.advancedSuccessChance = s.value("AdvancedSuccessChance", 80);
 			_settings.luckyBonusChance = s.value("LuckyBonusChance", 20);
 			_settings.broadcastMinGrade = s.value("BroadcastMinGrade", 3);
+			_settings.normalCraftFee = s.value("NormalCraftFeePoint", 500UL);
+			_settings.advancedCraftFee = s.value("AdvancedCraftFeePoint", 1000UL);
+			_settings.disassembleFeePerItem = s.value("DisassembleFeePerItem", 50UL);
 		}
 
 		// 2. Durability Mapping
@@ -99,6 +103,7 @@ bool CraftManager::Reload() {
 				cfg.type = bpVal.value("Type", "");
 				cfg.grade = bpVal.value("Grade", "Normal");
 				cfg.successChance = bpVal.value("SuccessChance", (cfg.grade == "Advanced" ? _settings.advancedSuccessChance : _settings.normalSuccessChance));
+				cfg.craftFee = bpVal.value("CraftFeePoint", (cfg.grade == "Advanced" ? _settings.advancedCraftFee : _settings.normalCraftFee));
 
 				if (bpVal.contains("Items") && bpVal["Items"].is_array()) {
 					for (const auto& itemVal : bpVal["Items"]) {
@@ -149,6 +154,15 @@ int CraftManager::GetDurabilityDays(unsigned short durID) const {
 	}
 }
 
+unsigned long CraftManager::GetBlueprintFee(unsigned short bpID) const {
+	auto it = _blueprints.find(bpID);
+	if (it != _blueprints.end()) {
+		if (it->second.craftFee > 0) return it->second.craftFee;
+		return (it->second.grade == "Advanced") ? _settings.advancedCraftFee : _settings.normalCraftFee;
+	}
+	return _settings.normalCraftFee;
+}
+
 bool CraftManager::QueryCraftPreview(User* user, unsigned short bpSlotID, unsigned short durSlotID, unsigned short secSlotID1, unsigned short secSlotID2) {
 	if (user == nullptr) {
 		return false;
@@ -191,6 +205,8 @@ bool CraftManager::QueryCraftPreview(User* user, unsigned short bpSlotID, unsign
 		return false;
 	}
 
+	unsigned long feePoint = GetBlueprintFee(bpItem->itemID);
+
 	int finalChance = bpCfg->successChance;
 	if ((secItem1 != nullptr && secItem1->itemID == 5201) ||
 		(secItem2 != nullptr && secItem2->itemID == 5201)) {
@@ -219,10 +235,10 @@ bool CraftManager::QueryCraftPreview(User* user, unsigned short bpSlotID, unsign
 		level = 4; // 很高
 	}
 
-	serverConsole.Print(PrefixType::Info, format("[ CraftManager ] User ({}) preview craft bp={} dur={} -> chance={}% (level={})\n",
-		user->GetUserLogName(), bpItem->itemID, durItem->itemID, finalChance, (int)level));
+	serverConsole.Print(PrefixType::Info, format("[ CraftManager ] User ({}) preview craft bp={} dur={} fee={} -> chance={}% (level={})\n",
+		user->GetUserLogName(), bpItem->itemID, durItem->itemID, feePoint, finalChance, (int)level));
 
-	sendCraftPreview(connection, level, 0);
+	sendCraftPreview(connection, level, feePoint);
 	return true;
 }
 
@@ -273,6 +289,18 @@ bool CraftManager::CraftWeapon(User* user, unsigned short bpSlotID, unsigned sho
 			user->GetUserLogName(), bpItem->itemID));
 		sendCraftResultFailure(connection, {});
 		return false;
+	}
+
+	unsigned long feePoint = GetBlueprintFee(bpItem->itemID);
+	if (feePoint > 0) {
+		if (!databaseManager.DeductUserFunds(userID, true, feePoint)) {
+			serverConsole.Print(PrefixType::Warn, format("[ CraftManager ] User ({}) has insufficient Point for craft: need {}\n",
+				user->GetUserLogName(), feePoint));
+			sendCraftResultFailure(connection, {});
+			return false;
+		}
+		auto charResult = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
+		packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, charResult.userCharacter });
 	}
 
 	int durationDays = GetDurabilityDays(durItem->itemID);
@@ -400,14 +428,6 @@ bool CraftManager::CraftWeapon(User* user, unsigned short bpSlotID, unsigned sho
 			}
 		}
 
-		// Broadcast celebration for permanent or high-grade weapons
-		if (durationDays == 0 || bpCfg->grade == "Advanced") {
-			std::string durStr = (durationDays == 0) ? "永久" : std::format("{}日", durationDays);
-			std::string noticeMsg = std::format("恭喜玩家 [{}] 透過工坊製造獲得了 [{}] ({})！",
-				user->GetUserName(), weaponName, durStr);
-			packet_UMsgManager.BroadcastRollingBanner(noticeMsg);
-		}
-
 		// Reply Craft Result Success: Packet 78, Type 5, Status 1, ResultFlag 1
 		sendCraftResultSuccess(connection, wonItemID, (unsigned short)durationDays);
 
@@ -416,37 +436,41 @@ bool CraftManager::CraftWeapon(User* user, unsigned short bpSlotID, unsigned sho
 		return true;
 	}
 	else {
-		// Craft Failed: Calculate returned recycling parts
+		// Craft Failed: Only return recycling parts when user actually used auxiliary item 5202 (再生工法)
+		// If 5202 was not used, returnedItemIDs is empty -> client displays standard "#CSO_WeaponAssem_Failure"
+		// If 5202 was used, returnedItemIDs has items -> client displays "#CSO_WeaponAssem_Failure_Recycle"
 		std::vector<unsigned short> returnedItemIDs;
-		const auto& recyclePool = hasRecycle ? _bonusRecycleItems : _normalRecycleItems;
+		if (hasRecycle) {
+			const auto& recyclePool = _bonusRecycleItems.empty() ? _normalRecycleItems : _bonusRecycleItems;
 
-		unsigned short maxSlotID = 0;
-		auto currentInv = user->GetUserInventory();
-		for (const auto& it : currentInv) {
-			if (it.slotID > maxSlotID) maxSlotID = it.slotID;
-		}
-
-		for (const auto& rItem : recyclePool) {
-			returnedItemIDs.push_back(rItem.itemID);
-			bool found = false;
+			unsigned short maxSlotID = 0;
+			auto currentInv = user->GetUserInventory();
 			for (const auto& it : currentInv) {
-				if (it.itemID == rItem.itemID) {
-					found = true;
-					databaseManager.UpdateUserInventoryItemCount(userID, rItem.itemID, rItem.count);
-					break;
-				}
+				if (it.slotID > maxSlotID) maxSlotID = it.slotID;
 			}
-			if (!found) {
-				InventoryItem newItem;
-				newItem.slotID = ++maxSlotID;
-				newItem.itemID = rItem.itemID;
-				newItem.count = rItem.count;
-				newItem.activeFlag = 1;
-				newItem.inUse = false;
-				newItem.obtainTime = (unsigned long)time(nullptr);
-				newItem.expirationTime = 0;
-				newItem.enhanceBits = 0;
-				databaseManager.AddUserInventoryItems(userID, { newItem });
+
+			for (const auto& rItem : recyclePool) {
+				returnedItemIDs.push_back(rItem.itemID);
+				bool found = false;
+				for (const auto& it : currentInv) {
+					if (it.itemID == rItem.itemID) {
+						found = true;
+						databaseManager.UpdateUserInventoryItemCount(userID, rItem.itemID, rItem.count);
+						break;
+					}
+				}
+				if (!found) {
+					InventoryItem newItem;
+					newItem.slotID = ++maxSlotID;
+					newItem.itemID = rItem.itemID;
+					newItem.count = rItem.count;
+					newItem.activeFlag = 1;
+					newItem.inUse = false;
+					newItem.obtainTime = (unsigned long)time(nullptr);
+					newItem.expirationTime = 0;
+					newItem.enhanceBits = 0;
+					databaseManager.AddUserInventoryItems(userID, { newItem });
+				}
 			}
 		}
 
@@ -471,6 +495,17 @@ bool CraftManager::DisassembleItems(User* user, const std::vector<unsigned short
 
 	unsigned long userID = user->GetUserID();
 	auto inv = user->GetUserInventory();
+
+	unsigned long disFee = (unsigned long)weaponSlots.size() * _settings.disassembleFeePerItem;
+	if (disFee > 0) {
+		if (!databaseManager.DeductUserFunds(userID, true, disFee)) {
+			serverConsole.Print(PrefixType::Warn, format("[ CraftManager ] User ({}) has insufficient Point for disassemble: need {}\n",
+				user->GetUserLogName(), disFee));
+			return false;
+		}
+		auto charResult = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
+		packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, charResult.userCharacter });
+	}
 
 	std::vector<unsigned short> deletedSlots;
 	std::unordered_map<unsigned short, unsigned short> rewardsToGrant; // ItemID -> Count
@@ -586,22 +621,6 @@ bool CraftManager::DisassembleItems(User* user, const std::vector<unsigned short
 
 	// Send refreshed inventory with deleted slots
 	packetManager.SendPacket_Inventory(connection, user->GetUserInventory(), deletedSlots);
-
-	// Send Disassemble Result packet: Packet 78, Type 6, Status 1 -> Pops up CItemFarmResultDlg
-	unsigned short mainRewardItemID = 5203;
-	unsigned short mainRewardCount = 1;
-	if (!rewardsToGrant.empty()) {
-		auto it = rewardsToGrant.find(5203);
-		if (it != rewardsToGrant.end()) {
-			mainRewardItemID = 5203;
-			mainRewardCount = it->second;
-		}
-		else {
-			mainRewardItemID = rewardsToGrant.begin()->first;
-			mainRewardCount = rewardsToGrant.begin()->second;
-		}
-	}
-	sendDisassembleResult(connection, mainRewardItemID, mainRewardCount);
 	return true;
 }
 
@@ -652,23 +671,6 @@ void CraftManager::sendCraftResultFailure(TCPConnection::pointer connection, con
 			replyPacket->WriteUInt16_LE(id);
 		}
 		replyPacket->WriteString(""); // message = ""
-		replyPacket->Send();
-	}
-}
-
-void CraftManager::sendDisassembleResult(TCPConnection::pointer connection, unsigned short itemID, unsigned short count) {
-	if (connection == nullptr) {
-		return;
-	}
-
-	// Packet 78, Type 6, Status 1, itemID, duration=0 (count-based), count
-	auto replyPacket = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::Item });
-	if (replyPacket != nullptr) {
-		replyPacket->WriteUInt8(6); // Packet_ItemType = 6 (MaterialAssem / Disassemble Result)
-		replyPacket->WriteUInt8(1); // status = 1 (Success)
-		replyPacket->WriteUInt32_LE(itemID); // ItemID (4 bytes)
-		replyPacket->WriteUInt16_LE(0); // duration = 0 (count-based)
-		replyPacket->WriteUInt16_LE(count); // count (N個)
 		replyPacket->Send();
 	}
 }
