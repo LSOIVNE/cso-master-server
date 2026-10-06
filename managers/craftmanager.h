@@ -52,6 +52,7 @@ private:
 	void sendCraftResultSuccess(TCPConnection::pointer connection, unsigned short itemID, unsigned short durationDays);
 	void sendCraftResultFailure(TCPConnection::pointer connection, const std::vector<unsigned short>& returnedItemIDs);
 	void sendDisassembleResult(TCPConnection::pointer connection, unsigned short itemID, unsigned short count);
+	void sendDisassembleFailure(TCPConnection::pointer connection, const std::string& failReason);
 
 private:
 	CraftSettings _settings;

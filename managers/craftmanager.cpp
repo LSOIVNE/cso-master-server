@@ -296,6 +296,7 @@ bool CraftManager::CraftWeapon(User* user, unsigned short bpSlotID, unsigned sho
 			serverConsole.Print(PrefixType::Warn, format("[ CraftManager ] User ({}) has insufficient Point for craft: need {}\n",
 				user->GetUserLogName(), feePoint));
 			sendCraftResultFailure(connection, {});
+			packet_UMsgManager.SendPacket_UMsg_SystemReply(connection, Packet_UMsgType::WarningMessage, "FAB_NOT_ENOUGH_POINT", {});
 			return false;
 		}
 		auto charResult = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
@@ -434,11 +435,11 @@ bool CraftManager::CraftWeapon(User* user, unsigned short bpSlotID, unsigned sho
 			}
 		}
 
+		// Refresh client inventory with deleted slots BEFORE triggering result dialog
+		packetManager.SendPacket_Inventory(connection, user->GetUserInventory(), deletedSlots);
+
 		// Reply Craft Result Success: Packet 78, Type 5, Status 1, ResultFlag 1
 		sendCraftResultSuccess(connection, wonItemID, (unsigned short)durationDays);
-
-		// Refresh client inventory with deleted slots
-		packetManager.SendPacket_Inventory(connection, user->GetUserInventory(), deletedSlots);
 		return true;
 	}
 	else {
@@ -480,11 +481,11 @@ bool CraftManager::CraftWeapon(User* user, unsigned short bpSlotID, unsigned sho
 			}
 		}
 
+		// Refresh client inventory with deleted slots BEFORE triggering result dialog
+		packetManager.SendPacket_Inventory(connection, user->GetUserInventory(), deletedSlots);
+
 		// Reply Craft Result Failure: Packet 78, Type 5, Status 1, ResultFlag 0
 		sendCraftResultFailure(connection, returnedItemIDs);
-
-		// Refresh client inventory with deleted slots
-		packetManager.SendPacket_Inventory(connection, user->GetUserInventory(), deletedSlots);
 		return true;
 	}
 }
@@ -507,6 +508,8 @@ bool CraftManager::DisassembleItems(User* user, const std::vector<unsigned short
 		if (!databaseManager.DeductUserFunds(userID, true, disFee)) {
 			serverConsole.Print(PrefixType::Warn, format("[ CraftManager ] User ({}) has insufficient Point for disassemble: need {}\n",
 				user->GetUserLogName(), disFee));
+			sendDisassembleFailure(connection, "DIS_NOT_ENOUGH_POINT");
+			packet_UMsgManager.SendPacket_UMsg_SystemReply(connection, Packet_UMsgType::WarningMessage, "DIS_NOT_ENOUGH_POINT", {});
 			return false;
 		}
 		auto charResult = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
@@ -625,10 +628,10 @@ bool CraftManager::DisassembleItems(User* user, const std::vector<unsigned short
 		}
 	}
 
-	// Send refreshed inventory with deleted slots
+	// 1. Send refreshed inventory with deleted slots FIRST
 	packetManager.SendPacket_Inventory(connection, user->GetUserInventory(), deletedSlots);
 
-	// Send Disassemble Result packet: Packet 78, Type 6, Status 1 -> Pops up CItemFarmResultDlg
+	// 2. Send Disassemble Result packet: Packet 78, Type 4, Status 1 (Disassemble Success)
 	unsigned short mainRewardItemID = 5203;
 	unsigned short mainRewardCount = 1;
 	if (!rewardsToGrant.empty()) {
@@ -643,6 +646,17 @@ bool CraftManager::DisassembleItems(User* user, const std::vector<unsigned short
 		}
 	}
 	sendDisassembleResult(connection, mainRewardItemID, mainRewardCount);
+
+	// 3. Pop up Disassemble Result dialog via BulletinNotice (Packet 65)
+	std::string noticeTitle = "分解結果";
+	std::string noticeMsg = "分解道具後獲得下列材料\n";
+	for (const auto& [rItemID, rCount] : rewardsToGrant) {
+		const auto* def = itemDefinitionManager.GetItem(rItemID);
+		std::string rName = (def != nullptr && !def->name.empty()) ? def->name : ("道具 " + std::to_string(rItemID));
+		noticeMsg += format("\n- {} x{}", rName, rCount);
+	}
+	packet_UMsgManager.SendPacket_UMsg_BulletinNotice(connection, 0, 1, noticeTitle, noticeMsg);
+
 	return true;
 }
 
@@ -704,11 +718,26 @@ void CraftManager::sendDisassembleResult(TCPConnection::pointer connection, unsi
 
 	auto replyPacket = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::Item });
 	if (replyPacket != nullptr) {
-		replyPacket->WriteUInt8(6); // Packet_ItemType = 6 (MaterialAssem / Disassemble Result)
+		replyPacket->WriteUInt8(4); // Packet_ItemType = 4 (Disassemble)
 		replyPacket->WriteUInt8(1); // status = 1 (Success)
 		replyPacket->WriteUInt32_LE(itemID); // ItemID (4 bytes)
-		replyPacket->WriteUInt16_LE(0); // duration = 0 (count-based)
-		replyPacket->WriteUInt16_LE(count); // count
+		replyPacket->WriteUInt16_LE(0); // 2 bytes
+		replyPacket->WriteUInt16_LE(count); // count (2 bytes)
+		replyPacket->WriteUInt8(0); // 1 byte padding
+		replyPacket->Send();
+	}
+}
+
+void CraftManager::sendDisassembleFailure(TCPConnection::pointer connection, const std::string& failReason) {
+	if (connection == nullptr) {
+		return;
+	}
+
+	auto replyPacket = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::Item });
+	if (replyPacket != nullptr) {
+		replyPacket->WriteUInt8(4); // Packet_ItemType = 4 (Disassemble)
+		replyPacket->WriteUInt8(0); // status = 0 (Failure)
+		replyPacket->WriteString(failReason);
 		replyPacket->Send();
 	}
 }

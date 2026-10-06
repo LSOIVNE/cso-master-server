@@ -612,6 +612,31 @@
         }
       ]
     },
+	{
+      "ProductID": 439,
+      "Name": "大頭製造器",
+      "IsPoints": 1,
+      "Offers": [
+        {
+          "Duration": 1,
+          "Count": 1,
+          "Price": 449,
+          "AdType": 1
+        },
+        {
+          "Duration": 3,
+          "Count": 1,
+          "Price": 1299,
+          "AdType": 1
+        },
+        {
+          "Duration": 7,
+          "Count": 1,
+          "Price": 2499,
+          "AdType": 1
+        }
+      ]
+    },
     {
       "ProductID": 307,
       "Name": "雙子銀狼",
