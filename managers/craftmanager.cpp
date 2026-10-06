@@ -295,7 +295,6 @@ bool CraftManager::CraftWeapon(User* user, unsigned short bpSlotID, unsigned sho
 		if (!databaseManager.DeductUserFunds(userID, true, feePoint)) {
 			serverConsole.Print(PrefixType::Warn, format("[ CraftManager ] User ({}) has insufficient Point for craft: need {}\n",
 				user->GetUserLogName(), feePoint));
-			sendCraftResultFailure(connection, {});
 			packet_UMsgManager.SendPacket_UMsg_SystemReply(connection, Packet_UMsgType::WarningMessage, "FAB_NOT_ENOUGH_POINT", {});
 			return false;
 		}
@@ -594,8 +593,8 @@ bool CraftManager::DisassembleItems(User* user, const std::vector<unsigned short
 		if (!databaseManager.DeductUserFunds(userID, true, disFee)) {
 			serverConsole.Print(PrefixType::Warn, format("[ CraftManager ] User ({}) has insufficient Point for disassemble: need {}\n",
 				user->GetUserLogName(), disFee));
-			// Pop up Dismantle failure dialog via ItemAwardNotice
-			packet_UMsgManager.SendPacket_UMsg_ItemAwardNotice(connection, {}, "Dismantlefail_TITLE", "Dismantlefail_MSG");
+			// Pop up standard Warning Dialog: "#CSO_Warning_DIS_NOT_ENOUGH_POINT" ("分解所需手續費不足")
+			packet_UMsgManager.SendPacket_UMsg_SystemReply(connection, Packet_UMsgType::WarningMessage, "DIS_NOT_ENOUGH_POINT", {});
 			return false;
 		}
 		auto charResult = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
