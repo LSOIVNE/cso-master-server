@@ -199,7 +199,8 @@
 		"AllowPlayerItemCommands": true,
 		"AllowPlayerDailyCommands": true,
 		"AllowPlayerNotice": false,
-		"AllowPlayerReloadShop": false
+		"AllowPlayerReloadShop": false,
+		"AllowPlayerReloadEnhance": false
 	},
 	"Shop": {
 		"BroadcastOnReload": false

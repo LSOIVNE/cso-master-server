@@ -54,7 +54,9 @@ enum class PacketID {
 	ClanStock = 155,
 	CafeItems = 156,
 	UserUpdateInfo = 157,
-	Event = 159
+	FabItems = 158,
+	Event = 159,
+	CostumeInven = 160
 };
 
 enum Packet_ReplyType {

@@ -1136,6 +1136,22 @@ bool DatabaseManager::UpdateUserInventoryExpiration(unsigned long userID, unsign
     return true;
 }
 
+bool DatabaseManager::UpdateUserInventoryItemEnhance(unsigned long userID, unsigned short slotID, unsigned long enhanceBits) {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    string query = format("UPDATE user_inventory SET enhanceBits = {} WHERE userID = {} AND slotID = {};", enhanceBits, userID, slotID);
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on UpdateUserInventoryItemEnhance: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Successfully updated slotID {} enhanceBits ({:#x}) for userID {}\n", slotID, enhanceBits, userID));
+    return true;
+}
+
 bool DatabaseManager::ResetUserInventory(unsigned long userID) {
     if (_connection == NULL) {
         return false;

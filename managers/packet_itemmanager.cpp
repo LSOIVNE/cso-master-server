@@ -8,6 +8,7 @@
 #include "itemboxmanager.h"
 #include "craftmanager.h"
 #include "attendancemanager.h"
+#include "enhancemanager.h"
 #include <unordered_set>
 
 Packet_ItemManager packet_ItemManager;
@@ -53,6 +54,10 @@ void Packet_ItemManager::ParsePacket_Item(TCPConnection::Packet::pointer packet)
 			parsePacket_Item_Craft(user, packet);
 			break;
 		}
+		case Packet_ItemType::MaterialAssem: {
+			parsePacket_Item_MaterialAssem(user, packet);
+			break;
+		}
 		case Packet_ItemType::Disassemble: {
 			parsePacket_Item_Disassemble(user, packet);
 			break;
@@ -63,6 +68,10 @@ void Packet_ItemManager::ParsePacket_Item(TCPConnection::Packet::pointer packet)
 		}
 		case Packet_ItemType::Tattoo: {
 			parsePacket_Item_Tattoo(user, packet);
+			break;
+		}
+		case Packet_ItemType::Enhance: {
+			parsePacket_Item_Enhance(user, packet);
 			break;
 		}
 		default: {
@@ -382,4 +391,40 @@ void Packet_ItemManager::parsePacket_Item_Disassemble(User* user, TCPConnection:
 
 	craftManager.DisassembleItems(user, slots);
 }
+
+void Packet_ItemManager::parsePacket_Item_MaterialAssem(User* user, TCPConnection::Packet::pointer packet) {
+	if (user == nullptr || packet == nullptr) {
+		return;
+	}
+
+	unsigned short slot0 = packet->ReadUInt16_LE();
+	unsigned short slot1 = packet->ReadUInt16_LE();
+	unsigned short slot2 = packet->ReadUInt16_LE();
+
+	serverConsole.Print(PrefixType::Info, format("[ Packet_ItemManager ] User ({}) material assembly request: slot0={}, slot1={}, slot2={}\n",
+		user->GetUserLogName(), slot0, slot1, slot2));
+
+	std::vector<unsigned short> slots;
+	if (slot0 != 0xFFFF) slots.push_back(slot0);
+	if (slot1 != 0xFFFF) slots.push_back(slot1);
+	if (slot2 != 0xFFFF) slots.push_back(slot2);
+
+	craftManager.AssembleMaterials(user, slots);
+}
+
+void Packet_ItemManager::parsePacket_Item_Enhance(User* user, TCPConnection::Packet::pointer packet) {
+	if (user == nullptr || packet == nullptr) {
+		return;
+	}
+
+	unsigned char action = packet->ReadUInt8(); // 1
+	unsigned short weaponSlotID = packet->ReadUInt16_LE();
+	unsigned short materialSlotID = packet->ReadUInt16_LE();
+
+	serverConsole.Print(PrefixType::Info, format("[ Packet_ItemManager ] User ({}) weapon enhance request: action={}, weaponSlot={}, matSlot={}\n",
+		user->GetUserLogName(), action, weaponSlotID, materialSlotID));
+
+	enhanceManager.HandleEnhance(user, weaponSlotID, materialSlotID);
+}
+
 

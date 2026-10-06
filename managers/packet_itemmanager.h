@@ -7,9 +7,11 @@ enum Packet_ItemType {
 	BuyWeapon = 2,
 	OpenBox = 4,
 	Craft = 5,
+	MaterialAssem = 6,
 	Disassemble = 7,
 	Roulette = 8,
-	Tattoo = 9
+	Tattoo = 9,
+	Enhance = 14
 };
 
 bool IsTattooItem(unsigned short itemID);
@@ -24,9 +26,11 @@ private:
 	void parsePacket_Item_BuyWeapon(User* user, TCPConnection::Packet::pointer packet);
 	void parsePacket_Item_OpenBox(User* user, TCPConnection::Packet::pointer packet);
 	void parsePacket_Item_Craft(User* user, TCPConnection::Packet::pointer packet);
+	void parsePacket_Item_MaterialAssem(User* user, TCPConnection::Packet::pointer packet);
 	void parsePacket_Item_Disassemble(User* user, TCPConnection::Packet::pointer packet);
 	void parsePacket_Item_Roulette(User* user, TCPConnection::Packet::pointer packet);
 	void parsePacket_Item_Tattoo(User* user, TCPConnection::Packet::pointer packet);
+	void parsePacket_Item_Enhance(User* user, TCPConnection::Packet::pointer packet);
 };
 
 extern Packet_ItemManager packet_ItemManager;

@@ -54,6 +54,7 @@ struct PermissionConfig {
 	bool allowPlayerDailyCommands = true;
 	bool allowPlayerNotice = false;
 	bool allowPlayerReloadShop = false;
+	bool allowPlayerReloadEnhance = false;
 };
 
 struct ShopConfig {

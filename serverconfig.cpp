@@ -388,6 +388,9 @@ bool ServerConfig::Load() {
 			if (p.contains("AllowPlayerReloadShop") && p["AllowPlayerReloadShop"].is_boolean()) {
 				permissions.allowPlayerReloadShop = p["AllowPlayerReloadShop"].get<bool>();
 			}
+			if (p.contains("AllowPlayerReloadEnhance") && p["AllowPlayerReloadEnhance"].is_boolean()) {
+				permissions.allowPlayerReloadEnhance = p["AllowPlayerReloadEnhance"].get<bool>();
+			}
 		}
 
 		if (config.contains("Shop") && config["Shop"].is_object()) {

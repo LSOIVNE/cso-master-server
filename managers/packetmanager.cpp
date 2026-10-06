@@ -100,7 +100,8 @@ void PacketManager::SendPacket_Inventory(TCPConnection::pointer connection, cons
 		return;
 	}
 
-	vector<InventoryItem> itemsToSend;
+	vector<InventoryItem> normalItems;
+	vector<InventoryItem> fabItems;
 	vector<unsigned short> slotsToDelete = deletedSlots;
 	unsigned short cboxCount = 0;
 
@@ -111,37 +112,70 @@ void PacketManager::SendPacket_Inventory(TCPConnection::pointer connection, cons
 			slotsToDelete.push_back(item.slotID);
 		}
 		else {
-			itemsToSend.push_back(item);
+			const auto* itemDef = itemDefinitionManager.GetItem(item.itemID);
+			bool isFab = (itemDef != nullptr && itemDef->IsFabItem()) || (item.itemID >= 5001 && item.itemID <= 5999);
+			if (isFab) {
+				fabItems.push_back(item);
+			}
+			else {
+				normalItems.push_back(item);
+			}
 		}
 	}
 
+	// 1. Send normal items via Packet 154 (Inventory)
 	auto packet = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::Inventory });
-	if (packet == NULL) {
-		return;
+	if (packet != NULL) {
+		packet->WriteUInt16_LE((unsigned short)(normalItems.size() + slotsToDelete.size()));
+
+		for (unsigned short slotID : slotsToDelete) {
+			packet->WriteUInt16_LE(slotID);
+			packet->WriteUInt8(0); // status (0 = removed / deleted from client inventory)
+		}
+
+		for (auto& item : normalItems) {
+			packet->WriteUInt16_LE(item.slotID);
+			packet->WriteUInt8(1); // status (1 = present)
+			packet->WriteUInt16_LE(item.itemID);
+			packet->WriteUInt16_LE(item.count);
+			const auto* itemDef = itemDefinitionManager.GetItem(item.itemID);
+			bool isEquip = (itemDef != nullptr) ? itemDef->IsEquipment() : (item.activeFlag != 0);
+			packet->WriteUInt8(isEquip ? 1 : 0);
+			packet->WriteUInt8(item.inUse ? 1 : 0);
+			packet->WriteUInt32_LE(item.obtainTime);
+			packet->WriteUInt32_LE(item.expirationTime); // 0 = permanent
+			packet->WriteUInt32_LE(item.enhanceBits);
+		}
+
+		packet->Send();
 	}
 
-	packet->WriteUInt16_LE((unsigned short)(itemsToSend.size() + slotsToDelete.size()));
+	// 2. Send craft materials via Packet 158 (FabItems)
+	if (!fabItems.empty() || !slotsToDelete.empty()) {
+		auto fabPacket = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::FabItems });
+		if (fabPacket != NULL) {
+			fabPacket->WriteUInt16_LE((unsigned short)(fabItems.size() + slotsToDelete.size()));
 
-	for (unsigned short slotID : slotsToDelete) {
-		packet->WriteUInt16_LE(slotID);
-		packet->WriteUInt8(0); // status (0 = removed / deleted from client inventory)
+			for (unsigned short slotID : slotsToDelete) {
+				fabPacket->WriteUInt16_LE(slotID);
+				fabPacket->WriteUInt8(0); // status (0 = removed / deleted from client inventory)
+			}
+
+			for (auto& item : fabItems) {
+				fabPacket->WriteUInt16_LE(item.slotID);
+				fabPacket->WriteUInt8(1); // status (1 = present)
+				fabPacket->WriteUInt16_LE(item.itemID);
+				fabPacket->WriteUInt16_LE(item.count);
+				fabPacket->WriteUInt8(0); // isEquip
+				fabPacket->WriteUInt8(0); // inUse
+				fabPacket->WriteUInt32_LE(item.obtainTime);
+				fabPacket->WriteUInt32_LE(item.expirationTime); // 0 = permanent
+				fabPacket->WriteUInt32_LE(item.enhanceBits);
+			}
+
+			fabPacket->Send();
+		}
 	}
-
-	for (auto& item : itemsToSend) {
-		packet->WriteUInt16_LE(item.slotID);
-		packet->WriteUInt8(1); // status (1 = present)
-		packet->WriteUInt16_LE(item.itemID);
-		packet->WriteUInt16_LE(item.count);
-		const auto* itemDef = itemDefinitionManager.GetItem(item.itemID);
-		bool isEquip = (itemDef != nullptr) ? itemDef->IsEquipment() : (item.activeFlag != 0);
-		packet->WriteUInt8(isEquip ? 1 : 0);
-		packet->WriteUInt8(item.inUse ? 1 : 0);
-		packet->WriteUInt32_LE(item.obtainTime);
-		packet->WriteUInt32_LE(item.expirationTime); // 0 = permanent
-		packet->WriteUInt32_LE(item.enhanceBits);
-	}
-
-	packet->Send();
 
 	// Also sync CBox count to client HUD / CGamePlayer
 	User* user = userManager.GetUserByConnection(connection);
@@ -155,33 +189,75 @@ void PacketManager::SendPacket_InventoryDelta(TCPConnection::pointer connection,
 		return;
 	}
 
-	auto packet = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::Inventory });
-	if (packet == NULL) {
-		return;
-	}
-
-	packet->WriteUInt16_LE((unsigned short)(updatedItems.size() + deletedSlots.size()));
-
-	for (unsigned short slotID : deletedSlots) {
-		packet->WriteUInt16_LE(slotID);
-		packet->WriteUInt8(0); // status (0 = removed / deleted from client inventory)
-	}
+	vector<InventoryItem> normalItems;
+	vector<InventoryItem> fabItems;
 
 	for (const auto& item : updatedItems) {
-		packet->WriteUInt16_LE(item.slotID);
-		packet->WriteUInt8(1); // status (1 = present)
-		packet->WriteUInt16_LE(item.itemID);
-		packet->WriteUInt16_LE(item.count);
 		const auto* itemDef = itemDefinitionManager.GetItem(item.itemID);
-		bool isEquip = (itemDef != nullptr) ? itemDef->IsEquipment() : (item.activeFlag != 0);
-		packet->WriteUInt8(isEquip ? 1 : 0);
-		packet->WriteUInt8(item.inUse ? 1 : 0);
-		packet->WriteUInt32_LE(item.obtainTime);
-		packet->WriteUInt32_LE(item.expirationTime); // 0 = permanent
-		packet->WriteUInt32_LE(item.enhanceBits);
+		bool isFab = (itemDef != nullptr && itemDef->IsFabItem()) || (item.itemID >= 5001 && item.itemID <= 5999);
+		if (isFab) {
+			fabItems.push_back(item);
+		}
+		else {
+			normalItems.push_back(item);
+		}
 	}
 
-	packet->Send();
+	// 1. Send normal items delta via Packet 154
+	if (!normalItems.empty() || !deletedSlots.empty()) {
+		auto packet = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::Inventory });
+		if (packet != NULL) {
+			packet->WriteUInt16_LE((unsigned short)(normalItems.size() + deletedSlots.size()));
+
+			for (unsigned short slotID : deletedSlots) {
+				packet->WriteUInt16_LE(slotID);
+				packet->WriteUInt8(0); // status (0 = removed / deleted from client inventory)
+			}
+
+			for (const auto& item : normalItems) {
+				packet->WriteUInt16_LE(item.slotID);
+				packet->WriteUInt8(1); // status (1 = present)
+				packet->WriteUInt16_LE(item.itemID);
+				packet->WriteUInt16_LE(item.count);
+				const auto* itemDef = itemDefinitionManager.GetItem(item.itemID);
+				bool isEquip = (itemDef != nullptr) ? itemDef->IsEquipment() : (item.activeFlag != 0);
+				packet->WriteUInt8(isEquip ? 1 : 0);
+				packet->WriteUInt8(item.inUse ? 1 : 0);
+				packet->WriteUInt32_LE(item.obtainTime);
+				packet->WriteUInt32_LE(item.expirationTime); // 0 = permanent
+				packet->WriteUInt32_LE(item.enhanceBits);
+			}
+
+			packet->Send();
+		}
+	}
+
+	// 2. Send craft materials delta via Packet 158
+	if (!fabItems.empty() || !deletedSlots.empty()) {
+		auto fabPacket = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::FabItems });
+		if (fabPacket != NULL) {
+			fabPacket->WriteUInt16_LE((unsigned short)(fabItems.size() + deletedSlots.size()));
+
+			for (unsigned short slotID : deletedSlots) {
+				fabPacket->WriteUInt16_LE(slotID);
+				fabPacket->WriteUInt8(0); // status (0 = removed / deleted from client inventory)
+			}
+
+			for (const auto& item : fabItems) {
+				fabPacket->WriteUInt16_LE(item.slotID);
+				fabPacket->WriteUInt8(1); // status (1 = present)
+				fabPacket->WriteUInt16_LE(item.itemID);
+				fabPacket->WriteUInt16_LE(item.count);
+				fabPacket->WriteUInt8(0); // isEquip
+				fabPacket->WriteUInt8(0); // inUse
+				fabPacket->WriteUInt32_LE(item.obtainTime);
+				fabPacket->WriteUInt32_LE(item.expirationTime); // 0 = permanent
+				fabPacket->WriteUInt32_LE(item.enhanceBits);
+			}
+
+			fabPacket->Send();
+		}
+	}
 }
 
 void PacketManager::BuildUserCharacter(TCPConnection::Packet::pointer packet, const UserCharacter& userCharacter) {

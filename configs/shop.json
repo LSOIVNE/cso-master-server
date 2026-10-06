@@ -612,6 +612,31 @@
         }
       ]
     },
+	{
+      "ProductID": 439,
+      "Name": "大頭製造器",
+      "IsPoints": 1,
+      "Offers": [
+        {
+          "Duration": 1,
+          "Count": 1,
+          "Price": 449,
+          "AdType": 1
+        },
+        {
+          "Duration": 3,
+          "Count": 1,
+          "Price": 1299,
+          "AdType": 1
+        },
+        {
+          "Duration": 7,
+          "Count": 1,
+          "Price": 2499,
+          "AdType": 1
+        }
+      ]
+    },
     {
       "ProductID": 307,
       "Name": "雙子銀狼",
@@ -1858,29 +1883,21 @@
     },
     {
       "ProductID": 5201,
-      "Name": "祝福的合成道具",
+      "Name": "幸運工法",
       "IsPoints": 0,
       "Offers": [
-        { "Duration": 0, "Count": 1, "Price": 25, "AdType": 0, "IsCount": 1 },
-        { "Duration": 0, "Count": 5, "Price": 99, "AdType": 0, "IsCount": 1 }
+        { "Duration": 0, "Count": 3, "Price": 40, "AdType": 0, "IsCount": 1 },
+        { "Duration": 0, "Count": 10, "Price": 99, "AdType": 0, "IsCount": 1 },
+		{ "Duration": 0, "Count": 30, "Price": 269, "AdType": 0, "IsCount": 1 }
       ]
     },
     {
       "ProductID": 5202,
-      "Name": "祝福的強化道具",
+      "Name": "再生工法",
       "IsPoints": 0,
       "Offers": [
-        { "Duration": 0, "Count": 1, "Price": 25, "AdType": 0, "IsCount": 1 },
-        { "Duration": 0, "Count": 5, "Price": 99, "AdType": 0, "IsCount": 1 }
-      ]
-    },
-    {
-      "ProductID": 5203,
-      "Name": "一般強化零件",
-      "IsPoints": 1,
-      "Offers": [
-        { "Duration": 0, "Count": 5, "Price": 2000, "AdType": 0, "IsCount": 1 },
-        { "Duration": 0, "Count": 20, "Price": 7500, "AdType": 0, "IsCount": 1 }
+        { "Duration": 0, "Count": 1, "Price": 29, "AdType": 0, "IsCount": 1 },
+        { "Duration": 0, "Count": 11, "Price": 290, "AdType": 0, "IsCount": 1 }
       ]
     }
   ]

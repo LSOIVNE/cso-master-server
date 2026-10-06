@@ -10,6 +10,7 @@
 #include "packet_updateinfomanager.h"
 #include "attendancemanager.h"
 #include "craftmanager.h"
+#include "enhancemanager.h"
 #include "serverconfig.h"
 #include <sstream>
 #include <unordered_set>
@@ -186,8 +187,8 @@ void Packet_UMsgManager::SendPacket_UMsg_ItemAwardNotice(TCPConnection::pointer 
 	packet->WriteUInt8((unsigned char)items.size());
 	for (const auto& item : items) {
 		packet->WriteUInt16_LE(item.itemID);
-		packet->WriteUInt16_LE(item.duration);
 		packet->WriteUInt16_LE(item.count);
+		packet->WriteUInt16_LE(item.duration);
 		packet->WriteUInt32_LE(item.flags);
 	}
 
@@ -535,6 +536,7 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		cmdLower != "/addpoints" && cmdLower != "/addgash" &&
 		cmdLower != "/reloadshop" &&
 		cmdLower != "/reloadcraft" &&
+		cmdLower != "/reloadenhance" &&
 		cmdLower != "/resetdaily" &&
 		cmdLower != "/nextdaily") {
 		return false;
@@ -567,6 +569,12 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 	}
 	else if (cmdLower == "/reloadshop" || cmdLower == "/reloadcraft") {
 		if (!serverConfig.permissions.allowPlayerReloadShop && !isGM) {
+			SendNotice("權限不足：配置重載指令已被管理員限制，僅限 GM 使用！");
+			return true;
+		}
+	}
+	else if (cmdLower == "/reloadenhance") {
+		if (!serverConfig.permissions.allowPlayerReloadEnhance && !isGM) {
 			SendNotice("權限不足：配置重載指令已被管理員限制，僅限 GM 使用！");
 			return true;
 		}
@@ -1169,6 +1177,15 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		}
 		else {
 			SendNotice("[系統] 重載工坊製造配置失敗，請檢查 configs/craft.json 格式！");
+		}
+		return true;
+	}
+	else if (cmdLower == "/reloadenhance") {
+		if (enhanceManager.Reload()) {
+			SendNotice("[系統] 武器強化配置已成功重載！(configs/enhance.json)");
+		}
+		else {
+			SendNotice("[系統] 重載武器強化配置失敗，請檢查 configs/enhance.json 格式！");
 		}
 		return true;
 	}

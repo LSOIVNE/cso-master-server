@@ -31,6 +31,10 @@ struct ItemDefinition {
 		return category == 12;
 	}
 
+	bool IsFabItem() const {
+		return (id >= 5001 && id <= 5999) || className.rfind("Fab", 0) == 0;
+	}
+
 	bool IsEquipment() const {
 		if (className == "NicknameChange" || className == "NicknameCamouflage") {
 			return false;

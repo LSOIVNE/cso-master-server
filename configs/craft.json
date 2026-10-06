@@ -5,24 +5,60 @@
     "LuckyBonusChance": 20,
     "NormalCraftFeePoint": 500,
     "AdvancedCraftFeePoint": 1000,
-    "DisassembleFeePerItem": 50
+    "DisassembleFeePerItem": 50,
+    "PermanentDisplayMode": "Permanent",
+    "SingleRecycleBlueprintWeight": 50,
+    "SingleRecycleDurabilityWeight": 50,
+    "LongTermPermanentChance": 10
+  },
+  "MaterialCombineSettings": {
+    "FeePoint": 100,
+    "SuccessRate2Items": 55,
+    "SuccessRate3Items": 80,
+    "FailLowGradeChance": 80
   },
   "DurabilityMapping": {
-    "5101": 1,
-    "5102": 3,
-    "5103": 10,
-    "5104": 30,
-    "5105": 90,
-    "5106": 0
+    "5101": { "MinDays": 1, "MaxDays": 1 },
+    "5102": { "MinDays": 1, "MaxDays": 3 },
+    "5103": { "MinDays": 3, "MaxDays": 10 },
+    "5104": { "MinDays": 10, "MaxDays": 30 },
+    "5105": { "MinDays": 30, "MaxDays": 90 },
+    "5106": { "MinDays": 72, "MaxDays": 120 }
   },
-  "FailureRecycle": {
-    "NormalRecycleItems": [
-      { "ItemID": 5203, "Count": 1 }
-    ],
-    "BonusRecycleItems": [
-      { "ItemID": 5203, "Count": 2 },
-      { "ItemID": 5101, "Count": 1 }
-    ]
+  "DisassembleSettings": {
+    "Scaling": {
+      "PermanentShares": 10,
+      "DaysPerShare": 3,
+      "MaxPeriodShares": 30
+    },
+    "Categories": {
+      "Durability": {
+        "Enabled": true,
+        "DropChance": 40,
+        "MinAmount": 1,
+        "MaxAmount": 1,
+        "Items": [
+          { "ItemID": 5101, "Name": "1日耐久材料", "Weight": 50 },
+          { "ItemID": 5102, "Name": "3日耐久材料", "Weight": 30 },
+          { "ItemID": 5103, "Name": "10日耐久材料", "Weight": 15 },
+          { "ItemID": 5104, "Name": "30日耐久材料", "Weight": 5 }
+        ]
+      },
+      "Blueprint": {
+        "Enabled": true,
+        "DropChance": 35,
+        "MinAmount": 1,
+        "MaxAmount": 1,
+        "Items": [
+          { "ItemID": 5001, "Name": "一般手槍設計圖", "Weight": 20 },
+          { "ItemID": 5002, "Name": "一般散彈槍設計圖", "Weight": 20 },
+          { "ItemID": 5003, "Name": "一般衝鋒槍設計圖", "Weight": 20 },
+          { "ItemID": 5004, "Name": "一般步槍設計圖", "Weight": 20 },
+          { "ItemID": 5006, "Name": "一般機槍設計圖", "Weight": 10 },
+          { "ItemID": 5007, "Name": "一般近戰武器設計圖", "Weight": 10 }
+        ]
+      }
+    }
   },
   "Blueprints": {
     "5001": {
