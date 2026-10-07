@@ -263,3 +263,16 @@ void Packet_QuestManager::SendPacket_Quest_ClaimRewardReply(TCPConnection::point
 	packet->Send();
 }
 
+void Packet_QuestManager::SendPacket_Quest_UpdateStats(TCPConnection::pointer connection, unsigned int honorPoints, unsigned char resetCount) {
+	if (connection == NULL) return;
+
+	auto packet = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::Quest });
+	if (packet == NULL) return;
+
+	packet->WriteUInt8(14); // Subtype 14 (0x0E): UpdateStats & Trigger UI Refresh
+	packet->WriteUInt16_LE(0x0081); // statsFlag: 0x0001 (Honor) | 0x0080 (ResetCount)
+	packet->WriteUInt32_LE(honorPoints);
+	packet->WriteUInt8(resetCount);
+
+	packet->Send();
+}

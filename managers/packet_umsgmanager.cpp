@@ -553,6 +553,9 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		cmdLower != "/completequest" &&
 		cmdLower != "/resetquests" &&
 		cmdLower != "/questreset" &&
+		cmdLower != "/resetquestcount" &&
+		cmdLower != "/questresetcount" &&
+		cmdLower != "/rqc" &&
 		cmdLower != "/reloadquest" &&
 		cmdLower != "/questreload") {
 		return false;
@@ -1422,6 +1425,11 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		else {
 			SendNotice("[系統] 重置任務失敗！");
 		}
+		return true;
+	}
+	else if (cmdLower == "/resetquestcount" || cmdLower == "/questresetcount" || cmdLower == "/rqc") {
+		questManager.ResetUserSpecialQuestResetCount(user);
+		SendNotice("[系統] 已成功重設您的特殊任務重置次數！剩餘次數：5 次。");
 		return true;
 	}
 	else if (cmdLower == "/reloadquest" || cmdLower == "/questreload") {

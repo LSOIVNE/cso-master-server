@@ -224,6 +224,30 @@ unsigned char QuestManager::GetUserSpecialQuestResetCount(User* user) {
 	return (info.usedCount >= 5) ? 0 : (unsigned char)(5 - info.usedCount);
 }
 
+void QuestManager::ResetUserSpecialQuestResetCount(User* user) {
+	if (user == NULL) return;
+	{
+		lock_guard<mutex> lock(_mutex);
+		time_t now = time(nullptr);
+		int currentDay = (int)(now / 86400);
+		auto& info = _userSpecialResetCounts[user->GetUserID()];
+		info.dayIndex = currentDay;
+		info.usedCount = 0;
+	}
+	SyncUserQuestStats(user);
+}
+
+void QuestManager::SyncUserQuestStats(User* user) {
+	if (user == NULL) return;
+	auto connection = user->GetConnection();
+	if (connection == NULL) return;
+
+	unsigned int honorPoints = databaseManager.GetUserHonorPoints(user->GetUserID());
+	unsigned char resetCount = GetUserSpecialQuestResetCount(user);
+
+	packet_QuestManager.SendPacket_Quest_UpdateStats(connection, honorPoints, resetCount);
+}
+
 bool QuestManager::ResetSpecialQuest(User* user) {
 	if (user == NULL) return false;
 
@@ -292,8 +316,11 @@ bool QuestManager::ResetSpecialQuest(User* user) {
 		_userSpecialResetCounts[user->GetUserID()].usedCount++;
 	}
 
+	// 即時下發 Subtype 14，驅動客戶端 CQuestDetailPanel 立即刷新按鈕文字 "重置特殊任務(%d)"
+	SyncUserQuestStats(user);
+
 	serverConsole.Print(PrefixType::Info, format("[ QuestManager ] User ({}) consumed 1 Reset Ticket (378) and reset special quest from {} to {}, remaining resets: {}\n",
-		user->GetUserLogName(), currentSpecialID, newSpecialID, (int)(remaining - 1)));
+		user->GetUserLogName(), currentSpecialID, newSpecialID, (int)GetUserSpecialQuestResetCount(user)));
 	return true;
 }
 
@@ -376,7 +403,7 @@ std::vector<QuestRewardItem> QuestManager::GetQuestRewardPreview(unsigned int qu
 	}
 
 	if (rewardIndex == 1) { // Point 獎勵 (例如每日任務Point獎勵, 特殊任務Point獎勵, 每週任務Point獎勵)
-		unsigned int pts = (q->type == 3) ? 5000 : (q->type == 1 ? 3000 : 2000);
+		unsigned int pts = (q->type == 3) ? 5000 : (q->type == 1 ? 800 : 200);
 		QuestRewardItem rPts;
 		rPts.type = 1; // Points
 		rPts.amount = pts;
@@ -576,7 +603,7 @@ bool QuestManager::ClaimReward(User* user, unsigned int questID) {
 	}
 	else if (q->type == 0 || q->type == 3 || q->type == 1) {
 		unsigned long long addedExp = (q->type == 3) ? 1500 : (q->type == 1 ? 1000 : 500);
-		unsigned long long addedPoints = (q->type == 3) ? 5000 : (q->type == 1 ? 3000 : 2000);
+		unsigned long long addedPoints = (q->type == 3) ? 5000 : (q->type == 1 ? 800 : 200);
 		unsigned short decoderCount = (q->type == 3) ? 3 : (q->type == 1 ? 2 : 1);
 
 		databaseManager.AddUserFunds(user->GetUserID(), true, addedPoints);

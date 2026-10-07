@@ -58,6 +58,8 @@ public:
 	void GetUserAllQuestProgress(User* user, std::map<unsigned int, UserQuestProgress>& outMap);
 	unsigned int GetUserDailySpecialQuestID(User* user);
 	unsigned char GetUserSpecialQuestResetCount(User* user);
+	void ResetUserSpecialQuestResetCount(User* user);
+	void SyncUserQuestStats(User* user);
 	bool ResetSpecialQuest(User* user);
 	std::vector<QuestRewardItem> GetQuestPreviewRewards(unsigned int questID);
 	std::vector<QuestRewardItem> GetQuestRewardPreview(unsigned int questID, unsigned char rewardIndex);
