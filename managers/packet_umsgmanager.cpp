@@ -11,6 +11,7 @@
 #include "attendancemanager.h"
 #include "craftmanager.h"
 #include "enhancemanager.h"
+#include "titlemanager.h"
 #include "serverconfig.h"
 #include <sstream>
 #include <unordered_set>
@@ -538,7 +539,12 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		cmdLower != "/reloadcraft" &&
 		cmdLower != "/reloadenhance" &&
 		cmdLower != "/resetdaily" &&
-		cmdLower != "/nextdaily") {
+		cmdLower != "/nextdaily" &&
+		cmdLower != "/addtitle" &&
+		cmdLower != "/unlockalltitles" &&
+		cmdLower != "/sethonor" &&
+		cmdLower != "/title" &&
+		cmdLower != "/reloadtitle") {
 		return false;
 	}
 
@@ -1250,6 +1256,126 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		}
 		else {
 			SendNotice("[系統] 開啟下一天簽到失敗，數據庫寫入錯誤！");
+		}
+		return true;
+	}
+	else if (cmdLower == "/addtitle") {
+		string tidStr;
+		if (!(ss >> tidStr)) {
+			SendNotice("[系統] 請指定稱號 ID！用法：/addtitle <TitleID> (1~76)");
+			return true;
+		}
+
+		unsigned short tid = 0;
+		try {
+			tid = (unsigned short)stoul(tidStr);
+		}
+		catch (...) {
+			SendNotice("[系統] 請輸入有效的稱號 ID (1~76)！用法：/addtitle <TitleID>");
+			return true;
+		}
+
+		if (tid == 0 || tid > 76) {
+			SendNotice("[系統] 稱號 ID 超出範圍 (有效範圍：1~76)！");
+			return true;
+		}
+
+		const TitleConfig* cfg = titleManager.GetTitle(tid);
+		if (cfg == nullptr) {
+			SendNotice(format("[系統] 找不到 ID 為 {} 的稱號配置！", tid));
+			return true;
+		}
+
+		if (databaseManager.HasUserTitle(userID, tid)) {
+			SendNotice(format("[系統] 您已經擁有稱號 [{}]「{}」！", tid, cfg->name));
+			return true;
+		}
+
+		if (titleManager.UnlockTitle(user, tid, true)) {
+			SendNotice(format("[系統] 成功為您解鎖稱號 [{}]「{}」！獲得榮譽點數 +{}。", tid, cfg->name, cfg->honorPoints));
+		}
+		else {
+			SendNotice("[系統] 解鎖稱號失敗，數據庫寫入錯誤！");
+		}
+		return true;
+	}
+	else if (cmdLower == "/unlockalltitles") {
+		if (titleManager.UnlockAllTitles(user, true)) {
+			SendNotice(format("[系統] 成功為您解鎖全套 76 個榮譽稱號！"));
+		}
+		else {
+			SendNotice("[系統] 解鎖全稱號失敗！");
+		}
+		return true;
+	}
+	else if (cmdLower == "/sethonor") {
+		string honorStr;
+		if (!(ss >> honorStr)) {
+			SendNotice("[系統] 請指定點數！用法：/sethonor <點數>");
+			return true;
+		}
+
+		unsigned short honor = 0;
+		try {
+			honor = (unsigned short)stoul(honorStr);
+		}
+		catch (...) {
+			SendNotice("[系統] 請輸入有效的榮譽點數！用法：/sethonor <點數>");
+			return true;
+		}
+
+		if (databaseManager.SetUserHonorPoints(userID, honor)) {
+			titleManager.SyncTitleUpdate(user);
+			SendNotice(format("[系統] 您的榮譽點數已更新為：{}！", honor));
+		}
+		else {
+			SendNotice("[系統] 更新榮譽點數失敗，數據庫寫入錯誤！");
+		}
+		return true;
+	}
+	else if (cmdLower == "/title") {
+		string tidStr;
+		if (!(ss >> tidStr)) {
+			SendNotice("[系統] 用法：/title <TitleID> (1~76，輸入 0 為卸下稱號)");
+			return true;
+		}
+
+		unsigned short tid = 0;
+		try {
+			tid = (unsigned short)stoul(tidStr);
+		}
+		catch (...) {
+			SendNotice("[系統] 請輸入有效的稱號 ID (0~76)！");
+			return true;
+		}
+
+		if (tid == 0) {
+			titleManager.EquipTitle(user, 0);
+			SendNotice("[系統] 已成功卸下稱號！");
+			return true;
+		}
+
+		if (!databaseManager.HasUserTitle(userID, tid)) {
+			SendNotice(format("[系統] 您尚未解鎖稱號 ID {}，無法佩戴！", tid));
+			return true;
+		}
+
+		if (titleManager.EquipTitle(user, tid)) {
+			const TitleConfig* cfg = titleManager.GetTitle(tid);
+			string tname = cfg ? cfg->name : to_string(tid);
+			SendNotice(format("[系統] 成功佩戴稱號【{}】！", tname));
+		}
+		else {
+			SendNotice("[系統] 佩戴稱號失敗！");
+		}
+		return true;
+	}
+	else if (cmdLower == "/reloadtitle") {
+		if (titleManager.Reload()) {
+			SendNotice("[系統] 稱號配置已成功重載！(configs/title.json)");
+		}
+		else {
+			SendNotice("[系統] 重載稱號配置失敗，請檢查 configs/title.json 格式！");
 		}
 		return true;
 	}

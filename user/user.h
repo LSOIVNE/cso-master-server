@@ -7,6 +7,8 @@
 
 constexpr auto HARDWARE_ID_SIZE = 16;
 
+#include <vector>
+
 constexpr auto USERCHARACTER_FLAG_UNK1 =		0x1;
 constexpr auto USERCHARACTER_FLAG_NICKNAME =	0x2;
 constexpr auto USERCHARACTER_FLAG_UNK4 =		0x4;
@@ -21,9 +23,14 @@ constexpr auto USERCHARACTER_FLAG_UNK400 =		0x400;
 constexpr auto USERCHARACTER_FLAG_CASH_UINT32 =	0x400; // CSO 2013 client reads cash/gash from this flag into CGamePlayer::m_nCash (offset 312)
 constexpr auto USERCHARACTER_FLAG_UNK800 =		0x800;
 constexpr auto USERCHARACTER_FLAG_CLAN =		0x1000;
-constexpr auto USERCHARACTER_FLAG_CBOXCOUNT =	0x10000; // CSO 2013 client reads cbox count into CGamePlayer::m_nCBoxCount (offset 392)
+constexpr auto USERCHARACTER_FLAG_TITLES =		0x4000; // 0x4000: 5 徽章展示欄位 (UInt8(255) + 5 * UInt8)
+constexpr auto USERCHARACTER_FLAG_PREFIXID =	0x10000; // 0x10000: 當前佩戴稱號前綴 ID (UInt16)
+constexpr auto USERCHARACTER_FLAG_HONORPOINTS = 0x40000; // 0x40000: 榮譽點數 (UInt16) + 密碼箱數量 (UInt32)
+constexpr auto USERCHARACTER_FLAG_ACHIEVEMENTS = 0x80000; // 0x80000: 稱號/成就已解鎖遮罩 (128 bytes bitmask)
 constexpr auto USERCHARACTER_FLAG_CHATCOUNT =	0x200000;
-constexpr auto USERCHARACTER_FLAG_ALL =			0x1FFF | USERCHARACTER_FLAG_CBOXCOUNT | USERCHARACTER_FLAG_CHATCOUNT;
+constexpr auto USERCHARACTER_FLAG_COSTUME =     0x400000;
+constexpr auto USERCHARACTER_FLAG_CBOXCOUNT =	USERCHARACTER_FLAG_HONORPOINTS; // Alias for backward compatibility
+constexpr auto USERCHARACTER_FLAG_ALL =			0x1FFF | USERCHARACTER_FLAG_TITLES | USERCHARACTER_FLAG_PREFIXID | USERCHARACTER_FLAG_HONORPOINTS | USERCHARACTER_FLAG_ACHIEVEMENTS | USERCHARACTER_FLAG_CHATCOUNT;
 
 struct UserCharacter {
 	unsigned long flag = 0;
@@ -56,7 +63,11 @@ struct UserCharacter {
 	unsigned char clanUnk4 = 0;
 	unsigned char clanUnk5 = 0;
 	unsigned char clanUnk6 = 0;
-	unsigned short cboxCount = 0;
+	unsigned short prefixID = 0;
+	unsigned short honorPoints = 0;
+	unsigned long cboxCount = 0;
+	unsigned char badges[5] = { 0, 0, 0, 0, 0 };
+	vector<unsigned char> achievements;
 	unsigned char chatRemainCount = 255;
 };
 

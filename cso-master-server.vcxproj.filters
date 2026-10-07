@@ -67,6 +67,12 @@
     <ClCompile Include="managers\enhancemanager.cpp">
       <Filter>managers</Filter>
     </ClCompile>
+    <ClCompile Include="managers\titlemanager.cpp">
+      <Filter>managers</Filter>
+    </ClCompile>
+    <ClCompile Include="managers\packet_titlemanager.cpp">
+      <Filter>managers</Filter>
+    </ClCompile>
     <ClCompile Include="managers\bingomanager.cpp">
       <Filter>managers</Filter>
     </ClCompile>
@@ -192,6 +198,12 @@
       <Filter>managers</Filter>
     </ClInclude>
     <ClInclude Include="managers\enhancemanager.h">
+      <Filter>managers</Filter>
+    </ClInclude>
+    <ClInclude Include="managers\titlemanager.h">
+      <Filter>managers</Filter>
+    </ClInclude>
+    <ClInclude Include="managers\packet_titlemanager.h">
       <Filter>managers</Filter>
     </ClInclude>
     <ClInclude Include="managers\bingomanager.h">

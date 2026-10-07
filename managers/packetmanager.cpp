@@ -18,6 +18,7 @@
 #include "packet_userstartmanager.h"
 #include "packet_messengermanager.h"
 #include "packet_minigamemanager.h"
+#include "packet_titlemanager.h"
 #include "itemdefinitionmanager.h"
 #include "usermanager.h"
 #include "serverconsole.h"
@@ -324,8 +325,30 @@ void PacketManager::BuildUserCharacter(TCPConnection::Packet::pointer packet, co
 		packet->WriteUInt8(userCharacter.clanUnk5);
 		packet->WriteUInt8(userCharacter.clanUnk6);
 	}
-	if (userCharacter.flag & USERCHARACTER_FLAG_CBOXCOUNT) {
-		packet->WriteUInt16_LE(userCharacter.cboxCount);
+	if (userCharacter.flag & USERCHARACTER_FLAG_TITLES) {
+		packet->WriteUInt8(255);
+		for (int i = 0; i < 4; ++i) {
+			packet->WriteUInt8(userCharacter.badges[i]);
+		}
+		packet->WriteUInt8(userCharacter.badges[4]);
+	}
+	if (userCharacter.flag & USERCHARACTER_FLAG_PREFIXID) {
+		packet->WriteUInt16_LE(userCharacter.prefixID);
+	}
+	if (userCharacter.flag & USERCHARACTER_FLAG_HONORPOINTS) {
+		packet->WriteUInt16_LE(userCharacter.honorPoints);
+		packet->WriteUInt32_LE((unsigned long)userCharacter.cboxCount);
+	}
+	if (userCharacter.flag & USERCHARACTER_FLAG_ACHIEVEMENTS) {
+		if (userCharacter.achievements.size() == 128) {
+			for (unsigned char b : userCharacter.achievements) {
+				packet->WriteUInt8(b);
+			}
+		} else {
+			for (int i = 0; i < 128; ++i) {
+				packet->WriteUInt8(0);
+			}
+		}
 	}
 	if (userCharacter.flag & USERCHARACTER_FLAG_CHATCOUNT) {
 		packet->WriteUInt8(userCharacter.chatRemainCount);
@@ -479,6 +502,10 @@ void PacketManager::parsePacket(TCPConnection::Packet::pointer packet) {
 		}
 		case PacketID::Minigame: {
 			packet_MiniGameManager.ParsePacket_MiniGame(packet);
+			break;
+		}
+		case PacketID::Title: {
+			packet_TitleManager.ParsePacket_Title(packet);
 			break;
 		}
 		case (PacketID)90: {

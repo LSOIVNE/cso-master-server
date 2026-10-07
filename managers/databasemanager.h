@@ -101,6 +101,15 @@ public:
 	bool RecordUserAttendance(unsigned long userID, unsigned char newConsecutiveDays);
 	bool ResetUserAttendance(unsigned long userID, unsigned char targetStreak = 255);
 	bool AdvanceUserAttendanceNextDay(unsigned long userID);
+	bool EnsureTitleTables();
+	bool GetUserTitles(unsigned long userID, vector<unsigned short>& outTitleIDs);
+	bool AddUserTitle(unsigned long userID, unsigned short titleID);
+	bool HasUserTitle(unsigned long userID, unsigned short titleID);
+	bool SetUserPrefixID(unsigned long userID, unsigned short prefixID);
+	bool SetUserHonorPoints(unsigned long userID, unsigned short honorPoints);
+	bool AddUserHonorPoints(unsigned long userID, unsigned short points);
+	bool SetUserBadges(unsigned long userID, const unsigned char badges[5]);
+	bool SetUserBadgeSlot(unsigned long userID, unsigned char slot, unsigned char titleID);
 
 private:
 	MYSQL* _connection;

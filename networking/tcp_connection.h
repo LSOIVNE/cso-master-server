@@ -45,6 +45,8 @@ enum class PacketID {
 	GameGuard = 79,
 	SearchRoom = 80,
 	Report = 83,
+	Title = 84,
+	Quest = 88,
 	Minigame = 89,
 	Messenger = 93,
 	UserStart = 150,

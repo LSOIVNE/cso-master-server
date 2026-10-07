@@ -32,6 +32,7 @@ bool DatabaseManager::Init(const string& server, const string& user, const strin
     if (success) {
         EnsureBingoTables();
         EnsureAttendanceTables();
+        EnsureTitleTables();
     }
 
     return success;
@@ -248,6 +249,15 @@ const UserCharacterResult DatabaseManager::GetUserCharacter(unsigned long userID
         if (flag & USERCHARACTER_FLAG_CLAN) {
             info += " clanID, clanMarkID, clanName, clanUnk4, clanUnk5, clanUnk6,";
         }
+        if (flag & USERCHARACTER_FLAG_TITLES) {
+            info += " badge0, badge1, badge2, badge3, badge4,";
+        }
+        if (flag & USERCHARACTER_FLAG_PREFIXID) {
+            info += " prefixID,";
+        }
+        if (flag & USERCHARACTER_FLAG_HONORPOINTS) {
+            info += " honorPoints,";
+        }
         info[info.size() - 1] = ' ';
     }
 
@@ -325,11 +335,24 @@ const UserCharacterResult DatabaseManager::GetUserCharacter(unsigned long userID
             userCharacter.clanUnk5 = atoi(row[index++]);
             userCharacter.clanUnk6 = atoi(row[index++]);
         }
+        if (flag & USERCHARACTER_FLAG_TITLES) {
+            userCharacter.badges[0] = atoi(row[index++]);
+            userCharacter.badges[1] = atoi(row[index++]);
+            userCharacter.badges[2] = atoi(row[index++]);
+            userCharacter.badges[3] = atoi(row[index++]);
+            userCharacter.badges[4] = atoi(row[index++]);
+        }
+        if (flag & USERCHARACTER_FLAG_PREFIXID) {
+            userCharacter.prefixID = atoi(row[index++]);
+        }
+        if (flag & USERCHARACTER_FLAG_HONORPOINTS) {
+            userCharacter.honorPoints = atoi(row[index++]);
+        }
     }
 
     mysql_free_result(res);
 
-    if (flag & USERCHARACTER_FLAG_CBOXCOUNT) {
+    if (flag & USERCHARACTER_FLAG_HONORPOINTS) {
         string cboxQuery = format("SELECT COALESCE(SUM(count), 0) FROM user_inventory WHERE userID = {} AND itemID = 166;", userID);
         if (!mysql_query(_connection, cboxQuery.c_str())) {
             MYSQL_RES* cboxRes = mysql_store_result(_connection);
@@ -343,6 +366,33 @@ const UserCharacterResult DatabaseManager::GetUserCharacter(unsigned long userID
         }
         else {
             serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on GetUserCharacter (cboxCount): {}\n", mysql_error(_connection)));
+        }
+    }
+
+    if (flag & USERCHARACTER_FLAG_ACHIEVEMENTS) {
+        userCharacter.achievements.assign(128, 0);
+        string titleQuery = format("SELECT titleID FROM user_titles WHERE userID = {};", userID);
+        if (!mysql_query(_connection, titleQuery.c_str())) {
+            MYSQL_RES* tRes = mysql_store_result(_connection);
+            if (tRes) {
+                MYSQL_ROW tRow;
+                while ((tRow = mysql_fetch_row(tRes))) {
+                    if (tRow[0]) {
+                        unsigned short tid = (unsigned short)atoi(tRow[0]);
+                        if (tid > 0 && tid <= 1024) {
+                            unsigned int byteIdx = tid / 8;
+                            unsigned int bitIdx = tid % 8;
+                            if (byteIdx < 128) {
+                                userCharacter.achievements[byteIdx] |= (1 << bitIdx);
+                            }
+                        }
+                    }
+                }
+                mysql_free_result(tRes);
+            }
+        }
+        else {
+            serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on GetUserCharacter (achievements): {}\n", mysql_error(_connection)));
         }
     }
 
@@ -1602,6 +1652,159 @@ bool DatabaseManager::AdvanceUserAttendanceNextDay(unsigned long userID) {
 
     if (mysql_query(_connection, query.c_str())) {
         serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on AdvanceUserAttendanceNextDay: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    return true;
+}
+
+bool DatabaseManager::EnsureTitleTables() {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    // 1. Ensure user_characters columns (ignore error if column already exists)
+    const char* alterCols[] = {
+        "ALTER TABLE `user_characters` ADD COLUMN `prefixID` SMALLINT UNSIGNED NOT NULL DEFAULT 0;",
+        "ALTER TABLE `user_characters` ADD COLUMN `honorPoints` SMALLINT UNSIGNED NOT NULL DEFAULT 0;",
+        "ALTER TABLE `user_characters` ADD COLUMN `badge0` TINYINT UNSIGNED NOT NULL DEFAULT 0;",
+        "ALTER TABLE `user_characters` ADD COLUMN `badge1` TINYINT UNSIGNED NOT NULL DEFAULT 0;",
+        "ALTER TABLE `user_characters` ADD COLUMN `badge2` TINYINT UNSIGNED NOT NULL DEFAULT 0;",
+        "ALTER TABLE `user_characters` ADD COLUMN `badge3` TINYINT UNSIGNED NOT NULL DEFAULT 0;",
+        "ALTER TABLE `user_characters` ADD COLUMN `badge4` TINYINT UNSIGNED NOT NULL DEFAULT 0;"
+    };
+    for (const char* sql : alterCols) {
+        mysql_query(_connection, sql);
+    }
+
+    // 2. Ensure user_titles table
+    const char* createSql =
+        "CREATE TABLE IF NOT EXISTS `user_titles` ("
+        "  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,"
+        "  `userID` INT UNSIGNED NOT NULL,"
+        "  `titleID` SMALLINT UNSIGNED NOT NULL,"
+        "  `unlockTime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+        "  PRIMARY KEY (`id`),"
+        "  UNIQUE KEY `uk_user_title` (`userID`, `titleID`),"
+        "  KEY `idx_userID` (`userID`)"
+        ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+
+    if (mysql_query(_connection, createSql)) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on EnsureTitleTables: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    return true;
+}
+
+bool DatabaseManager::GetUserTitles(unsigned long userID, vector<unsigned short>& outTitleIDs) {
+    outTitleIDs.clear();
+    if (_connection == NULL) return false;
+
+    string query = format("SELECT titleID FROM user_titles WHERE userID = {} ORDER BY titleID ASC;", userID);
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on GetUserTitles: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    MYSQL_RES* res = mysql_store_result(_connection);
+    if (!res) return false;
+
+    MYSQL_ROW row;
+    while ((row = mysql_fetch_row(res))) {
+        if (row[0]) {
+            outTitleIDs.push_back((unsigned short)atoi(row[0]));
+        }
+    }
+    mysql_free_result(res);
+    return true;
+}
+
+bool DatabaseManager::AddUserTitle(unsigned long userID, unsigned short titleID) {
+    if (_connection == NULL || titleID == 0) return false;
+
+    string query = format("INSERT IGNORE INTO user_titles (userID, titleID) VALUES ({}, {});", userID, titleID);
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on AddUserTitle: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    return true;
+}
+
+bool DatabaseManager::HasUserTitle(unsigned long userID, unsigned short titleID) {
+    if (_connection == NULL || titleID == 0) return false;
+
+    string query = format("SELECT 1 FROM user_titles WHERE userID = {} AND titleID = {} LIMIT 1;", userID, titleID);
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on HasUserTitle: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    MYSQL_RES* res = mysql_store_result(_connection);
+    if (!res) return false;
+
+    bool exists = (mysql_num_rows(res) > 0);
+    mysql_free_result(res);
+    return exists;
+}
+
+bool DatabaseManager::SetUserPrefixID(unsigned long userID, unsigned short prefixID) {
+    if (_connection == NULL) return false;
+
+    string query = format("UPDATE user_characters SET prefixID = {} WHERE userID = {};", prefixID, userID);
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on SetUserPrefixID: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    return true;
+}
+
+bool DatabaseManager::SetUserHonorPoints(unsigned long userID, unsigned short honorPoints) {
+    if (_connection == NULL) return false;
+
+    string query = format("UPDATE user_characters SET honorPoints = {} WHERE userID = {};", honorPoints, userID);
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on SetUserHonorPoints: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    return true;
+}
+
+bool DatabaseManager::AddUserHonorPoints(unsigned long userID, unsigned short points) {
+    if (_connection == NULL || points == 0) return false;
+
+    string query = format("UPDATE user_characters SET honorPoints = honorPoints + {} WHERE userID = {};", points, userID);
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on AddUserHonorPoints: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    return true;
+}
+
+bool DatabaseManager::SetUserBadges(unsigned long userID, const unsigned char badges[5]) {
+    if (_connection == NULL) return false;
+
+    string query = format(
+        "UPDATE user_characters SET badge0 = {}, badge1 = {}, badge2 = {}, badge3 = {}, badge4 = {} WHERE userID = {};",
+        (int)badges[0], (int)badges[1], (int)badges[2], (int)badges[3], (int)badges[4], userID);
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on SetUserBadges: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    return true;
+}
+
+bool DatabaseManager::SetUserBadgeSlot(unsigned long userID, unsigned char slot, unsigned char titleID) {
+    if (_connection == NULL || slot >= 5) return false;
+
+    string query = format("UPDATE user_characters SET badge{} = {} WHERE userID = {};", (int)slot, (int)titleID, userID);
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on SetUserBadgeSlot: {}\n", mysql_error(_connection)));
         return false;
     }
 
