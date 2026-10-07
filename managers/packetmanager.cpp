@@ -335,6 +335,9 @@ void PacketManager::BuildUserCharacter(TCPConnection::Packet::pointer packet, co
 	if (userCharacter.flag & USERCHARACTER_FLAG_PREFIXID) {
 		packet->WriteUInt16_LE(userCharacter.prefixID);
 	}
+	if (userCharacter.flag & USERCHARACTER_FLAG_PREFIXID_EX) {
+		packet->WriteUInt32_LE((unsigned long)userCharacter.prefixID);
+	}
 	if (userCharacter.flag & USERCHARACTER_FLAG_HONORPOINTS) {
 		packet->WriteUInt16_LE(userCharacter.honorPoints);
 		packet->WriteUInt32_LE((unsigned long)userCharacter.cboxCount);

@@ -252,7 +252,7 @@ const UserCharacterResult DatabaseManager::GetUserCharacter(unsigned long userID
         if (flag & USERCHARACTER_FLAG_TITLES) {
             info += " badge0, badge1, badge2, badge3, badge4,";
         }
-        if (flag & USERCHARACTER_FLAG_PREFIXID) {
+        if ((flag & USERCHARACTER_FLAG_PREFIXID) || (flag & USERCHARACTER_FLAG_PREFIXID_EX)) {
             info += " prefixID,";
         }
         if (flag & USERCHARACTER_FLAG_HONORPOINTS) {
@@ -342,7 +342,7 @@ const UserCharacterResult DatabaseManager::GetUserCharacter(unsigned long userID
             userCharacter.badges[3] = atoi(row[index++]);
             userCharacter.badges[4] = atoi(row[index++]);
         }
-        if (flag & USERCHARACTER_FLAG_PREFIXID) {
+        if ((flag & USERCHARACTER_FLAG_PREFIXID) || (flag & USERCHARACTER_FLAG_PREFIXID_EX)) {
             userCharacter.prefixID = atoi(row[index++]);
         }
         if (flag & USERCHARACTER_FLAG_HONORPOINTS) {
