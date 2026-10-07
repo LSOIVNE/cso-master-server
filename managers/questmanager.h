@@ -39,7 +39,7 @@ struct UserQuestProgress {
 };
 
 struct QuestRewardItem {
-	unsigned char type = 0; // 0=Item, 1=Points, 2=EXP, 3=Honor, 4=Cash
+	unsigned char type = 0; // 0=Item, 1=Points, 2=EXP, 3=Title, 4=Honor
 	unsigned short itemID = 0;
 	unsigned char count = 0;
 	unsigned char period = 0;

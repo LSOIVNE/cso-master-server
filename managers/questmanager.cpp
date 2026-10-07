@@ -221,7 +221,7 @@ unsigned char QuestManager::GetUserSpecialQuestResetCount(User* user) {
 		info.usedCount = 0;
 	}
 
-	return (info.usedCount >= 3) ? 0 : (unsigned char)(3 - info.usedCount);
+	return (info.usedCount >= 5) ? 0 : (unsigned char)(5 - info.usedCount);
 }
 
 bool QuestManager::ResetSpecialQuest(User* user) {
@@ -232,6 +232,33 @@ bool QuestManager::ResetSpecialQuest(User* user) {
 		serverConsole.Print(PrefixType::Warn, format("[ QuestManager ] User ({}) tried to reset special quest, but reset count exhausted!\n",
 			user->GetUserLogName()));
 		return false;
+	}
+
+	// 檢查並扣減 1 個 378 (特殊任務重置券)
+	unsigned long userID = user->GetUserID();
+	unsigned short slotID = 0;
+	bool deleted = false;
+	if (!databaseManager.ConsumeUserInventoryItem(userID, 378, 1, slotID, deleted)) {
+		serverConsole.Print(PrefixType::Warn, format("[ QuestManager ] User ({}) tried to reset special quest, but has no Item 378 (特殊任務重置券)!\n",
+			user->GetUserLogName()));
+		return false;
+	}
+
+	// 扣除成功，即時同步背包 Delta 給客戶端
+	auto connection = user->GetConnection();
+	if (connection != NULL) {
+		if (deleted) {
+			packetManager.SendPacket_InventoryDelta(connection, {}, { slotID });
+		}
+		else {
+			const auto inv = databaseManager.GetUserInventory(userID);
+			for (const auto& it : inv) {
+				if (it.slotID == slotID) {
+					packetManager.SendPacket_InventoryDelta(connection, { it }, {});
+					break;
+				}
+			}
+		}
 	}
 
 	unsigned int currentSpecialID = GetUserDailySpecialQuestID(user);
@@ -265,7 +292,7 @@ bool QuestManager::ResetSpecialQuest(User* user) {
 		_userSpecialResetCounts[user->GetUserID()].usedCount++;
 	}
 
-	serverConsole.Print(PrefixType::Info, format("[ QuestManager ] User ({}) reset special quest from {} to {}, remaining resets: {}\n",
+	serverConsole.Print(PrefixType::Info, format("[ QuestManager ] User ({}) consumed 1 Reset Ticket (378) and reset special quest from {} to {}, remaining resets: {}\n",
 		user->GetUserLogName(), currentSpecialID, newSpecialID, (int)(remaining - 1)));
 	return true;
 }
@@ -340,9 +367,9 @@ std::vector<QuestRewardItem> QuestManager::GetQuestRewardPreview(unsigned int qu
 	if (q->type == 2) { // Honor Quest (榮譽任務)
 		unsigned short titleID = (unsigned short)(questID - 2000);
 		const TitleConfig* titleCfg = titleManager.GetTitle(titleID);
-		unsigned short honorPts = titleCfg ? titleCfg->honorPoints : 10;
+		unsigned int honorPts = titleCfg ? titleCfg->honorPoints : 10;
 		QuestRewardItem r;
-		r.type = 3; // Honor points
+		r.type = 4; // Honor points (客戶端協議 type 4 對應內部 type 6: 榮譽點數圖標與數量)
 		r.amount = honorPts;
 		rewards.push_back(r);
 		return rewards;
@@ -537,10 +564,10 @@ bool QuestManager::ClaimReward(User* user, unsigned int questID) {
 		titleManager.UnlockTitle(user, titleID, true);
 
 		const TitleConfig* titleCfg = titleManager.GetTitle(titleID);
-		unsigned short honorPts = titleCfg ? titleCfg->honorPoints : 10;
+		unsigned int honorPts = titleCfg ? titleCfg->honorPoints : 10;
 
 		QuestRewardItem r;
-		r.type = 3; // Honor points
+		r.type = 4; // Honor points (客戶端協議 type 4 對應內部 type 6: 榮譽點數圖標與數量)
 		r.amount = honorPts;
 		rewardsToSend.push_back(r);
 

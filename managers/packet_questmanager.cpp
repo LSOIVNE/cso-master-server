@@ -35,8 +35,9 @@ void Packet_QuestManager::ParsePacket_Quest(TCPConnection::Packet::pointer packe
 			break;
 		}
 		case 32: { // ClientResetSpecialQuest
-			questManager.ResetSpecialQuest(user);
-			SendPacket_Quest_InitList(user);
+			if (questManager.ResetSpecialQuest(user)) {
+				SendPacket_Quest_InitList(user);
+			}
 			break;
 		}
 		case 41: { // ClientRequestRewardPreview (點擊獎勵視窗時觸發)
@@ -248,10 +249,10 @@ void Packet_QuestManager::SendPacket_Quest_ClaimRewardReply(TCPConnection::point
 			case 2: // EXP: UInt32 exp
 				packet->WriteUInt32_LE(r.amount);
 				break;
-			case 3: // Honor points: UInt16 honorPoints
-				packet->WriteUInt16_LE((unsigned short)r.amount);
+			case 3: // Title: UInt16 titleID
+				packet->WriteUInt16_LE((unsigned short)(r.itemID > 0 ? r.itemID : r.amount));
 				break;
-			case 4: // Cash: UInt32 cash
+			case 4: // Honor points: UInt32 honorPoints
 				packet->WriteUInt32_LE(r.amount);
 				break;
 			default:
