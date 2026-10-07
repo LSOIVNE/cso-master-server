@@ -130,6 +130,9 @@ bool TitleManager::UnlockTitle(User* user, unsigned short titleID, bool syncToCl
 		// Send celebratory chat notice
 		string congratsMsg = std::format("恭喜獲得稱號【{}】！榮譽點數 +{}", cfg->name, cfg->honorPoints);
 		packet_UMsgManager.SendPacket_UMsg_NoticeMessage(user->GetConnection(), congratsMsg);
+
+		// Trigger official medal unlock popup (#CSO_Facebook_Medal_Get)
+		packet_TitleManager.SendPacket_Title_UnlockMedal(user->GetConnection(), titleID);
 	}
 
 	return true;
@@ -182,7 +185,6 @@ bool TitleManager::EquipTitle(User* user, unsigned short prefixID) {
 		}
 		serverConsole.Print(PrefixType::Info, std::format("[ TitleManager ] User ({}) unequipped title\n",
 			user->GetUserLogName()));
-		packet_TitleManager.SendPacket_Title_EquipResult(user->GetConnection(), 0);
 		SyncTitleUpdate(user);
 		return true;
 	}
@@ -210,7 +212,6 @@ bool TitleManager::EquipTitle(User* user, unsigned short prefixID) {
 	serverConsole.Print(PrefixType::Info, std::format("[ TitleManager ] User ({}) equipped title [{}] '{}'\n",
 		user->GetUserLogName(), prefixID, cfg->name));
 
-	packet_TitleManager.SendPacket_Title_EquipResult(user->GetConnection(), prefixID);
 	SyncTitleUpdate(user);
 	return true;
 }

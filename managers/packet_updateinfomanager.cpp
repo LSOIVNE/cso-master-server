@@ -117,24 +117,14 @@ void Packet_UpdateInfoManager::SendPacket_UserUpdateInfo_CBoxCount(TCPConnection
 		return;
 	}
 
-	unsigned short honorPoints = 0;
-	User* user = userManager.GetUserByConnection(connection);
-	if (user != NULL) {
-		auto charRes = user->GetUserCharacter(USERCHARACTER_FLAG_HONORPOINTS);
-		if (charRes.result) {
-			honorPoints = charRes.userCharacter.honorPoints;
-		}
-	}
-
 	auto packet = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::UserUpdateInfo });
 	if (packet == NULL) {
 		return;
 	}
 
 	packet->WriteUInt32_LE(userID);
-	packet->WriteUInt32_LE(USERCHARACTER_FLAG_HONORPOINTS); // 0x40000 expects honorPoints (UInt16) + cboxCount (UInt32)
-	packet->WriteUInt16_LE(honorPoints);
-	packet->WriteUInt32_LE((unsigned long)count);
+	packet->WriteUInt32_LE(USERCHARACTER_FLAG_CBOXCOUNT); // 0x10000: CBox count (UInt16)
+	packet->WriteUInt16_LE(count);
 
 	packet->Send();
 }

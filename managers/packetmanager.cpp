@@ -325,15 +325,15 @@ void PacketManager::BuildUserCharacter(TCPConnection::Packet::pointer packet, co
 		packet->WriteUInt8(userCharacter.clanUnk5);
 		packet->WriteUInt8(userCharacter.clanUnk6);
 	}
-	if (userCharacter.flag & USERCHARACTER_FLAG_PREFIXID) {
-		packet->WriteUInt16_LE(userCharacter.prefixID);
+	if (userCharacter.flag & USERCHARACTER_FLAG_CBOXCOUNT) {
+		packet->WriteUInt16_LE((unsigned short)userCharacter.cboxCount);
 	}
 	if (userCharacter.flag & USERCHARACTER_FLAG_PREFIXID_EX) {
-		packet->WriteUInt32_LE((unsigned long)userCharacter.prefixID);
+		packet->WriteUInt32_LE(0);
 	}
 	if (userCharacter.flag & USERCHARACTER_FLAG_HONORPOINTS) {
-		packet->WriteUInt16_LE(userCharacter.honorPoints);
-		packet->WriteUInt32_LE((unsigned long)userCharacter.cboxCount);
+		packet->WriteUInt16_LE(userCharacter.prefixID);
+		packet->WriteUInt32_LE((unsigned long)userCharacter.honorPoints);
 	}
 	if (userCharacter.flag & USERCHARACTER_FLAG_ACHIEVEMENTS) {
 		if (userCharacter.achievements.size() == 128) {
