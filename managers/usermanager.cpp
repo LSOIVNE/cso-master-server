@@ -16,6 +16,7 @@
 #include "packet_shopmanager.h"
 #include "bingomanager.h"
 #include "attendancemanager.h"
+#include "packet_questmanager.h"
 
 UserManager userManager;
 
@@ -190,6 +191,9 @@ bool UserManager::SendLoginPackets(User* user, Packet_ReplyType reply) {
 
 	// Activate MiniGame / Bingo in client lobby
 	bingoManager.SendEventActive(connection);
+
+	// Send initial Quest list (Daily, Weekly, Honor) to client CQuestMgr
+	packet_QuestManager.SendPacket_Quest_InitList(user);
 
 	if (reply != Packet_ReplyType::NoReply) {
 		user->SetUserStatus(UserStatus::InServerList);

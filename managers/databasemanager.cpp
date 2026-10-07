@@ -33,6 +33,7 @@ bool DatabaseManager::Init(const string& server, const string& user, const strin
         EnsureBingoTables();
         EnsureAttendanceTables();
         EnsureTitleTables();
+        EnsureQuestTables();
     }
 
     return success;
@@ -1805,6 +1806,113 @@ bool DatabaseManager::SetUserBadgeSlot(unsigned long userID, unsigned char slot,
 
     return true;
 }
+
+bool DatabaseManager::EnsureQuestTables() {
+    if (_connection == NULL) return false;
+
+    const char* createSql =
+        "CREATE TABLE IF NOT EXISTS `user_quests` ("
+        "  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,"
+        "  `userID` INT UNSIGNED NOT NULL,"
+        "  `questID` INT UNSIGNED NOT NULL,"
+        "  `state` TINYINT UNSIGNED NOT NULL DEFAULT 1,"
+        "  `count0` SMALLINT UNSIGNED NOT NULL DEFAULT 0,"
+        "  `count1` SMALLINT UNSIGNED NOT NULL DEFAULT 0,"
+        "  `count2` SMALLINT UNSIGNED NOT NULL DEFAULT 0,"
+        "  `count3` SMALLINT UNSIGNED NOT NULL DEFAULT 0,"
+        "  `count4` SMALLINT UNSIGNED NOT NULL DEFAULT 0,"
+        "  `count5` SMALLINT UNSIGNED NOT NULL DEFAULT 0,"
+        "  `lastUpdatedDate` DATE NOT NULL DEFAULT (CURRENT_DATE),"
+        "  PRIMARY KEY (`id`),"
+        "  UNIQUE KEY `uk_user_quest` (`userID`, `questID`),"
+        "  KEY `idx_userID` (`userID`)"
+        ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+
+    if (mysql_query(_connection, createSql)) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on EnsureQuestTables: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    return true;
+}
+
+bool DatabaseManager::GetUserQuests(unsigned long userID, map<unsigned int, UserQuestRecord>& outQuests) {
+    outQuests.clear();
+    if (_connection == NULL) return false;
+
+    string query = format(
+        "SELECT questID, state, count0, count1, count2, count3, count4, count5, CAST(lastUpdatedDate AS CHAR) "
+        "FROM user_quests WHERE userID = {};", userID);
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on GetUserQuests: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    MYSQL_RES* res = mysql_store_result(_connection);
+    if (!res) return false;
+
+    MYSQL_ROW row;
+    while ((row = mysql_fetch_row(res))) {
+        UserQuestRecord rec;
+        rec.questID = (unsigned int)atoi(row[0]);
+        rec.state = (unsigned char)atoi(row[1]);
+        rec.count0 = (unsigned short)atoi(row[2]);
+        rec.count1 = (unsigned short)atoi(row[3]);
+        rec.count2 = (unsigned short)atoi(row[4]);
+        rec.count3 = (unsigned short)atoi(row[5]);
+        rec.count4 = (unsigned short)atoi(row[6]);
+        rec.count5 = (unsigned short)atoi(row[7]);
+        rec.lastUpdatedDate = row[8] ? row[8] : "";
+
+        outQuests[rec.questID] = rec;
+    }
+    mysql_free_result(res);
+    return true;
+}
+
+bool DatabaseManager::SaveUserQuest(unsigned long userID, const UserQuestRecord& record) {
+    if (_connection == NULL || record.questID == 0) return false;
+
+    string query = format(
+        "INSERT INTO user_quests (userID, questID, state, count0, count1, count2, count3, count4, count5, lastUpdatedDate) "
+        "VALUES ({}, {}, {}, {}, {}, {}, {}, {}, {}, CURRENT_DATE) "
+        "ON DUPLICATE KEY UPDATE "
+        "  state = VALUES(state), "
+        "  count0 = VALUES(count0), "
+        "  count1 = VALUES(count1), "
+        "  count2 = VALUES(count2), "
+        "  count3 = VALUES(count3), "
+        "  count4 = VALUES(count4), "
+        "  count5 = VALUES(count5), "
+        "  lastUpdatedDate = VALUES(lastUpdatedDate);",
+        userID, record.questID, (int)record.state,
+        record.count0, record.count1, record.count2, record.count3, record.count4, record.count5);
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on SaveUserQuest: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    return true;
+}
+
+bool DatabaseManager::ResetDailyQuests(unsigned long userID) {
+    if (_connection == NULL) return false;
+
+    // Reset daily quests (ID <= 100) where lastUpdatedDate is before today
+    string query = format(
+        "UPDATE user_quests SET state = 1, count0 = 0, count1 = 0, count2 = 0, count3 = 0, count4 = 0, count5 = 0, lastUpdatedDate = CURRENT_DATE "
+        "WHERE userID = {} AND questID <= 100 AND lastUpdatedDate < CURRENT_DATE;", userID);
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on ResetDailyQuests: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    return true;
+}
+
 
 
 

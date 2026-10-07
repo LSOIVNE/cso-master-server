@@ -15,6 +15,7 @@
 #include "craftmanager.h"
 #include "enhancemanager.h"
 #include "titlemanager.h"
+#include "questmanager.h"
 
 HANDLE hMutex;
 
@@ -69,6 +70,7 @@ int main() {
 	craftManager.Init();
 	enhanceManager.Init();
 	titleManager.Init();
+	questManager.Init();
 
 	hMutex = CreateMutexA(NULL, FALSE, format("cso-master-server-{}-{}", serverConfig.serverID, serverConfig.channelID).c_str());
 	if (hMutex) {

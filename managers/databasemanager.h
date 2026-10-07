@@ -1,6 +1,21 @@
 #pragma once
 #include "mysql/mysql.h"
 #include "user.h"
+#include <map>
+#include <string>
+#include <vector>
+
+struct UserQuestRecord {
+	unsigned int questID = 0;
+	unsigned char state = 1; // 0=Inactive, 1=InProgress, 2=Complete, 3=Claimed
+	unsigned short count0 = 0;
+	unsigned short count1 = 0;
+	unsigned short count2 = 0;
+	unsigned short count3 = 0;
+	unsigned short count4 = 0;
+	unsigned short count5 = 0;
+	string lastUpdatedDate = "";
+};
 
 struct LoginResult {
 	unsigned long userID = 0;
@@ -110,6 +125,12 @@ public:
 	bool AddUserHonorPoints(unsigned long userID, unsigned short points);
 	bool SetUserBadges(unsigned long userID, const unsigned char badges[5]);
 	bool SetUserBadgeSlot(unsigned long userID, unsigned char slot, unsigned char titleID);
+
+	// Quests
+	bool EnsureQuestTables();
+	bool GetUserQuests(unsigned long userID, map<unsigned int, UserQuestRecord>& outQuests);
+	bool SaveUserQuest(unsigned long userID, const UserQuestRecord& record);
+	bool ResetDailyQuests(unsigned long userID);
 
 private:
 	MYSQL* _connection;

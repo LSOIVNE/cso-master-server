@@ -73,6 +73,12 @@
     <ClCompile Include="managers\packet_titlemanager.cpp">
       <Filter>managers</Filter>
     </ClCompile>
+    <ClCompile Include="managers\questmanager.cpp">
+      <Filter>managers</Filter>
+    </ClCompile>
+    <ClCompile Include="managers\packet_questmanager.cpp">
+      <Filter>managers</Filter>
+    </ClCompile>
     <ClCompile Include="managers\bingomanager.cpp">
       <Filter>managers</Filter>
     </ClCompile>
@@ -204,6 +210,12 @@
       <Filter>managers</Filter>
     </ClInclude>
     <ClInclude Include="managers\packet_titlemanager.h">
+      <Filter>managers</Filter>
+    </ClInclude>
+    <ClInclude Include="managers\questmanager.h">
+      <Filter>managers</Filter>
+    </ClInclude>
+    <ClInclude Include="managers\packet_questmanager.h">
       <Filter>managers</Filter>
     </ClInclude>
     <ClInclude Include="managers\bingomanager.h">

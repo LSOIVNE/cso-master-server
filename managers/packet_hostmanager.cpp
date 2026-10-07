@@ -8,6 +8,7 @@
 #include "packetmanager.h"
 #include "packet_updateinfomanager.h"
 #include "packet_itemmanager.h"
+#include "questmanager.h"
 #include <set>
 #include <map>
 #include <algorithm>
@@ -406,6 +407,14 @@ void Packet_HostManager::parsePacket_Host_PlayerKilled(User* user, TCPConnection
 	unsigned short distance = packet->ReadUInt16_LE();
 
 	serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] User ({}) has sent Packet_Host PlayerKilled - attackerUserID: {}, attackerWeaponID: {}, attackerArmor: {}, attackerHealth: {}, victimUserID: {}, victimWeaponID: {}, victimArmor: {}, distance: {}\n", user->GetUserLogName(), attackerUserID, attackerWeaponID, attackerArmor, attackerHealth, victimUserID, victimWeaponID, victimArmor, distance));
+
+	if (attackerUserID) {
+		User* attackerUser = userManager.GetUserByUserID(attackerUserID);
+		User* victimUser = userManager.GetUserByUserID(victimUserID);
+		if (attackerUser) {
+			questManager.OnPlayerKilled(attackerUser, victimUser, attackerWeaponID, false, distance);
+		}
+	}
 }
 
 void Packet_HostManager::parsePacket_Host_EndGame(User* user, TCPConnection::Packet::pointer packet) {
@@ -516,6 +525,9 @@ void Packet_HostManager::parsePacket_Host_EndGame(User* user, TCPConnection::Pac
 
 		// Save battle result to database (recordStats only for competitive modes)
 		databaseManager.SaveUserBattleResult(u->GetUserID(), earnedExp, earnedPoints, kills, deaths, isWin, newLevel, recordStats);
+
+		// Quest progression hook
+		questManager.OnMatchEnd(u, isWin, kills, deaths, matchDuration);
 
 		// Note: DO NOT send UpdateInfo here!
 		// The client settlement dialog (CResultCurrentPlayerInfoPanel) expects localPlayer in memory
@@ -733,6 +745,14 @@ void Packet_HostManager::parsePacket_Host_RoundResult(User* user, TCPConnection:
 	gameMatch->SetWinTeam(winTeam);
 	gameMatch->SetTerWins(terWins);
 	gameMatch->SetCtWins(ctWins);
+
+	for (auto& gmu : gameMatch->GetGameMatchUsers()) {
+		if (gmu && gmu->GetUser()) {
+			if ((unsigned char)gmu->GetTeam() == winTeam) {
+				questManager.OnRoundWin(gmu->GetUser());
+			}
+		}
+	}
 
 	serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] User ({}) has sent Packet_Host RoundResult - winTeam: {}, terWins: {}, ctWins: {}\n", user->GetUserLogName(), winTeam, terWins, ctWins));
 }

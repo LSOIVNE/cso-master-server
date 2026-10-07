@@ -12,6 +12,7 @@
 #include "craftmanager.h"
 #include "enhancemanager.h"
 #include "titlemanager.h"
+#include "questmanager.h"
 #include "serverconfig.h"
 #include <sstream>
 #include <unordered_set>
@@ -544,7 +545,10 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		cmdLower != "/unlockalltitles" &&
 		cmdLower != "/sethonor" &&
 		cmdLower != "/title" &&
-		cmdLower != "/reloadtitle") {
+		cmdLower != "/reloadtitle" &&
+		cmdLower != "/completequest" &&
+		cmdLower != "/resetquests" &&
+		cmdLower != "/reloadquest") {
 		return false;
 	}
 
@@ -1376,6 +1380,50 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		}
 		else {
 			SendNotice("[系統] 重載稱號配置失敗，請檢查 configs/title.json 格式！");
+		}
+		return true;
+	}
+	else if (cmdLower == "/completequest") {
+		string qidStr;
+		if (!(ss >> qidStr)) {
+			SendNotice("[系統] 用法：/completequest <QuestID>");
+			return true;
+		}
+
+		unsigned int qid = 0;
+		try {
+			qid = stoul(qidStr);
+		}
+		catch (...) {
+			SendNotice("[系統] 請輸入有效的任務 ID！");
+			return true;
+		}
+
+		if (questManager.CompleteQuest(user, qid)) {
+			const QuestConfig* cfg = questManager.GetQuest(qid);
+			string qname = cfg ? cfg->name : to_string(qid);
+			SendNotice(format("[系統] 任務 [{}]【{}】已手動設置為達成狀態，可在任務面板領獎！", qid, qname));
+		}
+		else {
+			SendNotice(format("[系統] 任務 ID {} 不存在！", qid));
+		}
+		return true;
+	}
+	else if (cmdLower == "/resetquests") {
+		if (questManager.ResetUserQuests(user)) {
+			SendNotice("[系統] 您的每日任務已重置為初始進行中狀態！");
+		}
+		else {
+			SendNotice("[系統] 重置任務失敗！");
+		}
+		return true;
+	}
+	else if (cmdLower == "/reloadquest") {
+		if (questManager.Reload()) {
+			SendNotice("[系統] 任務配置已成功重載！(configs/quest.json)");
+		}
+		else {
+			SendNotice("[系統] 重載任務配置失敗，請檢查 configs/quest.json 格式！");
 		}
 		return true;
 	}

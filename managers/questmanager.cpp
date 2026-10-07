@@ -1,0 +1,476 @@
+#include "questmanager.h"
+#include "packet_questmanager.h"
+#include "packetmanager.h"
+#include "packet_updateinfomanager.h"
+#include "titlemanager.h"
+#include "databasemanager.h"
+#include "usermanager.h"
+#include "serverconsole.h"
+#include <nlohmann/json.hpp>
+#include <fstream>
+#include <format>
+#include <filesystem>
+#include <ctime>
+
+using namespace std;
+namespace fs = std::filesystem;
+
+QuestManager questManager;
+
+bool QuestManager::Init() {
+	return loadConfigs();
+}
+
+bool QuestManager::Reload() {
+	return loadConfigs();
+}
+
+bool QuestManager::loadConfigs() {
+	lock_guard<mutex> lock(_mutex);
+	_quests.clear();
+
+	const vector<string> searchPaths = {
+		"configs/quest.json",
+		"../configs/quest.json",
+		"bin/configs/quest.json",
+		"D:/agy/CounterStrike/CSOTW/cso-master-server/configs/quest.json"
+	};
+
+	string validPath = "";
+	for (const auto& path : searchPaths) {
+		if (fs::exists(path)) {
+			validPath = path;
+			break;
+		}
+	}
+
+	if (validPath.empty()) {
+		serverConsole.Print(PrefixType::Error, "[ QuestManager ] Cannot open quest.json from any search path!\n");
+		return false;
+	}
+
+	try {
+		ifstream f(validPath);
+		if (!f.is_open()) {
+			serverConsole.Print(PrefixType::Error, format("[ QuestManager ] Failed to open {}\n", validPath));
+			return false;
+		}
+
+		nlohmann::json j;
+		f >> j;
+
+		for (const auto& item : j) {
+			QuestConfig cfg;
+			cfg.id = item.value("id", 0u);
+			cfg.type = (unsigned char)item.value("type", 0);
+			cfg.npc = (unsigned char)item.value("npc", 0);
+			cfg.name = item.value("name", "");
+			cfg.token = item.value("token", "");
+			cfg.desc = item.value("desc", "");
+
+			if (item.contains("conditions")) {
+				for (const auto& c : item["conditions"]) {
+					QuestConditionConfig cond;
+					cond.index = (unsigned char)c.value("index", 0);
+					cond.token = c.value("token", "");
+					cond.desc = c.value("desc", "");
+					cond.target = (unsigned short)c.value("target", 1);
+					cfg.conditions.push_back(cond);
+				}
+			}
+
+			if (item.contains("rewards")) {
+				for (const auto& r : item["rewards"]) {
+					QuestRewardConfig rw;
+					rw.image = (unsigned char)r.value("image", 0);
+					rw.id = r.value("id", 0u);
+					cfg.rewards.push_back(rw);
+				}
+			}
+
+			_quests[cfg.id] = cfg;
+		}
+
+		serverConsole.Print(PrefixType::Info, format("[ QuestManager ] Successfully loaded {} quests from {}\n",
+			_quests.size(), validPath));
+		return true;
+	}
+	catch (const exception& e) {
+		serverConsole.Print(PrefixType::Error, format("[ QuestManager ] Failed to parse quest.json: {}\n", e.what()));
+		return false;
+	}
+}
+
+const QuestConfig* QuestManager::GetQuest(unsigned int questID) const {
+	lock_guard<mutex> lock(_mutex);
+	auto it = _quests.find(questID);
+	return (it != _quests.end()) ? &it->second : nullptr;
+}
+
+const map<unsigned int, QuestConfig>& QuestManager::GetAllQuests() const {
+	return _quests;
+}
+
+bool QuestManager::GetUserQuestProgress(User* user, unsigned int questID, UserQuestProgress& outProgress) {
+	if (user == NULL || questID == 0) return false;
+
+	map<unsigned int, UserQuestRecord> dbQuests;
+	databaseManager.GetUserQuests(user->GetUserID(), dbQuests);
+
+	auto it = dbQuests.find(questID);
+	if (it != dbQuests.end()) {
+		outProgress.questID = questID;
+		outProgress.state = it->second.state;
+		outProgress.counts[0] = it->second.count0;
+		outProgress.counts[1] = it->second.count1;
+		outProgress.counts[2] = it->second.count2;
+		outProgress.counts[3] = it->second.count3;
+		outProgress.counts[4] = it->second.count4;
+		outProgress.counts[5] = it->second.count5;
+		outProgress.lastUpdatedDate = it->second.lastUpdatedDate;
+		return true;
+	}
+
+	// Default progress: InProgress (1), 0 counts
+	outProgress.questID = questID;
+	outProgress.state = 1;
+	for (int i = 0; i < 6; ++i) outProgress.counts[i] = 0;
+
+	// Check if Honor quest already unlocked in TitleManager
+	if (questID >= 2001 && questID <= 2075) {
+		unsigned short titleID = (unsigned short)(questID - 2000);
+		if (databaseManager.HasUserTitle(user->GetUserID(), titleID)) {
+			outProgress.state = 3; // Claimed
+			const QuestConfig* q = GetQuest(questID);
+			if (q) {
+				for (size_t c = 0; c < q->conditions.size() && c < 6; ++c) {
+					outProgress.counts[c] = q->conditions[c].target;
+				}
+			}
+		}
+	}
+
+	return true;
+}
+
+void QuestManager::GetUserAllQuestProgress(User* user, map<unsigned int, UserQuestProgress>& outMap) {
+	outMap.clear();
+	if (user == NULL) return;
+
+	// Reset daily quests that have expired
+	databaseManager.ResetDailyQuests(user->GetUserID());
+
+	map<unsigned int, UserQuestRecord> dbQuests;
+	databaseManager.GetUserQuests(user->GetUserID(), dbQuests);
+
+	for (const auto& [qid, rec] : dbQuests) {
+		UserQuestProgress prog;
+		prog.questID = qid;
+		prog.state = rec.state;
+		prog.counts[0] = rec.count0;
+		prog.counts[1] = rec.count1;
+		prog.counts[2] = rec.count2;
+		prog.counts[3] = rec.count3;
+		prog.counts[4] = rec.count4;
+		prog.counts[5] = rec.count5;
+		prog.lastUpdatedDate = rec.lastUpdatedDate;
+		outMap[qid] = prog;
+	}
+}
+
+bool QuestManager::UpdateQuestProgress(User* user, unsigned int questID, unsigned char condIndex, unsigned short addCount) {
+	if (user == NULL || questID == 0 || addCount == 0) return false;
+
+	const QuestConfig* q = GetQuest(questID);
+	if (!q || condIndex >= q->conditions.size()) return false;
+
+	UserQuestProgress prog;
+	GetUserQuestProgress(user, questID, prog);
+
+	// If already complete or claimed, do not modify
+	if (prog.state != 1) return false;
+
+	unsigned short target = q->conditions[condIndex].target;
+	if (prog.counts[condIndex] >= target) return false;
+
+	prog.counts[condIndex] = (unsigned short)min<unsigned int>(prog.counts[condIndex] + addCount, target);
+
+	// Check if all conditions are now met
+	bool allDone = true;
+	for (size_t c = 0; c < q->conditions.size(); ++c) {
+		if (prog.counts[c] < q->conditions[c].target) {
+			allDone = false;
+			break;
+		}
+	}
+
+	if (allDone) {
+		prog.state = 2; // Complete / Ready to claim!
+	}
+
+	// Save to DB
+	UserQuestRecord rec;
+	rec.questID = questID;
+	rec.state = prog.state;
+	rec.count0 = prog.counts[0];
+	rec.count1 = prog.counts[1];
+	rec.count2 = prog.counts[2];
+	rec.count3 = prog.counts[3];
+	rec.count4 = prog.counts[4];
+	rec.count5 = prog.counts[5];
+	databaseManager.SaveUserQuest(user->GetUserID(), rec);
+
+	// Push condition update to client
+	packet_QuestManager.SendPacket_Quest_UpdateCondition(
+		user->GetConnection(), questID, condIndex, target, prog.counts[condIndex]);
+
+	// If quest just completed, push state 2 to client
+	if (prog.state == 2) {
+		packet_QuestManager.SendPacket_Quest_UpdateQuest(user->GetConnection(), questID, 2);
+		serverConsole.Print(PrefixType::Info, format("[ QuestManager ] User ({}) completed Quest [{}] '{}'! Ready to claim!\n",
+			user->GetUserLogName(), questID, q->name));
+	}
+
+	return true;
+}
+
+bool QuestManager::CompleteQuest(User* user, unsigned int questID) {
+	if (user == NULL || questID == 0) return false;
+
+	const QuestConfig* q = GetQuest(questID);
+	if (!q) return false;
+
+	UserQuestRecord rec;
+	rec.questID = questID;
+	rec.state = 2; // Complete / Ready to claim!
+	for (size_t c = 0; c < q->conditions.size() && c < 6; ++c) {
+		unsigned short target = q->conditions[c].target;
+		if (c == 0) rec.count0 = target;
+		else if (c == 1) rec.count1 = target;
+		else if (c == 2) rec.count2 = target;
+		else if (c == 3) rec.count3 = target;
+		else if (c == 4) rec.count4 = target;
+		else if (c == 5) rec.count5 = target;
+		packet_QuestManager.SendPacket_Quest_UpdateCondition(user->GetConnection(), questID, (unsigned char)c, target, target);
+	}
+	databaseManager.SaveUserQuest(user->GetUserID(), rec);
+	packet_QuestManager.SendPacket_Quest_UpdateQuest(user->GetConnection(), questID, 2);
+
+	serverConsole.Print(PrefixType::Info, format("[ QuestManager ] GM/Cheat: User ({}) forced completed Quest [{}] '{}'!\n",
+		user->GetUserLogName(), questID, q->name));
+	return true;
+}
+
+bool QuestManager::ResetUserQuests(User* user) {
+	if (user == NULL) return false;
+
+	databaseManager.ResetDailyQuests(user->GetUserID());
+	packet_QuestManager.SendPacket_Quest_InitList(user);
+
+	serverConsole.Print(PrefixType::Info, format("[ QuestManager ] User ({}) daily quests reset!\n",
+		user->GetUserLogName()));
+	return true;
+}
+
+bool QuestManager::ClaimReward(User* user, unsigned int questID) {
+	if (user == NULL || questID == 0) return false;
+
+	const QuestConfig* q = GetQuest(questID);
+	if (!q) {
+		serverConsole.Print(PrefixType::Warn, format("[ QuestManager ] User ({}) tried to claim non-existent Quest {}\n",
+			user->GetUserLogName(), questID));
+		return false;
+	}
+
+	UserQuestProgress prog;
+	GetUserQuestProgress(user, questID, prog);
+
+	if (prog.state != 2) {
+		serverConsole.Print(PrefixType::Warn, format("[ QuestManager ] User ({}) tried to claim Quest [{}] '{}' with invalid state {}\n",
+			user->GetUserLogName(), questID, q->name, (int)prog.state));
+		return false;
+	}
+
+	// 1. Mark as Claimed in DB
+	prog.state = 3;
+	UserQuestRecord rec;
+	rec.questID = questID;
+	rec.state = 3;
+	rec.count0 = prog.counts[0];
+	rec.count1 = prog.counts[1];
+	rec.count2 = prog.counts[2];
+	rec.count3 = prog.counts[3];
+	rec.count4 = prog.counts[4];
+	rec.count5 = prog.counts[5];
+	databaseManager.SaveUserQuest(user->GetUserID(), rec);
+
+	// 2. Notify client that quest is claimed (Subtype 11)
+	packet_QuestManager.SendPacket_Quest_UpdateQuest(user->GetConnection(), questID, 3);
+
+	// 3. Grant rewards & push ClaimRewardReply (Subtype 41)
+	std::vector<QuestRewardItem> rewardsToSend;
+
+	if (q->type == 2) {
+		// Honor Quest: Unlock medal & grant honor points
+		unsigned short titleID = (unsigned short)(questID - 2000);
+		titleManager.UnlockTitle(user, titleID, true);
+
+		const TitleConfig* titleCfg = titleManager.GetTitle(titleID);
+		unsigned short honorPts = titleCfg ? titleCfg->honorPoints : 10;
+
+		QuestRewardItem r;
+		r.type = 3; // Honor points
+		r.amount = honorPts;
+		rewardsToSend.push_back(r);
+
+		serverConsole.Print(PrefixType::Info, format("[ QuestManager ] User ({}) claimed Honor Quest [{}] '{}' -> Unlocked Title {}\n",
+			user->GetUserLogName(), questID, q->name, titleID));
+	}
+	else if (q->type == 0 || q->type == 3) {
+		unsigned long long addedExp = (q->type == 3) ? 1500 : 500;
+		unsigned long long addedPoints = (q->type == 3) ? 5000 : 2000;
+		unsigned short decoderCount = (q->type == 3) ? 3 : 1;
+
+		databaseManager.AddUserFunds(user->GetUserID(), true, addedPoints);
+		databaseManager.SaveUserBattleResult(user->GetUserID(), addedExp, 0, 0, 0, false, 0, false);
+
+		// Grant Decoders (5202)
+		auto currentInv = user->GetUserInventory();
+		bool alreadyOwned = false;
+		unsigned short maxSlotID = 0;
+		for (const auto& inv : currentInv) {
+			if (inv.slotID > maxSlotID) maxSlotID = inv.slotID;
+			if (inv.itemID == 5202) {
+				alreadyOwned = true;
+			}
+		}
+		if (alreadyOwned) {
+			databaseManager.UpdateUserInventoryItemCount(user->GetUserID(), 5202, decoderCount);
+		}
+		else {
+			InventoryItem newItem;
+			newItem.slotID = ++maxSlotID;
+			newItem.itemID = 5202;
+			newItem.count = decoderCount;
+			newItem.activeFlag = 1;
+			newItem.inUse = false;
+			newItem.obtainTime = (unsigned long)time(nullptr);
+			newItem.expirationTime = 0;
+			newItem.enhanceBits = 0;
+			databaseManager.AddUserInventoryItems(user->GetUserID(), { newItem });
+		}
+
+		// Sync inventory to client
+		packetManager.SendPacket_Inventory(user->GetConnection(), user->GetUserInventory());
+
+		// Sync updated character stats to client
+		UserCharacterResult ucr = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
+		packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, ucr.userCharacter });
+
+		QuestRewardItem rExp;
+		rExp.type = 2; // EXP
+		rExp.amount = (unsigned int)addedExp;
+		rewardsToSend.push_back(rExp);
+
+		QuestRewardItem rPts;
+		rPts.type = 1; // Points
+		rPts.amount = (unsigned int)addedPoints;
+		rewardsToSend.push_back(rPts);
+
+		QuestRewardItem rItem;
+		rItem.type = 0; // Item
+		rItem.itemID = 5202;
+		rItem.count = (unsigned char)decoderCount;
+		rItem.period = 0;
+		rewardsToSend.push_back(rItem);
+
+		serverConsole.Print(PrefixType::Info, format("[ QuestManager ] User ({}) claimed {} Quest [{}] '{}' (+{} EXP, +{} Points, +{} Decoders)\n",
+			user->GetUserLogName(), (q->type == 3) ? "Weekly" : "Daily", questID, q->name, addedExp, addedPoints, decoderCount));
+	}
+
+	// Send Subtype 41 to trigger native congratulations dialog & sound
+	packet_QuestManager.SendPacket_Quest_ClaimRewardReply(user->GetConnection(), questID, 1, rewardsToSend);
+
+	return true;
+}
+
+void QuestManager::OnPlayerKilled(User* attacker, User* victim, unsigned char weaponID, bool isHeadshot, unsigned short distance) {
+	if (attacker == NULL) return;
+
+	// Daily kill quests
+	UpdateQuestProgress(attacker, 5, 0, 1);  // 5 kills
+	UpdateQuestProgress(attacker, 11, 0, 1); // 5 kills
+	UpdateQuestProgress(attacker, 13, 0, 1); // 5 kills
+	UpdateQuestProgress(attacker, 14, 0, 1); // 10 kills
+	UpdateQuestProgress(attacker, 15, 0, 1); // 10 kills
+	UpdateQuestProgress(attacker, 16, 0, 1); // 5 kills
+	UpdateQuestProgress(attacker, 17, 0, 1); // 5 kills
+	UpdateQuestProgress(attacker, 18, 0, 1); // 5 kills
+	UpdateQuestProgress(attacker, 19, 0, 1); // 50 kills
+	UpdateQuestProgress(attacker, 21, 0, 1); // 7 kills
+
+	if (isHeadshot) {
+		UpdateQuestProgress(attacker, 2, 0, 1);    // Daily 2: 5 headshots
+		UpdateQuestProgress(attacker, 4, 0, 1);    // Daily 4: 3 headshots
+		UpdateQuestProgress(attacker, 2003, 0, 1); // Honor 2003: 1000 headshots (爆頭王)
+	}
+
+	// Knife kill (CSW_KNIFE = 29, or legacy weaponID == 1)
+	if (weaponID == 29 || weaponID == 1) {
+		UpdateQuestProgress(attacker, 8, 0, 1);    // Daily 8: Knife/pistol kill
+		UpdateQuestProgress(attacker, 2006, 0, 1); // Honor 2006: 1000 knife kills (刀鋒戰士)
+	}
+
+	// Pistol kill (CSW: 1=P228, 2=GLOCK, 10=ELITE, 11=FIVESEVEN, 16=USP, 26=DEAGLE)
+	if (weaponID == 1 || weaponID == 2 || weaponID == 10 || weaponID == 11 || weaponID == 16 || weaponID == 26) {
+		UpdateQuestProgress(attacker, 8, 0, 1);    // Daily 8: Knife/pistol kill
+	}
+
+	// Honor Kill Milestones
+	UpdateQuestProgress(attacker, 2007, 0, 1); // 5000 kills
+	UpdateQuestProgress(attacker, 2008, 0, 1); // 5000 kills
+	UpdateQuestProgress(attacker, 2010, 0, 1); // 10000 kills
+	UpdateQuestProgress(attacker, 2024, 0, 1); // 10000 kills
+	UpdateQuestProgress(attacker, 2031, 0, 1); // 1000 kills
+	UpdateQuestProgress(attacker, 2032, 0, 1); // 1000 kills
+	UpdateQuestProgress(attacker, 2061, 0, 1); // 3000 kills
+	UpdateQuestProgress(attacker, 2063, 0, 1); // 3000 kills
+	UpdateQuestProgress(attacker, 2064, 0, 1); // 10000 kills
+	UpdateQuestProgress(attacker, 2067, 0, 1); // 3000 kills
+	UpdateQuestProgress(attacker, 2074, 0, 1); // 5000 kills
+}
+
+void QuestManager::OnRoundWin(User* user) {
+	if (user == NULL) return;
+
+	UpdateQuestProgress(user, 1, 0, 1);  // Daily 1: 3 round wins
+	UpdateQuestProgress(user, 10, 0, 1); // Daily 10: 3 round wins
+}
+
+void QuestManager::OnMatchEnd(User* user, bool isWin, unsigned short kills, unsigned short deaths, unsigned int durationSec) {
+	if (user == NULL) return;
+
+	// Matches played
+	UpdateQuestProgress(user, 7, 0, 1);    // Daily 7: 1 match played
+	UpdateQuestProgress(user, 12, 0, 1);   // Daily 12: 1 match played
+	UpdateQuestProgress(user, 2001, 0, 1); // Honor 2001: 1 match played (新兵戰士)
+
+	if (isWin) {
+		UpdateQuestProgress(user, 3, 0, 1);    // Daily 3: 1 match win
+		UpdateQuestProgress(user, 9, 0, 1);    // Daily 9: 1 match win
+		UpdateQuestProgress(user, 501, 0, 1);  // Weekly 501: 7 match wins
+		UpdateQuestProgress(user, 502, 0, 1);  // Weekly 502: 5 match wins
+		UpdateQuestProgress(user, 503, 0, 1);  // Weekly 503: 5 match wins
+		UpdateQuestProgress(user, 504, 0, 1);  // Weekly 504: 5 match wins
+		UpdateQuestProgress(user, 2013, 0, 1); // Honor 2013: 100 wins
+		UpdateQuestProgress(user, 2017, 0, 1); // Honor 2017: 50 wins
+		UpdateQuestProgress(user, 2040, 0, 1); // Honor 2040: 100 wins
+		UpdateQuestProgress(user, 2041, 0, 1); // Honor 2041: 100 wins
+		UpdateQuestProgress(user, 2042, 0, 1); // Honor 2042: 100 wins
+		UpdateQuestProgress(user, 2043, 0, 1); // Honor 2043: 100 wins
+		UpdateQuestProgress(user, 2044, 0, 1); // Honor 2044: 100 wins
+		UpdateQuestProgress(user, 2047, 0, 1); // Honor 2047: 100 wins
+		UpdateQuestProgress(user, 2048, 0, 1); // Honor 2048: 100 wins
+		UpdateQuestProgress(user, 2050, 0, 1); // Honor 2050: 100 wins
+	}
+}

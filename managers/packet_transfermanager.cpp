@@ -12,6 +12,7 @@
 #include "noticemanager.h"
 #include "packet_messengermanager.h"
 #include "bingomanager.h"
+#include "packet_questmanager.h"
 
 Packet_TransferManager packet_TransferManager;
 
@@ -134,6 +135,7 @@ void Packet_TransferManager::ParsePacket_RequestTransfer(TCPConnection::Packet::
 			}
 
 			packet_MessengerManager.SendPacket_Messenger_ChatCount(connection, 255);
+			packet_QuestManager.SendPacket_Quest_InitList(user);
 
 			string channelLoginMsg = "";
 			if (serverID > 0 && serverID <= serverConfig.serverList.size()) {
