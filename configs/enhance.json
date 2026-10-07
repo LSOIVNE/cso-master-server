@@ -20,7 +20,17 @@
       10
     ],
     "NormalPartLevelDownChance": 0,
-    "AdvancedPartLevelDownChance": 0
+    "AdvancedPartLevelDownChance": 0,
+    "FailureRefundEnabled": true,
+    "FailureRefundCount": 1,
+    "FailureRefundWeights": {
+      "Damage": 100,
+      "Weight": 100,
+      "Accuracy": 100,
+      "FireRate": 100,
+      "KickBack": 100,
+      "Ammo": 100
+    }
   },
   "Weapons": {
     "148": {

@@ -107,6 +107,27 @@ struct WeaponEnhanceLimit {
 	}
 };
 
+struct RefundMaterialWeights {
+	int damage = 100;    // 5212 完美傷害強化材料
+	int weight = 100;    // 5213 完美重量強化材料
+	int accuracy = 100;  // 5214 完美命中強化材料
+	int fireRate = 100;  // 5215 完美連發強化材料
+	int kickback = 100;  // 5216 完美後座力強化材料
+	int ammo = 100;      // 5217 完美彈匣強化材料
+
+	int GetWeightByItemID(unsigned short itemID) const {
+		switch (itemID) {
+			case 5212: return damage;
+			case 5213: return weight;
+			case 5214: return accuracy;
+			case 5215: return fireRate;
+			case 5216: return kickback;
+			case 5217: return ammo;
+			default: return 0;
+		}
+	}
+};
+
 struct EnhanceSettings {
 	uint8_t normalPartMaxLevel = 5;
 	uint8_t maxTotalLevel = 8;
@@ -114,6 +135,11 @@ struct EnhanceSettings {
 	std::vector<int> advancedPartSuccessRates = { 95, 85, 75, 60, 45, 30, 20, 10 };
 	int normalPartLevelDownChance = 0;
 	int advancedPartLevelDownChance = 0;
+
+	// 失敗返還完美屬性強化材料配置
+	bool failureRefundEnabled = true;
+	int failureRefundCount = 1;
+	RefundMaterialWeights failureRefundWeights;
 };
 
 class EnhanceManager {

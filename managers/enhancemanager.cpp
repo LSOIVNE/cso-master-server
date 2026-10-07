@@ -47,6 +47,7 @@ bool EnhanceManager::Reload() {
 		file.close();
 
 		// 1. Settings
+		_settings = EnhanceSettings();
 		if (root.contains("Settings") && root["Settings"].is_object()) {
 			const auto& s = root["Settings"];
 			_settings.normalPartMaxLevel = s.value("NormalPartMaxLevel", (uint8_t)5);
@@ -66,6 +67,71 @@ bool EnhanceManager::Reload() {
 				for (const auto& v : s["AdvancedPartSuccessRates"]) {
 					_settings.advancedPartSuccessRates.push_back(v.get<int>());
 				}
+			}
+
+			// 失敗返還完美屬性強化材料配置
+			auto parseRefundWeights = [&](const nlohmann::json& rw) {
+				if (rw.contains("Damage")) _settings.failureRefundWeights.damage = rw["Damage"].get<int>();
+				else if (rw.contains("5212")) _settings.failureRefundWeights.damage = rw["5212"].get<int>();
+
+				if (rw.contains("Weight")) _settings.failureRefundWeights.weight = rw["Weight"].get<int>();
+				else if (rw.contains("5213")) _settings.failureRefundWeights.weight = rw["5213"].get<int>();
+
+				if (rw.contains("Accuracy")) _settings.failureRefundWeights.accuracy = rw["Accuracy"].get<int>();
+				else if (rw.contains("5214")) _settings.failureRefundWeights.accuracy = rw["5214"].get<int>();
+
+				if (rw.contains("FireRate")) _settings.failureRefundWeights.fireRate = rw["FireRate"].get<int>();
+				else if (rw.contains("Firerate")) _settings.failureRefundWeights.fireRate = rw["Firerate"].get<int>();
+				else if (rw.contains("5215")) _settings.failureRefundWeights.fireRate = rw["5215"].get<int>();
+
+				if (rw.contains("KickBack")) _settings.failureRefundWeights.kickback = rw["KickBack"].get<int>();
+				else if (rw.contains("Kickback")) _settings.failureRefundWeights.kickback = rw["Kickback"].get<int>();
+				else if (rw.contains("5216")) _settings.failureRefundWeights.kickback = rw["5216"].get<int>();
+
+				if (rw.contains("Ammo")) _settings.failureRefundWeights.ammo = rw["Ammo"].get<int>();
+				else if (rw.contains("5217")) _settings.failureRefundWeights.ammo = rw["5217"].get<int>();
+			};
+
+			if (s.contains("FailureRefund") && s["FailureRefund"].is_object()) {
+				const auto& fr = s["FailureRefund"];
+				_settings.failureRefundEnabled = fr.value("Enabled", true);
+				_settings.failureRefundCount = fr.value("Count", 1);
+				if (fr.contains("Weights") && fr["Weights"].is_object()) {
+					parseRefundWeights(fr["Weights"]);
+				}
+			}
+			else if (s.contains("RefundMaterial") && s["RefundMaterial"].is_object()) {
+				const auto& fr = s["RefundMaterial"];
+				_settings.failureRefundEnabled = fr.value("Enabled", true);
+				_settings.failureRefundCount = fr.value("Count", 1);
+				if (fr.contains("Weights") && fr["Weights"].is_object()) {
+					parseRefundWeights(fr["Weights"]);
+				}
+			}
+
+			// 同時支援平面鍵名 (Flat keys)
+			if (s.contains("FailureRefundEnabled")) {
+				_settings.failureRefundEnabled = s.value("FailureRefundEnabled", true);
+			}
+			else if (s.contains("EnableFailureRefund")) {
+				_settings.failureRefundEnabled = s.value("EnableFailureRefund", true);
+			}
+			else if (s.contains("RefundMaterialEnabled")) {
+				_settings.failureRefundEnabled = s.value("RefundMaterialEnabled", true);
+			}
+
+			if (s.contains("FailureRefundCount")) {
+				_settings.failureRefundCount = s.value("FailureRefundCount", 1);
+			}
+			else if (s.contains("RefundMaterialCount")) {
+				_settings.failureRefundCount = s.value("RefundMaterialCount", 1);
+			}
+
+			if (s.contains("FailureRefundWeights") && s["FailureRefundWeights"].is_object()) {
+				parseRefundWeights(s["FailureRefundWeights"]);
+			}
+			else if (s.contains("RefundMaterialWeights") && s["RefundMaterialWeights"].is_object()) {
+				parseRefundWeights(s["RefundMaterialWeights"]);
 			}
 		}
 
@@ -422,11 +488,32 @@ bool EnhanceManager::HandleEnhance(User* user, unsigned short weaponSlotID, unsi
 				}
 			}
 
-			// 5204 精密強化零件失敗返還隨機一個完美屬性強化材料 (5212~5217)
+			// 5204 精密強化零件失敗返還完美屬性強化材料 (5212~5217)
 			unsigned short refundMatID = 0;
-			if (!isNormalPart) {
-				std::uniform_int_distribution<int> matDist(5212, 5217);
-				refundMatID = (unsigned short)matDist(rng);
+			int refundCount = _settings.failureRefundCount;
+			if (!isNormalPart && _settings.failureRefundEnabled && refundCount > 0) {
+				const std::vector<unsigned short> candidates = { 5212, 5213, 5214, 5215, 5216, 5217 };
+				int totalWeight = 0;
+				for (unsigned short id : candidates) {
+					totalWeight += std::max(0, _settings.failureRefundWeights.GetWeightByItemID(id));
+				}
+
+				if (totalWeight > 0) {
+					std::uniform_int_distribution<int> weightDist(1, totalWeight);
+					int rollWeight = weightDist(rng);
+					int currentAcc = 0;
+					for (unsigned short id : candidates) {
+						currentAcc += std::max(0, _settings.failureRefundWeights.GetWeightByItemID(id));
+						if (rollWeight <= currentAcc) {
+							refundMatID = id;
+							break;
+						}
+					}
+				}
+				else {
+					std::uniform_int_distribution<size_t> matDist(0, candidates.size() - 1);
+					refundMatID = candidates[matDist(rng)];
+				}
 
 				auto currentInv = user->GetUserInventory();
 				unsigned short maxSlotID = 0;
@@ -439,13 +526,13 @@ bool EnhanceManager::HandleEnhance(User* user, unsigned short weaponSlotID, unsi
 				}
 
 				if (foundRefund) {
-					databaseManager.UpdateUserInventoryItemCount(userID, refundMatID, 1);
+					databaseManager.UpdateUserInventoryItemCount(userID, refundMatID, refundCount);
 				}
 				else {
 					InventoryItem newItem;
 					newItem.slotID = ++maxSlotID;
 					newItem.itemID = refundMatID;
-					newItem.count = 1;
+					newItem.count = refundCount;
 					newItem.activeFlag = 1;
 					newItem.inUse = false;
 					newItem.obtainTime = (unsigned long)time(nullptr);
@@ -454,8 +541,8 @@ bool EnhanceManager::HandleEnhance(User* user, unsigned short weaponSlotID, unsi
 					databaseManager.AddUserInventoryItems(userID, { newItem });
 				}
 
-				serverConsole.Print(PrefixType::Info, format("[ EnhanceManager ] User ({}) AdvEnhance failed, granted refund material {}\n",
-					user->GetUserLogName(), refundMatID));
+				serverConsole.Print(PrefixType::Info, format("[ EnhanceManager ] User ({}) AdvEnhance failed, granted {}x refund material {}\n",
+					user->GetUserLogName(), refundCount, refundMatID));
 			}
 
 			// 刷新背包
@@ -465,7 +552,7 @@ bool EnhanceManager::HandleEnhance(User* user, unsigned short weaponSlotID, unsi
 			if (refundMatID != 0) {
 				AwardItem award;
 				award.itemID = refundMatID;
-				award.count = 1;
+				award.count = refundCount;
 				award.duration = 0;
 				award.flags = 0;
 				packet_UMsgManager.SendPacket_UMsg_ItemAwardNotice(connection, { award }, "REINFORCE_PER_PART_ITEM_GIVE_TITLE", "REINFORCE_PER_PART_ITEM_GIVE_MSG");

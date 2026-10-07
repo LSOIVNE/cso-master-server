@@ -3,24 +3,34 @@
     "NormalPartMaxLevel": 5,
     "MaxTotalLevel": 8,
     "NormalPartSuccessRates": [
-      90,
-      80,
-      70,
-      50,
-      30
-    ],
-    "AdvancedPartSuccessRates": [
-      95,
-      85,
       75,
       60,
-      45,
-      30,
-      20,
-      10
+      50,
+      50,
+      50
     ],
-    "NormalPartLevelDownChance": 0,
-    "AdvancedPartLevelDownChance": 0
+    "AdvancedPartSuccessRates": [
+      85,
+      70,
+      65,
+      60,
+      50,
+      50,
+      45,
+      45
+    ],
+    "NormalPartLevelDownChance": 15,
+    "AdvancedPartLevelDownChance": 10,
+    "FailureRefundEnabled": true,
+    "FailureRefundCount": 1,
+    "FailureRefundWeights": {
+      "Damage": 100,
+      "Weight": 100,
+      "Accuracy": 100,
+      "FireRate": 100,
+      "KickBack": 100,
+      "Ammo": 100
+    }
   },
   "Weapons": {
     "148": {
@@ -30,7 +40,15 @@
       "KickBack": 5,
       "Weight": 3,
       "FireRate": 2,
-      "Ammo": 1
+      "Ammo": 1,
+	  "StatWeights": {
+		"Accuracy": 100,
+		"Damage": 100,
+		"Kickback": 100,
+		"Weight": 100,
+		"FireRate": 100,
+		"Ammo": 100
+	  }
     },
     "197": {
       "Name": "M1887",
