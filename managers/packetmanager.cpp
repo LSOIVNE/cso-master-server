@@ -326,7 +326,7 @@ void PacketManager::BuildUserCharacter(TCPConnection::Packet::pointer packet, co
 		packet->WriteUInt8(userCharacter.clanUnk6);
 	}
 	if (userCharacter.flag & USERCHARACTER_FLAG_TITLES) {
-		packet->WriteUInt8(255);
+		packet->WriteUInt8(0);
 		for (int i = 0; i < 4; ++i) {
 			packet->WriteUInt8(userCharacter.badges[i]);
 		}
