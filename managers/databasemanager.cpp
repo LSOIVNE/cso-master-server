@@ -252,11 +252,8 @@ const UserCharacterResult DatabaseManager::GetUserCharacter(unsigned long userID
         if (flag & USERCHARACTER_FLAG_TITLES) {
             info += " badge0, badge1, badge2, badge3, badge4,";
         }
-        if ((flag & USERCHARACTER_FLAG_PREFIXID) || (flag & USERCHARACTER_FLAG_PREFIXID_EX)) {
-            info += " prefixID,";
-        }
-        if (flag & USERCHARACTER_FLAG_HONORPOINTS) {
-            info += " honorPoints,";
+        if ((flag & USERCHARACTER_FLAG_HONORPOINTS) || (flag & USERCHARACTER_FLAG_PREFIXID_EX)) {
+            info += " prefixID, honorPoints,";
         }
         info[info.size() - 1] = ' ';
     }
@@ -342,17 +339,15 @@ const UserCharacterResult DatabaseManager::GetUserCharacter(unsigned long userID
             userCharacter.badges[3] = atoi(row[index++]);
             userCharacter.badges[4] = atoi(row[index++]);
         }
-        if ((flag & USERCHARACTER_FLAG_PREFIXID) || (flag & USERCHARACTER_FLAG_PREFIXID_EX)) {
+        if ((flag & USERCHARACTER_FLAG_HONORPOINTS) || (flag & USERCHARACTER_FLAG_PREFIXID_EX)) {
             userCharacter.prefixID = atoi(row[index++]);
-        }
-        if (flag & USERCHARACTER_FLAG_HONORPOINTS) {
             userCharacter.honorPoints = atoi(row[index++]);
         }
     }
 
     mysql_free_result(res);
 
-    if (flag & USERCHARACTER_FLAG_HONORPOINTS) {
+    if ((flag & USERCHARACTER_FLAG_HONORPOINTS) || (flag & USERCHARACTER_FLAG_CBOXCOUNT)) {
         string cboxQuery = format("SELECT COALESCE(SUM(count), 0) FROM user_inventory WHERE userID = {} AND itemID = 166;", userID);
         if (!mysql_query(_connection, cboxQuery.c_str())) {
             MYSQL_RES* cboxRes = mysql_store_result(_connection);
