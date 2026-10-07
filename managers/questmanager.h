@@ -32,7 +32,8 @@ struct QuestConfig {
 
 struct UserQuestProgress {
 	unsigned int questID = 0;
-	unsigned char state = 1; // 0=Inactive, 1=InProgress, 2=Complete, 3=Claimed
+	unsigned char state = 0; // 0=InProgress (進行), 1=Complete (完成/可領獎), 2=Claimed (已獲得/已領取)
+	unsigned char isTracked = 0; // 0=Untracked, 1=Tracked in 任務目錄
 	unsigned short counts[6] = { 0 };
 	std::string lastUpdatedDate = "";
 };
@@ -47,11 +48,13 @@ public:
 
 	bool GetUserQuestProgress(User* user, unsigned int questID, UserQuestProgress& outProgress);
 	void GetUserAllQuestProgress(User* user, std::map<unsigned int, UserQuestProgress>& outMap);
+	unsigned int GetUserDailySpecialQuestID(User* user);
 
 	bool UpdateQuestProgress(User* user, unsigned int questID, unsigned char condIndex, unsigned short addCount);
 	bool CompleteQuest(User* user, unsigned int questID);
 	bool ResetUserQuests(User* user);
 	bool ClaimReward(User* user, unsigned int questID);
+	bool SetQuestTracked(User* user, unsigned int questID, unsigned char tracked);
 
 	// Match event callbacks
 	void OnPlayerKilled(User* attacker, User* victim, unsigned char weaponID, bool isHeadshot, unsigned short distance);

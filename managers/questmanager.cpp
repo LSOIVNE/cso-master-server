@@ -121,6 +121,7 @@ bool QuestManager::GetUserQuestProgress(User* user, unsigned int questID, UserQu
 	if (it != dbQuests.end()) {
 		outProgress.questID = questID;
 		outProgress.state = it->second.state;
+		outProgress.isTracked = it->second.isTracked;
 		outProgress.counts[0] = it->second.count0;
 		outProgress.counts[1] = it->second.count1;
 		outProgress.counts[2] = it->second.count2;
@@ -131,16 +132,17 @@ bool QuestManager::GetUserQuestProgress(User* user, unsigned int questID, UserQu
 		return true;
 	}
 
-	// Default progress: InProgress (1), 0 counts
+	// Default progress: InProgress (0), 0 counts
 	outProgress.questID = questID;
-	outProgress.state = 1;
+	outProgress.state = 0; // InProgress (進行)
+	outProgress.isTracked = (questID <= 3) ? 1 : 0; // Default track first 3 daily quests
 	for (int i = 0; i < 6; ++i) outProgress.counts[i] = 0;
 
 	// Check if Honor quest already unlocked in TitleManager
 	if (questID >= 2001 && questID <= 2075) {
 		unsigned short titleID = (unsigned short)(questID - 2000);
 		if (databaseManager.HasUserTitle(user->GetUserID(), titleID)) {
-			outProgress.state = 3; // Claimed
+			outProgress.state = 2; // Claimed / 已獲得
 			const QuestConfig* q = GetQuest(questID);
 			if (q) {
 				for (size_t c = 0; c < q->conditions.size() && c < 6; ++c) {
@@ -167,6 +169,7 @@ void QuestManager::GetUserAllQuestProgress(User* user, map<unsigned int, UserQue
 		UserQuestProgress prog;
 		prog.questID = qid;
 		prog.state = rec.state;
+		prog.isTracked = rec.isTracked;
 		prog.counts[0] = rec.count0;
 		prog.counts[1] = rec.count1;
 		prog.counts[2] = rec.count2;
@@ -178,6 +181,33 @@ void QuestManager::GetUserAllQuestProgress(User* user, map<unsigned int, UserQue
 	}
 }
 
+unsigned int QuestManager::GetUserDailySpecialQuestID(User* user) {
+	if (user == NULL) return 1001;
+
+	map<unsigned int, UserQuestRecord> dbQuests;
+	databaseManager.GetUserQuests(user->GetUserID(), dbQuests);
+
+	for (const auto& [qid, rec] : dbQuests) {
+		if (qid >= 1001 && qid <= 1019) {
+			return qid;
+		}
+	}
+
+	// Deterministically assign one based on user ID and day of year
+	time_t now = time(nullptr);
+	int dayIndex = (int)(now / 86400);
+	unsigned int assignedID = 1001 + (unsigned int)((user->GetUserID() * 7 + dayIndex) % 19);
+
+	// Initialize record in DB so it stays assigned for today
+	UserQuestRecord rec;
+	rec.questID = assignedID;
+	rec.state = 0;
+	rec.isTracked = 0;
+	databaseManager.SaveUserQuest(user->GetUserID(), rec);
+
+	return assignedID;
+}
+
 bool QuestManager::UpdateQuestProgress(User* user, unsigned int questID, unsigned char condIndex, unsigned short addCount) {
 	if (user == NULL || questID == 0 || addCount == 0) return false;
 
@@ -187,8 +217,8 @@ bool QuestManager::UpdateQuestProgress(User* user, unsigned int questID, unsigne
 	UserQuestProgress prog;
 	GetUserQuestProgress(user, questID, prog);
 
-	// If already complete or claimed, do not modify
-	if (prog.state != 1) return false;
+	// If already complete or claimed, do not modify (only 0 is InProgress)
+	if (prog.state != 0) return false;
 
 	unsigned short target = q->conditions[condIndex].target;
 	if (prog.counts[condIndex] >= target) return false;
@@ -205,13 +235,14 @@ bool QuestManager::UpdateQuestProgress(User* user, unsigned int questID, unsigne
 	}
 
 	if (allDone) {
-		prog.state = 2; // Complete / Ready to claim!
+		prog.state = 1; // Complete / Ready to claim!
 	}
 
 	// Save to DB
 	UserQuestRecord rec;
 	rec.questID = questID;
 	rec.state = prog.state;
+	rec.isTracked = prog.isTracked;
 	rec.count0 = prog.counts[0];
 	rec.count1 = prog.counts[1];
 	rec.count2 = prog.counts[2];
@@ -224,9 +255,9 @@ bool QuestManager::UpdateQuestProgress(User* user, unsigned int questID, unsigne
 	packet_QuestManager.SendPacket_Quest_UpdateCondition(
 		user->GetConnection(), questID, condIndex, target, prog.counts[condIndex]);
 
-	// If quest just completed, push state 2 to client
-	if (prog.state == 2) {
-		packet_QuestManager.SendPacket_Quest_UpdateQuest(user->GetConnection(), questID, 2);
+	// If quest just completed, push state 1 (Complete) to client
+	if (prog.state == 1) {
+		packet_QuestManager.SendPacket_Quest_UpdateQuest(user->GetConnection(), questID, 1);
 		serverConsole.Print(PrefixType::Info, format("[ QuestManager ] User ({}) completed Quest [{}] '{}'! Ready to claim!\n",
 			user->GetUserLogName(), questID, q->name));
 	}
@@ -240,9 +271,13 @@ bool QuestManager::CompleteQuest(User* user, unsigned int questID) {
 	const QuestConfig* q = GetQuest(questID);
 	if (!q) return false;
 
+	UserQuestProgress prog;
+	GetUserQuestProgress(user, questID, prog);
+
 	UserQuestRecord rec;
 	rec.questID = questID;
-	rec.state = 2; // Complete / Ready to claim!
+	rec.state = 1; // Complete / Ready to claim!
+	rec.isTracked = prog.isTracked;
 	for (size_t c = 0; c < q->conditions.size() && c < 6; ++c) {
 		unsigned short target = q->conditions[c].target;
 		if (c == 0) rec.count0 = target;
@@ -254,7 +289,7 @@ bool QuestManager::CompleteQuest(User* user, unsigned int questID) {
 		packet_QuestManager.SendPacket_Quest_UpdateCondition(user->GetConnection(), questID, (unsigned char)c, target, target);
 	}
 	databaseManager.SaveUserQuest(user->GetUserID(), rec);
-	packet_QuestManager.SendPacket_Quest_UpdateQuest(user->GetConnection(), questID, 2);
+	packet_QuestManager.SendPacket_Quest_UpdateQuest(user->GetConnection(), questID, 1);
 
 	serverConsole.Print(PrefixType::Info, format("[ QuestManager ] GM/Cheat: User ({}) forced completed Quest [{}] '{}'!\n",
 		user->GetUserLogName(), questID, q->name));
@@ -272,6 +307,23 @@ bool QuestManager::ResetUserQuests(User* user) {
 	return true;
 }
 
+bool QuestManager::SetQuestTracked(User* user, unsigned int questID, unsigned char tracked) {
+	if (user == NULL || questID == 0) return false;
+
+	databaseManager.SetUserQuestTracked(user->GetUserID(), questID, tracked);
+
+	UserQuestProgress prog;
+	GetUserQuestProgress(user, questID, prog);
+	prog.isTracked = tracked;
+
+	// Send Subtype 11 with state & isTracked updated
+	packet_QuestManager.SendPacket_Quest_UpdateQuest(user->GetConnection(), questID, prog.state, tracked, true);
+
+	serverConsole.Print(PrefixType::Info, format("[ QuestManager ] User ({}) SetQuestTracked questID: {}, tracked: {}\n",
+		user->GetUserLogName(), questID, (int)tracked));
+	return true;
+}
+
 bool QuestManager::ClaimReward(User* user, unsigned int questID) {
 	if (user == NULL || questID == 0) return false;
 
@@ -285,17 +337,19 @@ bool QuestManager::ClaimReward(User* user, unsigned int questID) {
 	UserQuestProgress prog;
 	GetUserQuestProgress(user, questID, prog);
 
-	if (prog.state != 2) {
+	// Must be state 1 (Complete / Ready to claim)
+	if (prog.state != 1) {
 		serverConsole.Print(PrefixType::Warn, format("[ QuestManager ] User ({}) tried to claim Quest [{}] '{}' with invalid state {}\n",
 			user->GetUserLogName(), questID, q->name, (int)prog.state));
 		return false;
 	}
 
-	// 1. Mark as Claimed in DB
-	prog.state = 3;
+	// 1. Mark as Claimed (state = 2) in DB
+	prog.state = 2;
 	UserQuestRecord rec;
 	rec.questID = questID;
-	rec.state = 3;
+	rec.state = 2;
+	rec.isTracked = prog.isTracked;
 	rec.count0 = prog.counts[0];
 	rec.count1 = prog.counts[1];
 	rec.count2 = prog.counts[2];
@@ -304,8 +358,8 @@ bool QuestManager::ClaimReward(User* user, unsigned int questID) {
 	rec.count5 = prog.counts[5];
 	databaseManager.SaveUserQuest(user->GetUserID(), rec);
 
-	// 2. Notify client that quest is claimed (Subtype 11)
-	packet_QuestManager.SendPacket_Quest_UpdateQuest(user->GetConnection(), questID, 3);
+	// 2. Notify client that quest is claimed (Subtype 11, state = 2)
+	packet_QuestManager.SendPacket_Quest_UpdateQuest(user->GetConnection(), questID, 2);
 
 	// 3. Grant rewards & push ClaimRewardReply (Subtype 41)
 	std::vector<QuestRewardItem> rewardsToSend;
@@ -326,10 +380,10 @@ bool QuestManager::ClaimReward(User* user, unsigned int questID) {
 		serverConsole.Print(PrefixType::Info, format("[ QuestManager ] User ({}) claimed Honor Quest [{}] '{}' -> Unlocked Title {}\n",
 			user->GetUserLogName(), questID, q->name, titleID));
 	}
-	else if (q->type == 0 || q->type == 3) {
-		unsigned long long addedExp = (q->type == 3) ? 1500 : 500;
-		unsigned long long addedPoints = (q->type == 3) ? 5000 : 2000;
-		unsigned short decoderCount = (q->type == 3) ? 3 : 1;
+	else if (q->type == 0 || q->type == 3 || q->type == 1) {
+		unsigned long long addedExp = (q->type == 3) ? 1500 : (q->type == 1 ? 1000 : 500);
+		unsigned long long addedPoints = (q->type == 3) ? 5000 : (q->type == 1 ? 3000 : 2000);
+		unsigned short decoderCount = (q->type == 3) ? 3 : (q->type == 1 ? 2 : 1);
 
 		databaseManager.AddUserFunds(user->GetUserID(), true, addedPoints);
 		databaseManager.SaveUserBattleResult(user->GetUserID(), addedExp, 0, 0, 0, false, 0, false);
@@ -384,8 +438,9 @@ bool QuestManager::ClaimReward(User* user, unsigned int questID) {
 		rItem.period = 0;
 		rewardsToSend.push_back(rItem);
 
+		const char* qTypeName = (q->type == 3) ? "Weekly" : ((q->type == 1) ? "Special" : "Daily");
 		serverConsole.Print(PrefixType::Info, format("[ QuestManager ] User ({}) claimed {} Quest [{}] '{}' (+{} EXP, +{} Points, +{} Decoders)\n",
-			user->GetUserLogName(), (q->type == 3) ? "Weekly" : "Daily", questID, q->name, addedExp, addedPoints, decoderCount));
+			user->GetUserLogName(), qTypeName, questID, q->name, addedExp, addedPoints, decoderCount));
 	}
 
 	// Send Subtype 41 to trigger native congratulations dialog & sound
@@ -408,6 +463,12 @@ void QuestManager::OnPlayerKilled(User* attacker, User* victim, unsigned char we
 	UpdateQuestProgress(attacker, 18, 0, 1); // 5 kills
 	UpdateQuestProgress(attacker, 19, 0, 1); // 50 kills
 	UpdateQuestProgress(attacker, 21, 0, 1); // 7 kills
+
+	// Update active special quest progress
+	unsigned int specialQID = GetUserDailySpecialQuestID(attacker);
+	if (specialQID >= 1001 && specialQID <= 1019) {
+		UpdateQuestProgress(attacker, specialQID, 0, 1);
+	}
 
 	if (isHeadshot) {
 		UpdateQuestProgress(attacker, 2, 0, 1);    // Daily 2: 5 headshots

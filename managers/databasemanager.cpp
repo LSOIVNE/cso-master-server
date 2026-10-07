@@ -1815,7 +1815,7 @@ bool DatabaseManager::EnsureQuestTables() {
         "  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,"
         "  `userID` INT UNSIGNED NOT NULL,"
         "  `questID` INT UNSIGNED NOT NULL,"
-        "  `state` TINYINT UNSIGNED NOT NULL DEFAULT 1,"
+        "  `state` TINYINT UNSIGNED NOT NULL DEFAULT 0,"
         "  `count0` SMALLINT UNSIGNED NOT NULL DEFAULT 0,"
         "  `count1` SMALLINT UNSIGNED NOT NULL DEFAULT 0,"
         "  `count2` SMALLINT UNSIGNED NOT NULL DEFAULT 0,"
@@ -1823,6 +1823,7 @@ bool DatabaseManager::EnsureQuestTables() {
         "  `count4` SMALLINT UNSIGNED NOT NULL DEFAULT 0,"
         "  `count5` SMALLINT UNSIGNED NOT NULL DEFAULT 0,"
         "  `lastUpdatedDate` DATE NOT NULL DEFAULT (CURRENT_DATE),"
+        "  `isTracked` TINYINT UNSIGNED NOT NULL DEFAULT 0,"
         "  PRIMARY KEY (`id`),"
         "  UNIQUE KEY `uk_user_quest` (`userID`, `questID`),"
         "  KEY `idx_userID` (`userID`)"
@@ -1833,6 +1834,9 @@ bool DatabaseManager::EnsureQuestTables() {
         return false;
     }
 
+    // Ensure isTracked column exists
+    mysql_query(_connection, "ALTER TABLE `user_quests` ADD COLUMN `isTracked` TINYINT UNSIGNED NOT NULL DEFAULT 0;");
+
     return true;
 }
 
@@ -1841,7 +1845,7 @@ bool DatabaseManager::GetUserQuests(unsigned long userID, map<unsigned int, User
     if (_connection == NULL) return false;
 
     string query = format(
-        "SELECT questID, state, count0, count1, count2, count3, count4, count5, CAST(lastUpdatedDate AS CHAR) "
+        "SELECT questID, state, count0, count1, count2, count3, count4, count5, CAST(lastUpdatedDate AS CHAR), isTracked "
         "FROM user_quests WHERE userID = {};", userID);
 
     if (mysql_query(_connection, query.c_str())) {
@@ -1864,6 +1868,7 @@ bool DatabaseManager::GetUserQuests(unsigned long userID, map<unsigned int, User
         rec.count4 = (unsigned short)atoi(row[6]);
         rec.count5 = (unsigned short)atoi(row[7]);
         rec.lastUpdatedDate = row[8] ? row[8] : "";
+        rec.isTracked = row[9] ? (unsigned char)atoi(row[9]) : 0;
 
         outQuests[rec.questID] = rec;
     }
@@ -1875,8 +1880,8 @@ bool DatabaseManager::SaveUserQuest(unsigned long userID, const UserQuestRecord&
     if (_connection == NULL || record.questID == 0) return false;
 
     string query = format(
-        "INSERT INTO user_quests (userID, questID, state, count0, count1, count2, count3, count4, count5, lastUpdatedDate) "
-        "VALUES ({}, {}, {}, {}, {}, {}, {}, {}, {}, CURRENT_DATE) "
+        "INSERT INTO user_quests (userID, questID, state, count0, count1, count2, count3, count4, count5, lastUpdatedDate, isTracked) "
+        "VALUES ({}, {}, {}, {}, {}, {}, {}, {}, {}, CURRENT_DATE, {}) "
         "ON DUPLICATE KEY UPDATE "
         "  state = VALUES(state), "
         "  count0 = VALUES(count0), "
@@ -1885,9 +1890,10 @@ bool DatabaseManager::SaveUserQuest(unsigned long userID, const UserQuestRecord&
         "  count3 = VALUES(count3), "
         "  count4 = VALUES(count4), "
         "  count5 = VALUES(count5), "
-        "  lastUpdatedDate = VALUES(lastUpdatedDate);",
+        "  lastUpdatedDate = VALUES(lastUpdatedDate), "
+        "  isTracked = VALUES(isTracked);",
         userID, record.questID, (int)record.state,
-        record.count0, record.count1, record.count2, record.count3, record.count4, record.count5);
+        record.count0, record.count1, record.count2, record.count3, record.count4, record.count5, (int)record.isTracked);
 
     if (mysql_query(_connection, query.c_str())) {
         serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on SaveUserQuest: {}\n", mysql_error(_connection)));
@@ -1902,11 +1908,37 @@ bool DatabaseManager::ResetDailyQuests(unsigned long userID) {
 
     // Reset daily quests (ID <= 100) where lastUpdatedDate is before today
     string query = format(
-        "UPDATE user_quests SET state = 1, count0 = 0, count1 = 0, count2 = 0, count3 = 0, count4 = 0, count5 = 0, lastUpdatedDate = CURRENT_DATE "
+        "UPDATE user_quests SET state = 0, count0 = 0, count1 = 0, count2 = 0, count3 = 0, count4 = 0, count5 = 0, lastUpdatedDate = CURRENT_DATE "
         "WHERE userID = {} AND questID <= 100 AND lastUpdatedDate < CURRENT_DATE;", userID);
 
     if (mysql_query(_connection, query.c_str())) {
-        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on ResetDailyQuests: {}\n", mysql_error(_connection)));
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on ResetDailyQuests (update): {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    // Delete expired special quests (1001 <= ID <= 1019) so a new rotation takes place today
+    string deleteSpecialQuery = format(
+        "DELETE FROM user_quests WHERE userID = {} AND questID >= 1001 AND questID <= 1019 AND lastUpdatedDate < CURRENT_DATE;", userID);
+
+    if (mysql_query(_connection, deleteSpecialQuery.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on ResetDailyQuests (delete special): {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    return true;
+}
+
+bool DatabaseManager::SetUserQuestTracked(unsigned long userID, unsigned int questID, unsigned char isTracked) {
+    if (_connection == NULL || questID == 0) return false;
+
+    string query = format(
+        "INSERT INTO user_quests (userID, questID, state, isTracked, lastUpdatedDate) "
+        "VALUES ({}, {}, 0, {}, CURRENT_DATE) "
+        "ON DUPLICATE KEY UPDATE isTracked = VALUES(isTracked);",
+        userID, questID, (int)isTracked);
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on SetUserQuestTracked: {}\n", mysql_error(_connection)));
         return false;
     }
 

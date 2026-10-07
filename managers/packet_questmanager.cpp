@@ -59,11 +59,7 @@ void Packet_QuestManager::parsePacket_Quest_TrackQuest(User* user, TCPConnection
 	serverConsole.Print(PrefixType::Info, format("[ Packet_QuestManager ] User ({}) TrackQuest questID: {}, tracked: {}\n",
 		user->GetUserLogName(), questID, (int)tracked));
 
-	// Echo back quest state
-	UserQuestProgress prog;
-	if (questManager.GetUserQuestProgress(user, questID, prog)) {
-		SendPacket_Quest_UpdateQuest(user->GetConnection(), questID, prog.state);
-	}
+	questManager.SetQuestTracked(user, questID, tracked);
 }
 
 void Packet_QuestManager::SendPacket_Quest_InitList(User* user) {
@@ -87,6 +83,13 @@ void Packet_QuestManager::SendPacket_Quest_InitList(User* user) {
 		}
 	}
 
+	// Include user's daily Special Quest (Type 1)
+	unsigned int specialQID = questManager.GetUserDailySpecialQuestID(user);
+	const QuestConfig* specialQuest = questManager.GetQuest(specialQID);
+	if (specialQuest) {
+		questsToSend.push_back(specialQuest);
+	}
+
 	unsigned char questCount = (unsigned char)std::min<size_t>(questsToSend.size(), 255);
 	packet->WriteUInt8(questCount);
 
@@ -94,17 +97,19 @@ void Packet_QuestManager::SendPacket_Quest_InitList(User* user) {
 		const auto* q = questsToSend[i];
 		packet->WriteUInt32_LE(q->id);
 
-		// questFlag: 1 (valid) | 2 (questType) | 0x20 (state) = 0x0023
-		packet->WriteUInt16_LE(0x0023);
+		// questFlag: 1 (valid) | 2 (questType) | 0x20 (state) | 0x40 (isTracked) = 0x0063
+		packet->WriteUInt16_LE(0x0063);
 		packet->WriteUInt8(q->type);
 
-		// Default state: 1 (InProgress)
-		unsigned char state = 1;
+		// Default state: 0 (InProgress)
+		unsigned char state = 0;
+		unsigned char isTracked = (q->id <= 3) ? 1 : 0; // Default track first 3 daily quests
 		unsigned short counts[6] = { 0 };
 
 		auto it = userQuests.find(q->id);
 		if (it != userQuests.end()) {
 			state = it->second.state;
+			isTracked = it->second.isTracked;
 			for (int c = 0; c < 6; ++c) {
 				counts[c] = it->second.counts[c];
 			}
@@ -112,7 +117,7 @@ void Packet_QuestManager::SendPacket_Quest_InitList(User* user) {
 			// Check if already unlocked title
 			unsigned short titleID = (unsigned short)(q->id - 2000);
 			if (databaseManager.HasUserTitle(user->GetUserID(), titleID)) {
-				state = 3;
+				state = 2; // Claimed / 已獲得
 				for (size_t c = 0; c < q->conditions.size() && c < 6; ++c) {
 					counts[c] = q->conditions[c].target;
 				}
@@ -120,6 +125,7 @@ void Packet_QuestManager::SendPacket_Quest_InitList(User* user) {
 		}
 
 		packet->WriteUInt8(state);
+		packet->WriteUInt8(isTracked);
 
 		// Conditions
 		unsigned char condCount = (unsigned char)q->conditions.size();
@@ -133,8 +139,16 @@ void Packet_QuestManager::SendPacket_Quest_InitList(User* user) {
 			packet->WriteUInt16_LE(counts[c]);
 		}
 
-		// Rewards (0 = use client CSV)
-		packet->WriteUInt8(0);
+		// Rewards
+		unsigned char rewardCount = (unsigned char)q->rewards.size();
+		packet->WriteUInt8(rewardCount);
+		for (unsigned char r = 0; r < rewardCount; ++r) {
+			const auto& rw = q->rewards[r];
+			packet->WriteUInt8(r);
+			packet->WriteUInt8(0x13); // valid (1) | id (2) | image (0x10)
+			packet->WriteUInt32_LE(rw.image); // Must be resource_id (0~12) for client to lookup in Quest_RewardRes.csv!
+			packet->WriteUInt8(rw.image);
+		}
 	}
 
 	// Tail flag (0 = no extra user stats)
@@ -146,7 +160,7 @@ void Packet_QuestManager::SendPacket_Quest_InitList(User* user) {
 		user->GetUserLogName(), questCount));
 }
 
-void Packet_QuestManager::SendPacket_Quest_UpdateQuest(TCPConnection::pointer connection, unsigned int questID, unsigned char state) {
+void Packet_QuestManager::SendPacket_Quest_UpdateQuest(TCPConnection::pointer connection, unsigned int questID, unsigned char state, unsigned char isTracked, bool updateTracked) {
 	if (connection == NULL) return;
 
 	auto packet = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::Quest });
@@ -154,8 +168,16 @@ void Packet_QuestManager::SendPacket_Quest_UpdateQuest(TCPConnection::pointer co
 
 	packet->WriteUInt8(11); // Subtype 11: UpdateQuest
 	packet->WriteUInt32_LE(questID);
-	packet->WriteUInt16_LE(0x0021); // questFlag: 1 | 0x20
-	packet->WriteUInt8(state);
+
+	if (updateTracked) {
+		packet->WriteUInt16_LE(0x0061); // questFlag: 1 | 0x20 | 0x40
+		packet->WriteUInt8(state);
+		packet->WriteUInt8(isTracked);
+	}
+	else {
+		packet->WriteUInt16_LE(0x0021); // questFlag: 1 | 0x20
+		packet->WriteUInt8(state);
+	}
 
 	packet->Send();
 }

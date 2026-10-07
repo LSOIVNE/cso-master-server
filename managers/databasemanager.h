@@ -7,7 +7,8 @@
 
 struct UserQuestRecord {
 	unsigned int questID = 0;
-	unsigned char state = 1; // 0=Inactive, 1=InProgress, 2=Complete, 3=Claimed
+	unsigned char state = 0; // 0=InProgress, 1=Complete, 2=Claimed
+	unsigned char isTracked = 0;
 	unsigned short count0 = 0;
 	unsigned short count1 = 0;
 	unsigned short count2 = 0;
@@ -131,6 +132,7 @@ public:
 	bool GetUserQuests(unsigned long userID, map<unsigned int, UserQuestRecord>& outQuests);
 	bool SaveUserQuest(unsigned long userID, const UserQuestRecord& record);
 	bool ResetDailyQuests(unsigned long userID);
+	bool SetUserQuestTracked(unsigned long userID, unsigned int questID, unsigned char isTracked);
 
 private:
 	MYSQL* _connection;
