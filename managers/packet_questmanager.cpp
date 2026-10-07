@@ -26,6 +26,19 @@ void Packet_QuestManager::ParsePacket_Quest(TCPConnection::Packet::pointer packe
 		user->GetUserLogName(), (int)subtype));
 
 	switch (subtype) {
+		case 31: { // ClientPreviewSpecialQuest
+			unsigned int specialQID = questManager.GetUserDailySpecialQuestID(user);
+			auto previewRewards = questManager.GetQuestPreviewRewards(specialQID);
+			SendPacket_Quest_ClaimRewardReply(connection, specialQID, 1, previewRewards);
+			serverConsole.Print(PrefixType::Info, format("[ Packet_QuestManager ] Sent PreviewRewards (Subtype 41) for Quest [{}] to User ({})\n",
+				specialQID, user->GetUserLogName()));
+			break;
+		}
+		case 32: { // ClientResetSpecialQuest
+			questManager.ResetSpecialQuest(user);
+			SendPacket_Quest_InitList(user);
+			break;
+		}
 		case 42: { // ClientClaimReward
 			parsePacket_Quest_ClaimReward(user, packet);
 			break;
@@ -145,14 +158,17 @@ void Packet_QuestManager::SendPacket_Quest_InitList(User* user) {
 		for (unsigned char r = 0; r < rewardCount; ++r) {
 			const auto& rw = q->rewards[r];
 			packet->WriteUInt8(r);
-			packet->WriteUInt8(0x13); // valid (1) | id (2) | image (0x10)
+			packet->WriteUInt8(0x03); // valid (1) | id (2)
 			packet->WriteUInt32_LE(rw.image); // Must be resource_id (0~12) for client to lookup in Quest_RewardRes.csv!
-			packet->WriteUInt8(rw.image);
 		}
 	}
 
-	// Tail flag (0 = no extra user stats)
-	packet->WriteUInt16_LE(0);
+	// Tail flag: 0x0001 (Honor points) | 0x0080 (Special quest remaining resets) = 0x0081
+	unsigned int honorPoints = databaseManager.GetUserHonorPoints(user->GetUserID());
+	unsigned char resetCount = questManager.GetUserSpecialQuestResetCount(user);
+	packet->WriteUInt16_LE(0x0081);
+	packet->WriteUInt32_LE(honorPoints);
+	packet->WriteUInt8(resetCount);
 
 	packet->Send();
 

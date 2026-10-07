@@ -1,16 +1,9 @@
 #pragma once
 
 #include "tcp_connection.h"
+#include "questmanager.h"
 
 class User;
-
-struct QuestRewardItem {
-	unsigned char type = 0; // 0=Item, 1=Points, 2=EXP, 3=Honor, 4=Cash
-	unsigned short itemID = 0;
-	unsigned char count = 0;
-	unsigned char period = 0;
-	unsigned int amount = 0;
-};
 
 class Packet_QuestManager {
 public:

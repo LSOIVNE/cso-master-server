@@ -208,6 +208,130 @@ unsigned int QuestManager::GetUserDailySpecialQuestID(User* user) {
 	return assignedID;
 }
 
+unsigned char QuestManager::GetUserSpecialQuestResetCount(User* user) {
+	if (user == NULL) return 0;
+	lock_guard<mutex> lock(_mutex);
+
+	time_t now = time(nullptr);
+	int currentDay = (int)(now / 86400);
+
+	auto& info = _userSpecialResetCounts[user->GetUserID()];
+	if (info.dayIndex != currentDay) {
+		info.dayIndex = currentDay;
+		info.usedCount = 0;
+	}
+
+	return (info.usedCount >= 3) ? 0 : (unsigned char)(3 - info.usedCount);
+}
+
+bool QuestManager::ResetSpecialQuest(User* user) {
+	if (user == NULL) return false;
+
+	unsigned char remaining = GetUserSpecialQuestResetCount(user);
+	if (remaining == 0) {
+		serverConsole.Print(PrefixType::Warn, format("[ QuestManager ] User ({}) tried to reset special quest, but reset count exhausted!\n",
+			user->GetUserLogName()));
+		return false;
+	}
+
+	unsigned int currentSpecialID = GetUserDailySpecialQuestID(user);
+
+	// Pick a new special quest (1001 ~ 1019) distinct from current
+	unsigned int newSpecialID = currentSpecialID;
+	for (int attempts = 0; attempts < 10; ++attempts) {
+		unsigned int candidate = 1001 + (unsigned int)(rand() % 19);
+		if (candidate != currentSpecialID) {
+			newSpecialID = candidate;
+			break;
+		}
+	}
+	if (newSpecialID == currentSpecialID) {
+		newSpecialID = (currentSpecialID >= 1019) ? 1001 : (currentSpecialID + 1);
+	}
+
+	// Delete old special quest record from DB
+	databaseManager.DeleteUserSpecialQuest(user->GetUserID());
+
+	// Save new special quest record
+	UserQuestRecord rec;
+	rec.questID = newSpecialID;
+	rec.state = 0;
+	rec.isTracked = 0;
+	databaseManager.SaveUserQuest(user->GetUserID(), rec);
+
+	// Update reset counter
+	{
+		lock_guard<mutex> lock(_mutex);
+		_userSpecialResetCounts[user->GetUserID()].usedCount++;
+	}
+
+	serverConsole.Print(PrefixType::Info, format("[ QuestManager ] User ({}) reset special quest from {} to {}, remaining resets: {}\n",
+		user->GetUserLogName(), currentSpecialID, newSpecialID, (int)(remaining - 1)));
+	return true;
+}
+
+std::vector<QuestRewardItem> QuestManager::GetQuestPreviewRewards(unsigned int questID) {
+	std::vector<QuestRewardItem> rewards;
+	const QuestConfig* q = GetQuest(questID);
+	if (!q) return rewards;
+
+	if (q->type == 1) { // Special Quest
+		QuestRewardItem rItem;
+		rItem.type = 0; // Item
+		rItem.itemID = 5202; // 解碼器
+		rItem.count = 2;
+		rItem.period = 0;
+		rewards.push_back(rItem);
+
+		QuestRewardItem rPts;
+		rPts.type = 1; // Points
+		rPts.amount = 3000;
+		rewards.push_back(rPts);
+
+		QuestRewardItem rExp;
+		rExp.type = 2; // EXP
+		rExp.amount = 1000;
+		rewards.push_back(rExp);
+	}
+	else if (q->type == 0) { // Daily Quest
+		QuestRewardItem rItem;
+		rItem.type = 0;
+		rItem.itemID = 5202;
+		rItem.count = 1;
+		rItem.period = 0;
+		rewards.push_back(rItem);
+
+		QuestRewardItem rPts;
+		rPts.type = 1;
+		rPts.amount = 2000;
+		rewards.push_back(rPts);
+
+		QuestRewardItem rExp;
+		rExp.type = 2;
+		rExp.amount = 500;
+		rewards.push_back(rExp);
+	}
+	else if (q->type == 3) { // Weekly Quest
+		QuestRewardItem rItem;
+		rItem.type = 0;
+		rItem.itemID = 5202;
+		rItem.count = 3;
+		rItem.period = 0;
+		rewards.push_back(rItem);
+
+		QuestRewardItem rPts;
+		rPts.type = 1;
+		rPts.amount = 5000;
+		rewards.push_back(rPts);
+
+		QuestRewardItem rExp;
+		rExp.type = 2;
+		rExp.amount = 1500;
+		rewards.push_back(rExp);
+	}
+	return rewards;
+}
+
 bool QuestManager::UpdateQuestProgress(User* user, unsigned int questID, unsigned char condIndex, unsigned short addCount) {
 	if (user == NULL || questID == 0 || addCount == 0) return false;
 

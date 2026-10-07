@@ -38,6 +38,14 @@ struct UserQuestProgress {
 	std::string lastUpdatedDate = "";
 };
 
+struct QuestRewardItem {
+	unsigned char type = 0; // 0=Item, 1=Points, 2=EXP, 3=Honor, 4=Cash
+	unsigned short itemID = 0;
+	unsigned char count = 0;
+	unsigned char period = 0;
+	unsigned int amount = 0;
+};
+
 class QuestManager {
 public:
 	bool Init();
@@ -49,6 +57,9 @@ public:
 	bool GetUserQuestProgress(User* user, unsigned int questID, UserQuestProgress& outProgress);
 	void GetUserAllQuestProgress(User* user, std::map<unsigned int, UserQuestProgress>& outMap);
 	unsigned int GetUserDailySpecialQuestID(User* user);
+	unsigned char GetUserSpecialQuestResetCount(User* user);
+	bool ResetSpecialQuest(User* user);
+	std::vector<QuestRewardItem> GetQuestPreviewRewards(unsigned int questID);
 
 	bool UpdateQuestProgress(User* user, unsigned int questID, unsigned char condIndex, unsigned short addCount);
 	bool CompleteQuest(User* user, unsigned int questID);
@@ -64,8 +75,14 @@ public:
 private:
 	bool loadConfigs();
 
+	struct UserSpecialResetInfo {
+		int dayIndex = 0;
+		unsigned char usedCount = 0;
+	};
+
 	mutable std::mutex _mutex;
 	std::map<unsigned int, QuestConfig> _quests;
+	std::map<unsigned long, UserSpecialResetInfo> _userSpecialResetCounts;
 };
 
 extern QuestManager questManager;

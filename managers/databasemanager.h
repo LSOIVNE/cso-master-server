@@ -122,6 +122,7 @@ public:
 	bool AddUserTitle(unsigned long userID, unsigned short titleID);
 	bool HasUserTitle(unsigned long userID, unsigned short titleID);
 	bool SetUserPrefixID(unsigned long userID, unsigned short prefixID);
+	unsigned short GetUserHonorPoints(unsigned long userID);
 	bool SetUserHonorPoints(unsigned long userID, unsigned short honorPoints);
 	bool AddUserHonorPoints(unsigned long userID, unsigned short points);
 	bool SetUserBadges(unsigned long userID, const unsigned char badges[5]);
@@ -132,6 +133,7 @@ public:
 	bool GetUserQuests(unsigned long userID, map<unsigned int, UserQuestRecord>& outQuests);
 	bool SaveUserQuest(unsigned long userID, const UserQuestRecord& record);
 	bool ResetDailyQuests(unsigned long userID);
+	bool DeleteUserSpecialQuest(unsigned long userID);
 	bool SetUserQuestTracked(unsigned long userID, unsigned int questID, unsigned char isTracked);
 
 private:

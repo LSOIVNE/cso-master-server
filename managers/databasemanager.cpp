@@ -1757,6 +1757,21 @@ bool DatabaseManager::SetUserPrefixID(unsigned long userID, unsigned short prefi
     return true;
 }
 
+unsigned short DatabaseManager::GetUserHonorPoints(unsigned long userID) {
+    if (_connection == NULL) return 0;
+    string query = format("SELECT honorPoints FROM user_characters WHERE userID = {};", userID);
+    if (!mysql_query(_connection, query.c_str())) {
+        MYSQL_RES* res = mysql_store_result(_connection);
+        if (res) {
+            MYSQL_ROW row = mysql_fetch_row(res);
+            unsigned short pts = (row && row[0]) ? (unsigned short)atoi(row[0]) : 0;
+            mysql_free_result(res);
+            return pts;
+        }
+    }
+    return 0;
+}
+
 bool DatabaseManager::SetUserHonorPoints(unsigned long userID, unsigned short honorPoints) {
     if (_connection == NULL) return false;
 
@@ -1922,6 +1937,20 @@ bool DatabaseManager::ResetDailyQuests(unsigned long userID) {
 
     if (mysql_query(_connection, deleteSpecialQuery.c_str())) {
         serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on ResetDailyQuests (delete special): {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    return true;
+}
+
+bool DatabaseManager::DeleteUserSpecialQuest(unsigned long userID) {
+    if (_connection == NULL) return false;
+
+    string query = format(
+        "DELETE FROM user_quests WHERE userID = {} AND questID >= 1001 AND questID <= 1019;", userID);
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on DeleteUserSpecialQuest: {}\n", mysql_error(_connection)));
         return false;
     }
 
