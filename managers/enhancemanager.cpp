@@ -92,7 +92,15 @@ bool EnhanceManager::Reload() {
 				else if (rw.contains("5217")) _settings.failureRefundWeights.ammo = rw["5217"].get<int>();
 			};
 
-			if (s.contains("FailureRefund") && s["FailureRefund"].is_object()) {
+			if (s.contains("FailureRefundPerPart") && s["FailureRefundPerPart"].is_object()) {
+				const auto& fr = s["FailureRefundPerPart"];
+				_settings.failureRefundEnabled = fr.value("Enabled", true);
+				_settings.failureRefundCount = fr.value("Count", 1);
+				if (fr.contains("Weights") && fr["Weights"].is_object()) {
+					parseRefundWeights(fr["Weights"]);
+				}
+			}
+			else if (s.contains("FailureRefund") && s["FailureRefund"].is_object()) {
 				const auto& fr = s["FailureRefund"];
 				_settings.failureRefundEnabled = fr.value("Enabled", true);
 				_settings.failureRefundCount = fr.value("Count", 1);
