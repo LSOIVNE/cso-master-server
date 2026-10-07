@@ -2,6 +2,7 @@
 #include "databasemanager.h"
 #include "packetmanager.h"
 #include "packet_updateinfomanager.h"
+#include "packet_titlemanager.h"
 #include "packet_umsgmanager.h"
 #include "roommanager.h"
 #include "usermanager.h"
@@ -181,6 +182,7 @@ bool TitleManager::EquipTitle(User* user, unsigned short prefixID) {
 		}
 		serverConsole.Print(PrefixType::Info, std::format("[ TitleManager ] User ({}) unequipped title\n",
 			user->GetUserLogName()));
+		packet_TitleManager.SendPacket_Title_EquipResult(user->GetConnection(), 0);
 		SyncTitleUpdate(user);
 		return true;
 	}
@@ -208,6 +210,7 @@ bool TitleManager::EquipTitle(User* user, unsigned short prefixID) {
 	serverConsole.Print(PrefixType::Info, std::format("[ TitleManager ] User ({}) equipped title [{}] '{}'\n",
 		user->GetUserLogName(), prefixID, cfg->name));
 
+	packet_TitleManager.SendPacket_Title_EquipResult(user->GetConnection(), prefixID);
 	SyncTitleUpdate(user);
 	return true;
 }

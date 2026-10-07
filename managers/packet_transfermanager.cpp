@@ -10,6 +10,7 @@
 #include "udp_server.h"
 #include "libbcrypt/bcrypt.h"
 #include "noticemanager.h"
+#include "packet_messengermanager.h"
 #include "bingomanager.h"
 
 Packet_TransferManager packet_TransferManager;
@@ -132,7 +133,7 @@ void Packet_TransferManager::ParsePacket_RequestTransfer(TCPConnection::Packet::
 				}
 			}
 
-			packet_UpdateInfoManager.SendPacket_UserUpdateInfo_ChatCount(connection, user->GetUserID(), 255);
+			packet_MessengerManager.SendPacket_Messenger_ChatCount(connection, 255);
 
 			string channelLoginMsg = "";
 			if (serverID > 0 && serverID <= serverConfig.serverList.size()) {

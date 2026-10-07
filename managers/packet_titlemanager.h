@@ -4,6 +4,7 @@
 class Packet_TitleManager {
 public:
 	void ParsePacket_Title(TCPConnection::Packet::pointer packet);
+	void SendPacket_Title_EquipResult(TCPConnection::pointer connection, unsigned short prefixID);
 
 private:
 	void parsePacket_Title_EquipTitle(User* user, TCPConnection::Packet::pointer packet);

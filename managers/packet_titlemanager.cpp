@@ -72,3 +72,16 @@ void Packet_TitleManager::parsePacket_Title_UnequipBadge(User* user, TCPConnecti
 
 	titleManager.UnequipBadge(user, slot);
 }
+
+void Packet_TitleManager::SendPacket_Title_EquipResult(TCPConnection::pointer connection, unsigned short prefixID) {
+	if (connection == nullptr) {
+		return;
+	}
+
+	auto packet = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::Title });
+	if (packet != nullptr) {
+		packet->WriteUInt8(0); // type 0 = equip title confirmation (triggers client CSOFacade vtable[29])
+		packet->WriteUInt16_LE(prefixID);
+		packet->Send();
+	}
+}

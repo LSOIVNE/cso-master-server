@@ -183,7 +183,6 @@ bool UserManager::SendLoginPackets(User* user, Packet_ReplyType reply) {
 
 	// Send initial lobby chat count to client (255 = unlimited)
 	// This prevents the client-side chat restriction for players below level 8
-	packet_UpdateInfoManager.SendPacket_UserUpdateInfo_ChatCount(connection, user->GetUserID(), 255);
 	packet_MessengerManager.SendPacket_Messenger_ChatCount(connection, 255);
 
 	// Send shop catalog to client so that the Shop tab is immediately populated
