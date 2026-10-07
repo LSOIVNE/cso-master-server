@@ -60,6 +60,7 @@ public:
 	unsigned char GetUserSpecialQuestResetCount(User* user);
 	bool ResetSpecialQuest(User* user);
 	std::vector<QuestRewardItem> GetQuestPreviewRewards(unsigned int questID);
+	std::vector<QuestRewardItem> GetQuestRewardPreview(unsigned int questID, unsigned char rewardIndex);
 
 	bool UpdateQuestProgress(User* user, unsigned int questID, unsigned char condIndex, unsigned short addCount);
 	bool CompleteQuest(User* user, unsigned int questID);

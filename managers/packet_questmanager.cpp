@@ -39,6 +39,15 @@ void Packet_QuestManager::ParsePacket_Quest(TCPConnection::Packet::pointer packe
 			SendPacket_Quest_InitList(user);
 			break;
 		}
+		case 41: { // ClientRequestRewardPreview (點擊獎勵視窗時觸發)
+			unsigned int questID = packet->ReadUInt32_LE();
+			unsigned char rewardIndex = packet->ReadUInt8();
+			auto previewRewards = questManager.GetQuestRewardPreview(questID, rewardIndex);
+			SendPacket_Quest_ClaimRewardReply(connection, questID, 1, previewRewards);
+			serverConsole.Print(PrefixType::Info, format("[ Packet_QuestManager ] Sent RewardPreview (Subtype 41) for Quest [{}] (index {}) to User ({})\n",
+				questID, (int)rewardIndex, user->GetUserLogName()));
+			break;
+		}
 		case 42: { // ClientClaimReward
 			parsePacket_Quest_ClaimReward(user, packet);
 			break;

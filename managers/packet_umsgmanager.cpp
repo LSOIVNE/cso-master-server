@@ -546,9 +546,15 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		cmdLower != "/sethonor" &&
 		cmdLower != "/title" &&
 		cmdLower != "/reloadtitle" &&
+		cmdLower != "/finishquest" &&
+		cmdLower != "/questfinish" &&
+		cmdLower != "/questdone" &&
+		cmdLower != "/fq" &&
 		cmdLower != "/completequest" &&
 		cmdLower != "/resetquests" &&
-		cmdLower != "/reloadquest") {
+		cmdLower != "/questreset" &&
+		cmdLower != "/reloadquest" &&
+		cmdLower != "/questreload") {
 		return false;
 	}
 
@@ -1383,10 +1389,10 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		}
 		return true;
 	}
-	else if (cmdLower == "/completequest") {
+	else if (cmdLower == "/finishquest" || cmdLower == "/questfinish" || cmdLower == "/questdone" || cmdLower == "/fq" || cmdLower == "/completequest") {
 		string qidStr;
 		if (!(ss >> qidStr)) {
-			SendNotice("[系統] 用法：/completequest <QuestID>");
+			SendNotice("[系統] 用法：/finishquest <QuestID> (或 /fq, /questfinish)");
 			return true;
 		}
 
@@ -1409,7 +1415,7 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		}
 		return true;
 	}
-	else if (cmdLower == "/resetquests") {
+	else if (cmdLower == "/resetquests" || cmdLower == "/questreset") {
 		if (questManager.ResetUserQuests(user)) {
 			SendNotice("[系統] 您的每日任務已重置為初始進行中狀態！");
 		}
@@ -1418,7 +1424,7 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		}
 		return true;
 	}
-	else if (cmdLower == "/reloadquest") {
+	else if (cmdLower == "/reloadquest" || cmdLower == "/questreload") {
 		if (questManager.Reload()) {
 			SendNotice("[系統] 任務配置已成功重載！(configs/quest.json)");
 		}

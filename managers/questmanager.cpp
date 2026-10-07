@@ -278,7 +278,7 @@ std::vector<QuestRewardItem> QuestManager::GetQuestPreviewRewards(unsigned int q
 	if (q->type == 1) { // Special Quest
 		QuestRewardItem rItem;
 		rItem.type = 0; // Item
-		rItem.itemID = 5202; // 解碼器
+		rItem.itemID = 173; // 電子解碼器
 		rItem.count = 2;
 		rItem.period = 0;
 		rewards.push_back(rItem);
@@ -296,7 +296,7 @@ std::vector<QuestRewardItem> QuestManager::GetQuestPreviewRewards(unsigned int q
 	else if (q->type == 0) { // Daily Quest
 		QuestRewardItem rItem;
 		rItem.type = 0;
-		rItem.itemID = 5202;
+		rItem.itemID = 173;
 		rItem.count = 1;
 		rItem.period = 0;
 		rewards.push_back(rItem);
@@ -314,7 +314,7 @@ std::vector<QuestRewardItem> QuestManager::GetQuestPreviewRewards(unsigned int q
 	else if (q->type == 3) { // Weekly Quest
 		QuestRewardItem rItem;
 		rItem.type = 0;
-		rItem.itemID = 5202;
+		rItem.itemID = 173;
 		rItem.count = 3;
 		rItem.period = 0;
 		rewards.push_back(rItem);
@@ -329,6 +329,49 @@ std::vector<QuestRewardItem> QuestManager::GetQuestPreviewRewards(unsigned int q
 		rExp.amount = 1500;
 		rewards.push_back(rExp);
 	}
+	return rewards;
+}
+
+std::vector<QuestRewardItem> QuestManager::GetQuestRewardPreview(unsigned int questID, unsigned char rewardIndex) {
+	std::vector<QuestRewardItem> rewards;
+	const QuestConfig* q = GetQuest(questID);
+	if (!q) return rewards;
+
+	if (q->type == 2) { // Honor Quest (榮譽任務)
+		unsigned short titleID = (unsigned short)(questID - 2000);
+		const TitleConfig* titleCfg = titleManager.GetTitle(titleID);
+		unsigned short honorPts = titleCfg ? titleCfg->honorPoints : 10;
+		QuestRewardItem r;
+		r.type = 3; // Honor points
+		r.amount = honorPts;
+		rewards.push_back(r);
+		return rewards;
+	}
+
+	if (rewardIndex == 1) { // Point 獎勵 (例如每日任務Point獎勵, 特殊任務Point獎勵, 每週任務Point獎勵)
+		unsigned int pts = (q->type == 3) ? 5000 : (q->type == 1 ? 3000 : 2000);
+		QuestRewardItem rPts;
+		rPts.type = 1; // Points
+		rPts.amount = pts;
+		rewards.push_back(rPts);
+	}
+	else { // 隨機道具獎勵 + EXP
+		unsigned short decoderCount = (q->type == 3) ? 3 : (q->type == 1 ? 2 : 1);
+		unsigned int exp = (q->type == 3) ? 1500 : (q->type == 1 ? 1000 : 500);
+
+		QuestRewardItem rItem;
+		rItem.type = 0; // Item
+		rItem.itemID = 173; // 電子解碼器
+		rItem.count = (unsigned char)decoderCount;
+		rItem.period = 0;
+		rewards.push_back(rItem);
+
+		QuestRewardItem rExp;
+		rExp.type = 2; // EXP
+		rExp.amount = exp;
+		rewards.push_back(rExp);
+	}
+
 	return rewards;
 }
 
@@ -512,23 +555,23 @@ bool QuestManager::ClaimReward(User* user, unsigned int questID) {
 		databaseManager.AddUserFunds(user->GetUserID(), true, addedPoints);
 		databaseManager.SaveUserBattleResult(user->GetUserID(), addedExp, 0, 0, 0, false, 0, false);
 
-		// Grant Decoders (5202)
+		// Grant Decoders (173: 電子解碼器)
 		auto currentInv = user->GetUserInventory();
 		bool alreadyOwned = false;
 		unsigned short maxSlotID = 0;
 		for (const auto& inv : currentInv) {
 			if (inv.slotID > maxSlotID) maxSlotID = inv.slotID;
-			if (inv.itemID == 5202) {
+			if (inv.itemID == 173) {
 				alreadyOwned = true;
 			}
 		}
 		if (alreadyOwned) {
-			databaseManager.UpdateUserInventoryItemCount(user->GetUserID(), 5202, decoderCount);
+			databaseManager.UpdateUserInventoryItemCount(user->GetUserID(), 173, decoderCount);
 		}
 		else {
 			InventoryItem newItem;
 			newItem.slotID = ++maxSlotID;
-			newItem.itemID = 5202;
+			newItem.itemID = 173;
 			newItem.count = decoderCount;
 			newItem.activeFlag = 1;
 			newItem.inUse = false;

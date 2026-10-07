@@ -1938,6 +1938,24 @@
         { "Duration": 0, "Count": 1, "Price": 29, "AdType": 0, "IsCount": 1 },
         { "Duration": 0, "Count": 11, "Price": 290, "AdType": 0, "IsCount": 1 }
       ]
+    },
+	{
+      "ProductID": 348,
+      "Name": "透視鏡",
+      "IsPoints": 0,
+      "Offers": [
+        { "Duration": 0, "Count": 10, "Price": 9, "AdType": 0, "IsCount": 1 },
+        { "Duration": 0, "Count": 30, "Price": 19, "AdType": 0, "IsCount": 1 }
+      ]
+    },
+	{
+      "ProductID": 378,
+      "Name": "特殊任務重置券",
+      "IsPoints": 0,
+      "Offers": [
+        { "Duration": 0, "Count": 10, "Price": 9, "AdType": 0, "IsCount": 1 },
+        { "Duration": 0, "Count": 30, "Price": 19, "AdType": 0, "IsCount": 1 }
+      ]
     }
   ]
 }
