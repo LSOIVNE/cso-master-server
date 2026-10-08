@@ -2149,10 +2149,9 @@ bool DatabaseManager::ResetDailyQuests(unsigned long userID) {
 bool DatabaseManager::ResetUserQuestRecord(unsigned long userID, unsigned int questID) {
     if (_connection == NULL || questID == 0) return false;
 
-    int defaultState = (questID >= 1001 && questID <= 1019) ? 3 : 0;
     string query = format(
-        "UPDATE user_quests SET state = {}, count0 = 0, count1 = 0, count2 = 0, count3 = 0, count4 = 0, count5 = 0, lastUpdatedDate = CURRENT_DATE "
-        "WHERE userID = {} AND questID = {};", defaultState, userID, questID);
+        "UPDATE user_quests SET state = 0, count0 = 0, count1 = 0, count2 = 0, count3 = 0, count4 = 0, count5 = 0, lastUpdatedDate = CURRENT_DATE "
+        "WHERE userID = {} AND questID = {};", userID, questID);
 
     if (mysql_query(_connection, query.c_str())) {
         serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on ResetUserQuestRecord: {}\n", mysql_error(_connection)));

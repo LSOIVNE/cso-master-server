@@ -699,10 +699,10 @@ bool QuestManager::ResetSpecialQuest(User* user) {
 	// Delete old special quest record from DB
 	databaseManager.DeleteUserSpecialQuest(user->GetUserID());
 
-	// Save new special quest record (state = 3 Unopened cover)
+	// Save new special quest record (state = 0 InProgress, refreshed directly in-place)
 	UserQuestRecord rec;
 	rec.questID = newSpecialID;
-	rec.state = 3;
+	rec.state = 0;
 	rec.isTracked = 0;
 	databaseManager.SaveUserQuest(user->GetUserID(), rec);
 
@@ -1188,11 +1188,11 @@ bool QuestManager::ForceResetSpecialQuest(User* user, unsigned int targetSpecial
 
 		UserQuestRecord rec;
 		rec.questID = targetSpecialID;
-		rec.state = 3; // Unopened cover
+		rec.state = 0; // InProgress
 		rec.isTracked = 0;
 		databaseManager.SaveUserQuest(userID, rec);
 
-		serverConsole.Print(PrefixType::Info, format("[ QuestManager ] User ({}) forced special quest to [{}] '{}' (Unopened cover)!\n",
+		serverConsole.Print(PrefixType::Info, format("[ QuestManager ] User ({}) forced special quest to [{}] '{}' (InProgress)!\n",
 			user->GetUserLogName(), targetSpecialID, q->name));
 	}
 	else {
@@ -1206,18 +1206,40 @@ bool QuestManager::ForceResetSpecialQuest(User* user, unsigned int targetSpecial
 
 		UserQuestRecord rec;
 		rec.questID = currentSpecialID;
-		rec.state = 3; // Unopened cover
+		rec.state = 0; // InProgress
 		rec.isTracked = 0;
 		databaseManager.SaveUserQuest(userID, rec);
 
 		const QuestConfig* q = GetQuest(currentSpecialID);
 		string qName = q ? q->name : "特殊任務";
-		serverConsole.Print(PrefixType::Info, format("[ QuestManager ] User ({}) current special quest [{}] '{}' reset to Unopened cover!\n",
+		serverConsole.Print(PrefixType::Info, format("[ QuestManager ] User ({}) current special quest [{}] '{}' reset to InProgress!\n",
 			user->GetUserLogName(), currentSpecialID, qName));
 	}
 
 	packet_QuestManager.SendPacket_Quest_InitList(user);
 	SyncUserQuestStats(user);
+	return true;
+}
+
+bool QuestManager::SetSpecialQuestUnopened(User* user) {
+	if (user == NULL) return false;
+
+	unsigned long userID = user->GetUserID();
+	unsigned int currentSpecialID = GetUserDailySpecialQuestID(user);
+
+	UserQuestRecord rec;
+	rec.questID = currentSpecialID;
+	rec.state = 3; // Unopened cover
+	rec.isTracked = 0;
+	databaseManager.SaveUserQuest(userID, rec);
+
+	packet_QuestManager.SendPacket_Quest_InitList(user);
+	SyncUserQuestStats(user);
+
+	const QuestConfig* q = GetQuest(currentSpecialID);
+	string qName = q ? q->name : "特殊任務";
+	serverConsole.Print(PrefixType::Info, format("[ QuestManager ] User ({}) current special quest [{}] '{}' set to Unopened cover (state = 3)!\n",
+		user->GetUserLogName(), currentSpecialID, qName));
 	return true;
 }
 

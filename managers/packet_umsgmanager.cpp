@@ -125,6 +125,12 @@ void Packet_UMsgManager::SendPacket_UMsg_PublicNotice(TCPConnection::pointer con
 	packet->Send();
 }
 
+void Packet_UMsgManager::SendPacket_UMsg_DialogBox(TCPConnection::pointer connection, const string& text) {
+	// In lobby/inventory/room, PublicNotice (Type 10) triggers IGameUI::ShowMessageBox with #CSO_ServerMessage_Title and CP950 text
+	SendPacket_UMsg_PublicNotice(connection, text);
+}
+
+
 void Packet_UMsgManager::SendPacket_UMsg_ServerMessageText(TCPConnection::pointer connection, const string& text) {
 	if (connection == NULL) {
 		return;
@@ -1544,6 +1550,18 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		}
 		else {
 			SendNotice(format("[系統] 任務 ID {} 不存在！", qid));
+		}
+		return true;
+	}
+	else if (cmdLower == "/cover" || cmdLower == "/testcover") {
+		if (questManager.SetSpecialQuestUnopened(user)) {
+			unsigned int curSp = questManager.GetUserDailySpecialQuestID(user);
+			const QuestConfig* spCfg = questManager.GetQuest(curSp);
+			string spName = spCfg ? spCfg->name : "特殊任務";
+			SendNotice(format("[系統] 已成功將特殊任務 [{}]【{}】設為未開封（信封封面）狀態！", curSp, spName));
+		}
+		else {
+			SendNotice("[系統] 設置未開封封面失敗！");
 		}
 		return true;
 	}
