@@ -28,8 +28,31 @@ void Packet_QuestManager::ParsePacket_Quest(TCPConnection::Packet::pointer packe
 		user->GetUserLogName(), (int)subtype));
 
 	switch (subtype) {
-		case 31: { // ClientPreviewSpecialQuest
+		case 31: { // ClientPreviewSpecialQuest / OpenSpecialQuest (點擊封面「瀏覽任務」播放動畫後觸發)
 			unsigned int specialQID = questManager.GetUserDailySpecialQuestID(user);
+
+			// 若特殊任務當前為未開封狀態 (3)，開封轉換為進行中 (0) 並持久化與通知客戶端
+			UserQuestProgress prog;
+			if (questManager.GetUserQuestProgress(user, specialQID, prog) && prog.state == 3) {
+				UserQuestRecord rec;
+				rec.questID = specialQID;
+				rec.state = 0; // InProgress / Opened
+				rec.isTracked = prog.isTracked;
+				rec.count0 = prog.counts[0];
+				rec.count1 = prog.counts[1];
+				rec.count2 = prog.counts[2];
+				rec.count3 = prog.counts[3];
+				rec.count4 = prog.counts[4];
+				rec.count5 = prog.counts[5];
+				databaseManager.SaveUserQuest(user->GetUserID(), rec);
+
+				// 下發 Subtype 11 通知客戶端記憶體將特殊任務 state 切換為 0
+				SendPacket_Quest_UpdateQuest(connection, specialQID, 0);
+
+				serverConsole.Print(PrefixType::Info, format("[ Packet_QuestManager ] User ({}) opened special quest [{}] from cover (state 3 -> 0)\n",
+					user->GetUserLogName(), specialQID));
+			}
+
 			auto previewRewards = questManager.GetQuestPreviewRewards(specialQID);
 			
 			// If already revealed with lens, include the revealed item!
@@ -253,8 +276,8 @@ void Packet_QuestManager::SendPacket_Quest_InitList(User* user) {
 			packet->WriteUInt8(q->type);
 		}
 
-		// Default state: 0 (InProgress)
-		unsigned char state = 0;
+		// Default state: 0 (InProgress), Special quest (type 1) defaults to 3 (Unopened cover)
+		unsigned char state = (q->type == 1) ? 3 : 0;
 		unsigned char isTracked = (q->id <= 3) ? 1 : 0; // Default track first 3 daily quests
 		unsigned short counts[6] = { 0 };
 

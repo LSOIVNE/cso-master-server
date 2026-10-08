@@ -514,9 +514,9 @@ bool QuestManager::GetUserQuestProgress(User* user, unsigned int questID, UserQu
 		return true;
 	}
 
-	// Default progress: InProgress (0), 0 counts
+	// Default progress: InProgress (0), 0 counts. Special quest defaults to Unopened (3)
 	outProgress.questID = questID;
-	outProgress.state = 0; // InProgress (進行)
+	outProgress.state = (questID >= 1001 && questID <= 1019) ? 3 : 0;
 	outProgress.isTracked = (questID <= 3) ? 1 : 0; // Default track first 3 daily quests
 	for (int i = 0; i < 6; ++i) outProgress.counts[i] = 0;
 
@@ -580,10 +580,10 @@ unsigned int QuestManager::GetUserDailySpecialQuestID(User* user) {
 	int dayIndex = (int)(now / 86400);
 	unsigned int assignedID = 1001 + (unsigned int)((user->GetUserID() * 7 + dayIndex) % 19);
 
-	// Initialize record in DB so it stays assigned for today
+	// Initialize record in DB so it stays assigned for today (state = 3 Unopened cover)
 	UserQuestRecord rec;
 	rec.questID = assignedID;
-	rec.state = 0;
+	rec.state = 3;
 	rec.isTracked = 0;
 	databaseManager.SaveUserQuest(user->GetUserID(), rec);
 
@@ -699,10 +699,10 @@ bool QuestManager::ResetSpecialQuest(User* user) {
 	// Delete old special quest record from DB
 	databaseManager.DeleteUserSpecialQuest(user->GetUserID());
 
-	// Save new special quest record
+	// Save new special quest record (state = 3 Unopened cover)
 	UserQuestRecord rec;
 	rec.questID = newSpecialID;
-	rec.state = 0;
+	rec.state = 3;
 	rec.isTracked = 0;
 	databaseManager.SaveUserQuest(user->GetUserID(), rec);
 
@@ -1188,11 +1188,11 @@ bool QuestManager::ForceResetSpecialQuest(User* user, unsigned int targetSpecial
 
 		UserQuestRecord rec;
 		rec.questID = targetSpecialID;
-		rec.state = 0;
+		rec.state = 3; // Unopened cover
 		rec.isTracked = 0;
 		databaseManager.SaveUserQuest(userID, rec);
 
-		serverConsole.Print(PrefixType::Info, format("[ QuestManager ] User ({}) forced special quest to [{}] '{}' (InProgress)!\n",
+		serverConsole.Print(PrefixType::Info, format("[ QuestManager ] User ({}) forced special quest to [{}] '{}' (Unopened cover)!\n",
 			user->GetUserLogName(), targetSpecialID, q->name));
 	}
 	else {
@@ -1204,9 +1204,15 @@ bool QuestManager::ForceResetSpecialQuest(User* user, unsigned int targetSpecial
 			_userSpecialQuestAssignedMaps.erase(make_pair(userID, currentSpecialID));
 		}
 
+		UserQuestRecord rec;
+		rec.questID = currentSpecialID;
+		rec.state = 3; // Unopened cover
+		rec.isTracked = 0;
+		databaseManager.SaveUserQuest(userID, rec);
+
 		const QuestConfig* q = GetQuest(currentSpecialID);
 		string qName = q ? q->name : "特殊任務";
-		serverConsole.Print(PrefixType::Info, format("[ QuestManager ] User ({}) current special quest [{}] '{}' reset to InProgress!\n",
+		serverConsole.Print(PrefixType::Info, format("[ QuestManager ] User ({}) current special quest [{}] '{}' reset to Unopened cover!\n",
 			user->GetUserLogName(), currentSpecialID, qName));
 	}
 

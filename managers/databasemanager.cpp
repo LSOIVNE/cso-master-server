@@ -75,7 +75,7 @@ const LoginResult DatabaseManager::Login(const string& userName, const string& p
     LoginResult loginResult;
 
     if (row == NULL) {
-        loginResult.reply = Packet_ReplyType::NotExist;
+        loginResult.reply = Packet_ReplyType::InvalidName;
     }
     else {
         int ret = bcrypt_checkpw(password.c_str(), row[1]);
@@ -98,6 +98,72 @@ const LoginResult DatabaseManager::Login(const string& userName, const string& p
     mysql_free_result(res);
 
     return loginResult;
+}
+
+int DatabaseManager::RegisterUser(const string& userName, const string& password, string& outErrorMsg) {
+    if (_connection == NULL) {
+        outErrorMsg = "伺服器資料庫未連線！";
+        return 3;
+    }
+
+    if (userName.length() < 3 || userName.length() > 16) {
+        outErrorMsg = "帳號長度需介於 3 到 16 個字元！";
+        return 2;
+    }
+
+    if (password.length() < 4 || password.length() > 20) {
+        outErrorMsg = "密碼長度需介於 4 到 20 個字元！";
+        return 2;
+    }
+
+    for (char c : userName) {
+        if (!isalnum((unsigned char)c) && c != '_' && c != '-') {
+            outErrorMsg = "帳號僅能使用英文字母、數字與底線！";
+            return 2;
+        }
+    }
+
+    char escapedUser[64] = {};
+    mysql_real_escape_string(_connection, escapedUser, userName.c_str(), (unsigned long)userName.size());
+
+    string checkQuery = format("SELECT userID FROM users WHERE userName = '{}' LIMIT 1;", escapedUser);
+    if (mysql_query(_connection, checkQuery.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on RegisterUser check: {}\n", mysql_error(_connection)));
+        outErrorMsg = "伺服器資料庫查詢失敗！";
+        return 3;
+    }
+
+    MYSQL_RES* res = mysql_store_result(_connection);
+    if (res) {
+        if (mysql_num_rows(res) > 0) {
+            mysql_free_result(res);
+            outErrorMsg = "此帳號已被註冊，請更換其他帳號！";
+            return 1;
+        }
+        mysql_free_result(res);
+    }
+
+    char salt[BCRYPT_HASHSIZE] = {};
+    char hash[BCRYPT_HASHSIZE] = {};
+    if (bcrypt_gensalt(10, salt) != 0 || bcrypt_hashpw(password.c_str(), salt, hash) != 0) {
+        serverConsole.Print(PrefixType::Error, "[ DatabaseManager ] Failed to hash password with bcrypt!\n");
+        outErrorMsg = "密碼加密失敗！";
+        return 3;
+    }
+
+    char escapedHash[128] = {};
+    mysql_real_escape_string(_connection, escapedHash, hash, (unsigned long)strlen(hash));
+
+    string insertQuery = format("INSERT INTO users (userName, password, registerTime) VALUES ('{}', '{}', NOW());", escapedUser, escapedHash);
+    if (mysql_query(_connection, insertQuery.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on RegisterUser insert: {}\n", mysql_error(_connection)));
+        outErrorMsg = "建立帳號資料失敗！";
+        return 3;
+    }
+
+    unsigned long newUserID = (unsigned long)mysql_insert_id(_connection);
+    serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Successfully registered user '{}' (userID: {})\n", userName, newUserID));
+    return 0;
 }
 
 bool DatabaseManager::IsNickNameExists(const string& nickName) {
@@ -160,8 +226,51 @@ bool DatabaseManager::UpdateUserCamoNickName(unsigned long userID, const string&
     return true;
 }
 
+bool DatabaseManager::UpdateUserLocation(unsigned long userID, unsigned short city, unsigned short county, unsigned short neighborhood) {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    string query = format("UPDATE user_characters SET city = {}, county = {}, neighborhood = {} WHERE userID = {};",
+        city, county, neighborhood, userID);
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on UpdateUserLocation: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Updated location for userID {} to city={}, county={}, neighborhood={}\n",
+        userID, city, county, neighborhood));
+    return true;
+}
+
+bool DatabaseManager::ResetUserWinLose(unsigned long userID) {
+    if (_connection == NULL) {
+        return false;
+    }
+    string query = format("UPDATE user_characters SET battles = 0, wins = 0 WHERE userID = {};", userID);
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on ResetUserWinLose: {}\n", mysql_error(_connection)));
+        return false;
+    }
+    serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Reset win/lose record for userID {}\n", userID));
+    return true;
+}
+
+bool DatabaseManager::ResetUserKillDeath(unsigned long userID) {
+    if (_connection == NULL) {
+        return false;
+    }
+    string query = format("UPDATE user_characters SET frags = 0, deaths = 0 WHERE userID = {};", userID);
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on ResetUserKillDeath: {}\n", mysql_error(_connection)));
+        return false;
+    }
+    serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Reset kill/death record for userID {}\n", userID));
+    return true;
+}
+
 char DatabaseManager::CreateUserCharacter(unsigned long userID, const string& nickName) {
-    string query = format("INSERT INTO user_characters (userID, nickName) VALUES ({}, '{}');", userID, nickName);
+    string query = format("INSERT INTO user_characters (userID, nickName, points, cash, unk400) VALUES ({}, '{}', 100000, 100000, 100000);", userID, nickName);
 
     if (mysql_query(_connection, query.c_str())) {
         if (mysql_errno(_connection) == ER_DUP_ENTRY) {
@@ -530,7 +639,13 @@ bool DatabaseManager::CreateUserInventory(unsigned long userID) {
         string query = format("INSERT INTO user_inventory (userID, slotID, itemID, count, activeFlag, inUse, obtainTime, expirationTime, enhanceBits) VALUES");
         for (auto& itemID : serverConfig.defaultInventory) {
             int inUse = 1;
-            if (kTerroristCharacters.count(itemID)) {
+            int count = 1;
+            if (itemID == 166 || itemID == 173) {
+                count = 10;
+                inUse = 0;
+            } else if (itemID == 1001) {
+                inUse = 0;
+            } else if (kTerroristCharacters.count(itemID)) {
                 if (!equippedT) {
                     inUse = 1;
                     equippedT = true;
@@ -552,7 +667,7 @@ bool DatabaseManager::CreateUserInventory(unsigned long userID) {
                     inUse = 0;
                 }
             }
-            query += format(" ({}, {}, {}, 1, 1, {}, {}, 0, 0),", userID, slotID++, itemID, inUse, now);
+            query += format(" ({}, {}, {}, {}, 1, {}, {}, 0, 0),", userID, slotID++, itemID, count, inUse, now);
         }
         query[query.size() - 1] = ';';
 
@@ -1326,7 +1441,7 @@ bool DatabaseManager::DeductUserFunds(unsigned long userID, bool isPoints, unsig
             amount, userID, amount);
     }
     else {
-        query = format("UPDATE user_characters SET cash = cash - {}, unk400 = unk400 - {} WHERE userID = {} AND cash >= {};",
+        query = format("UPDATE user_characters SET cash = cash - {}, unk400 = cash - {} WHERE userID = {} AND cash >= {};",
             amount, amount, userID, amount);
     }
 
@@ -1360,7 +1475,7 @@ bool DatabaseManager::AddUserFunds(unsigned long userID, bool isPoints, unsigned
             amount, userID);
     }
     else {
-        query = format("UPDATE user_characters SET cash = cash + {}, unk400 = unk400 + {} WHERE userID = {};",
+        query = format("UPDATE user_characters SET cash = cash + {}, unk400 = cash + {} WHERE userID = {};",
             amount, amount, userID);
     }
 
@@ -2034,9 +2149,10 @@ bool DatabaseManager::ResetDailyQuests(unsigned long userID) {
 bool DatabaseManager::ResetUserQuestRecord(unsigned long userID, unsigned int questID) {
     if (_connection == NULL || questID == 0) return false;
 
+    int defaultState = (questID >= 1001 && questID <= 1019) ? 3 : 0;
     string query = format(
-        "UPDATE user_quests SET state = 0, count0 = 0, count1 = 0, count2 = 0, count3 = 0, count4 = 0, count5 = 0, lastUpdatedDate = CURRENT_DATE "
-        "WHERE userID = {} AND questID = {};", userID, questID);
+        "UPDATE user_quests SET state = {}, count0 = 0, count1 = 0, count2 = 0, count3 = 0, count4 = 0, count5 = 0, lastUpdatedDate = CURRENT_DATE "
+        "WHERE userID = {} AND questID = {};", defaultState, userID, questID);
 
     if (mysql_query(_connection, query.c_str())) {
         serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on ResetUserQuestRecord: {}\n", mysql_error(_connection)));
