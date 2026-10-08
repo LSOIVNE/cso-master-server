@@ -3,24 +3,24 @@
     "NormalPartMaxLevel": 5,
     "MaxTotalLevel": 8,
     "NormalPartSuccessRates": [
-      75,
-      60,
+      90,
+      80,
+      70,
       50,
-      50,
-      50
+      30
     ],
     "AdvancedPartSuccessRates": [
+      95,
       85,
-      70,
-      65,
+      75,
       60,
-      50,
-      50,
       45,
-      45
+      30,
+      20,
+      10
     ],
-    "NormalPartLevelDownChance": 15,
-    "AdvancedPartLevelDownChance": 10,
+    "NormalPartLevelDownChance": 0,
+    "AdvancedPartLevelDownChance": 0,
     "BroadcastMaxEnhance": true,
     "FailureRefundPerPart": {
       "Enabled": true,
@@ -37,24 +37,16 @@
   },
   "Weapons": {
     "148": {
-      "Name": "殲滅者-MG3",
+      "Name": "MG3",
       "Accuracy": 4,
       "Damage": 3,
       "KickBack": 5,
       "Weight": 3,
       "FireRate": 2,
-      "Ammo": 1,
-	  "StatWeights": {
-		"Accuracy": 100,
-		"Damage": 100,
-		"Kickback": 100,
-		"Weight": 100,
-		"FireRate": 100,
-		"Ammo": 100
-	  }
+      "Ammo": 1
     },
     "197": {
-      "Name": "閃靈獵手-M1887",
+      "Name": "M1887",
       "Accuracy": 0,
       "Damage": 5,
       "KickBack": 5,
@@ -63,7 +55,7 @@
       "Ammo": 2
     },
     "220": {
-      "Name": "黃金閃靈獵手",
+      "Name": "M1887G",
       "Accuracy": 0,
       "Damage": 3,
       "KickBack": 5,
@@ -72,7 +64,7 @@
       "Ammo": 2
     },
     "268": {
-      "Name": "聖誕限定版殲滅者",
+      "Name": "MG3_Xmas",
       "Accuracy": 4,
       "Damage": 3,
       "KickBack": 5,
@@ -81,7 +73,7 @@
       "Ammo": 1
     },
     "271": {
-      "Name": "黑暗騎士-HK23",
+      "Name": "HK23",
       "Accuracy": 3,
       "Damage": 5,
       "KickBack": 2,
@@ -90,7 +82,7 @@
       "Ammo": 2
     },
     "341": {
-      "Name": "黃金魯格",
+      "Name": "lugerg",
       "Accuracy": 3,
       "Damage": 5,
       "KickBack": 3,
@@ -99,7 +91,7 @@
       "Ammo": 3
     },
     "354": {
-      "Name": "黃金殲滅者-MG3",
+      "Name": "mg3g",
       "Accuracy": 4,
       "Damage": 3,
       "KickBack": 5,
@@ -108,7 +100,7 @@
       "Ammo": 1
     },
     "355": {
-      "Name": "征服者-M60E4",
+      "Name": "m60",
       "Accuracy": 2,
       "Damage": 3,
       "KickBack": 5,
@@ -117,7 +109,7 @@
       "Ammo": 3
     },
     "370": {
-      "Name": "極道狂徒",
+      "Name": "thompson",
       "Accuracy": 3,
       "Damage": 4,
       "KickBack": 4,
@@ -126,7 +118,7 @@
       "Ammo": 2
     },
     "371": {
-      "Name": "魯格",
+      "Name": "luger",
       "Accuracy": 3,
       "Damage": 5,
       "KickBack": 3,
@@ -135,7 +127,7 @@
       "Ammo": 3
     },
     "382": {
-      "Name": "魔鬼上將",
+      "Name": "xm2010",
       "Accuracy": 3,
       "Damage": 3,
       "KickBack": 3,
@@ -144,7 +136,7 @@
       "Ammo": 3
     },
     "400": {
-      "Name": "StG44",
+      "Name": "stg44",
       "Accuracy": 3,
       "Damage": 4,
       "KickBack": 5,
@@ -153,7 +145,7 @@
       "Ammo": 1
     },
     "406": {
-      "Name": "黃金黑暗騎士",
+      "Name": "hk23g",
       "Accuracy": 3,
       "Damage": 5,
       "KickBack": 2,
@@ -162,7 +154,7 @@
       "Ammo": 2
     },
     "384": {
-      "Name": "深淵惡魔-KSG12",
+      "Name": "ksg12",
       "Accuracy": 0,
       "Damage": 5,
       "KickBack": 2,
@@ -171,7 +163,7 @@
       "Ammo": 5
     },
     "385": {
-      "Name": "連環殺陣-AS50",
+      "Name": "as50",
       "Accuracy": 1,
       "Damage": 2,
       "KickBack": 5,
@@ -180,7 +172,7 @@
       "Ammo": 5
     },
     "434": {
-      "Name": "黃金StG44",
+      "Name": "stg44g",
       "Accuracy": 3,
       "Damage": 4,
       "KickBack": 5,
@@ -189,7 +181,7 @@
       "Ammo": 1
     },
     "304": {
-      "Name": "黑色旋風-M14",
+      "Name": "m14ebr",
       "Accuracy": 1,
       "Damage": 2,
       "KickBack": 5,
@@ -198,7 +190,7 @@
       "Ammo": 5
     },
     "414": {
-      "Name": "橫掃千軍-PKM",
+      "Name": "pkm",
       "Accuracy": 3,
       "Damage": 3,
       "KickBack": 5,
@@ -207,7 +199,7 @@
       "Ammo": 5
     },
     "420": {
-      "Name": "金旋風",
+      "Name": "m14ebrgold",
       "Accuracy": 1,
       "Damage": 2,
       "KickBack": 5,
@@ -216,7 +208,7 @@
       "Ammo": 5
     },
     "441": {
-      "Name": "黃金惡魔-KSG12",
+      "Name": "ksg12g",
       "Accuracy": 0,
       "Damage": 5,
       "KickBack": 2,
@@ -225,7 +217,7 @@
       "Ammo": 5
     },
     "344": {
-      "Name": "蛇姬之吻-M95",
+      "Name": "M95",
       "Accuracy": 1,
       "Damage": 2,
       "KickBack": 5,
@@ -234,7 +226,7 @@
       "Ammo": 5
     },
     "424": {
-      "Name": "聖誕限定版-蛇姬之吻",
+      "Name": "m95xmas",
       "Accuracy": 1,
       "Damage": 2,
       "KickBack": 5,
@@ -243,7 +235,7 @@
       "Ammo": 5
     },
     "431": {
-      "Name": "MK48",
+      "Name": "mk48",
       "Accuracy": 1,
       "Damage": 2,
       "KickBack": 5,
@@ -252,7 +244,7 @@
       "Ammo": 2
     },
     "337": {
-      "Name": "疾風獵鷹-WA2000",
+      "Name": "wa2000",
       "Accuracy": 1,
       "Damage": 2,
       "KickBack": 5,
@@ -261,7 +253,7 @@
       "Ammo": 3
     },
     "380": {
-      "Name": "黃金疾風獵鷹",
+      "Name": "wa2000g",
       "Accuracy": 1,
       "Damage": 2,
       "KickBack": 5,
@@ -270,7 +262,7 @@
       "Ammo": 3
     },
     "442": {
-      "Name": "帕克‧黑爾-M82",
+      "Name": "m82",
       "Accuracy": 1,
       "Damage": 3,
       "KickBack": 5,
@@ -279,7 +271,7 @@
       "Ammo": 3
     },
     "469": {
-      "Name": "眼鏡蛇",
+      "Name": "kingcobra",
       "Accuracy": 4,
       "Damage": 3,
       "KickBack": 5,
@@ -288,7 +280,7 @@
       "Ammo": 0
     },
     "484": {
-      "Name": "終極殺陣-AS50",
+      "Name": "as50g",
       "Accuracy": 1,
       "Damage": 2,
       "KickBack": 5,
@@ -297,7 +289,7 @@
       "Ammo": 5
     },
     "488": {
-      "Name": "黃金征服者",
+      "Name": "m60g",
       "Accuracy": 2,
       "Damage": 3,
       "KickBack": 5,
@@ -306,7 +298,7 @@
       "Ammo": 3
     },
     "493": {
-      "Name": "闇影獵人UTS-15",
+      "Name": "uts15",
       "Accuracy": 0,
       "Damage": 2,
       "KickBack": 5,
@@ -315,7 +307,7 @@
       "Ammo": 2
     },
     "525": {
-      "Name": "毀滅者-K3",
+      "Name": "k3",
       "Accuracy": 2,
       "Damage": 5,
       "KickBack": 3,
@@ -324,7 +316,7 @@
       "Ammo": 5
     },
     "549": {
-      "Name": "黃金眼鏡蛇",
+      "Name": "kingcobrag",
       "Accuracy": 4,
       "Damage": 3,
       "KickBack": 5,
@@ -333,7 +325,7 @@
       "Ammo": 0
     },
     "6001": {
-      "Name": "連環殺陣-AS50",
+      "Name": "as50",
       "Accuracy": 1,
       "Damage": 2,
       "KickBack": 5,
@@ -342,7 +334,7 @@
       "Ammo": 5
     },
     "6002": {
-      "Name": "殲滅者-MG3",
+      "Name": "MG3",
       "Accuracy": 4,
       "Damage": 3,
       "KickBack": 5,
@@ -351,7 +343,7 @@
       "Ammo": 1
     },
     "6003": {
-      "Name": "橫掃千軍-PKM",
+      "Name": "pkm",
       "Accuracy": 3,
       "Damage": 3,
       "KickBack": 5,
@@ -360,7 +352,7 @@
       "Ammo": 5
     },
     "6004": {
-      "Name": "黑色旋風-M14",
+      "Name": "m14ebr",
       "Accuracy": 1,
       "Damage": 2,
       "KickBack": 5,
@@ -369,7 +361,7 @@
       "Ammo": 5
     },
     "6005": {
-      "Name": "蛇姬之吻-M95",
+      "Name": "M95",
       "Accuracy": 1,
       "Damage": 2,
       "KickBack": 5,
