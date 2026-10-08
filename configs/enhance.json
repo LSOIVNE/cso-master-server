@@ -21,6 +21,7 @@
     ],
     "NormalPartLevelDownChance": 0,
     "AdvancedPartLevelDownChance": 0,
+    "BroadcastMaxEnhance": true,
     "FailureRefundPerPart": {
       "Enabled": true,
       "Count": 1,

@@ -140,6 +140,9 @@ struct EnhanceSettings {
 	bool failureRefundEnabled = true;
 	int failureRefundCount = 1;
 	RefundMaterialWeights failureRefundWeights;
+
+	// +8 最高強化成功全服廣播開關
+	bool broadcastMaxEnhance = true;
 };
 
 class EnhanceManager {
@@ -155,6 +158,8 @@ public:
 	void SendEnhanceResult(TCPConnection::pointer connection, unsigned char status, unsigned short weaponSlotID, unsigned long enhanceBits, unsigned char statIndex, const std::string& message = "");
 
 private:
+	void BroadcastMaxEnhance(User* user, unsigned short itemID, uint32_t enhanceBits);
+
 	EnhanceSettings _settings;
 	std::unordered_map<unsigned short, WeaponEnhanceLimit> _weapons;
 };

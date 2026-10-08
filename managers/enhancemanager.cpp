@@ -55,6 +55,7 @@ bool EnhanceManager::Reload() {
 			int legacyDownChance = s.value("LevelDownChance", 0);
 			_settings.normalPartLevelDownChance = s.value("NormalPartLevelDownChance", legacyDownChance);
 			_settings.advancedPartLevelDownChance = s.value("AdvancedPartLevelDownChance", legacyDownChance);
+			_settings.broadcastMaxEnhance = s.value("BroadcastMaxEnhance", true);
 
 			if (s.contains("NormalPartSuccessRates") && s["NormalPartSuccessRates"].is_array()) {
 				_settings.normalPartSuccessRates.clear();
@@ -353,6 +354,12 @@ bool EnhanceManager::HandleEnhance(User* user, unsigned short weaponSlotID, unsi
 
 		// 回覆 Status 1 (成功 +1，播放 Assemble.bik 動畫、成功音效與展示特定屬性提升介面)
 		SendEnhanceResult(connection, 1, weaponSlotID, newBits, (unsigned char)targetStat, "");
+
+		// 若達到最高強化等級 (+8)，進行全服廣播
+		if (currentStats.GetTotalLevel() >= _settings.maxTotalLevel) {
+			BroadcastMaxEnhance(user, wIt->itemID, newBits);
+		}
+
 		return true;
 	}
 
@@ -462,6 +469,12 @@ bool EnhanceManager::HandleEnhance(User* user, unsigned short weaponSlotID, unsi
 
 			// 回覆 Status 1 (成功 +1，播放 Assemble.bik 與成功音效)
 			SendEnhanceResult(connection, 1, weaponSlotID, newBits, (unsigned char)chosenStat, "");
+
+			// 若達到最高強化等級 (+8)，進行全服廣播
+			if (currentStats.GetTotalLevel() >= _settings.maxTotalLevel) {
+				BroadcastMaxEnhance(user, wIt->itemID, newBits);
+			}
+
 			return true;
 		}
 		else {
@@ -587,6 +600,26 @@ bool EnhanceManager::HandleEnhance(User* user, unsigned short weaponSlotID, unsi
 		user->GetUserLogName(), materialID));
 	SendEnhanceResult(connection, 4, weaponSlotID, wIt->enhanceBits, 0, "");
 	return false;
+}
+
+void EnhanceManager::BroadcastMaxEnhance(User* user, unsigned short itemID, uint32_t enhanceBits) {
+	if (user == nullptr || !_settings.broadcastMaxEnhance) {
+		return;
+	}
+
+	string playerName = user->GetUserLogName();
+	auto charResult = user->GetUserCharacter(USERCHARACTER_FLAG_NICKNAME);
+	if (charResult.result && !charResult.userCharacter.nickName.empty()) {
+		playerName = charResult.userCharacter.nickName;
+	}
+
+	// 官方格式：{0} 為玩家名稱，{1:R} 由客戶端解析 "{itemID} {enhanceBits}"
+	// 客戶端格式化為 "(+8) [武器名]"，最終呈現 "[玩家名稱] (+8) [武器名] 最高強化成功!"
+	vector<string> args = { playerName, format("{} {}", itemID, enhanceBits) };
+	packet_UMsgManager.BroadcastSystemReply(Packet_UMsgType::SystemReply_Green, "REINFORCE_MAX_SUCCESS", args);
+
+	serverConsole.Print(PrefixType::Info, format("[ EnhanceManager ] Max enhance (+8) broadcast: player='{}', itemID={}, bits={:#x}\n",
+		playerName, itemID, enhanceBits));
 }
 
 void EnhanceManager::SendEnhanceResult(TCPConnection::pointer connection, unsigned char status, unsigned short weaponSlotID, unsigned long enhanceBits, unsigned char statIndex, const std::string& message) {
