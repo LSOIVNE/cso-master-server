@@ -55,6 +55,7 @@ struct PermissionConfig {
 	bool allowPlayerNotice = false;
 	bool allowPlayerReloadShop = false;
 	bool allowPlayerReloadEnhance = false;
+	bool allowPlayerReloadQuest = false;
 };
 
 struct ShopConfig {
@@ -91,6 +92,7 @@ public:
 	ItemCommandConfig itemCommands;
 	PermissionConfig permissions;
 	ShopConfig shop;
+	unsigned char questMinPlayers = 4;
 };
 
 extern ServerConfig serverConfig;

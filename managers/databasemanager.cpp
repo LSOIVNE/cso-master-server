@@ -348,6 +348,26 @@ const UserCharacterResult DatabaseManager::GetUserCharacter(unsigned long userID
 
     mysql_free_result(res);
 
+    if ((flag & USERCHARACTER_FLAG_LEVEL) && userCharacter.level == 0) {
+        if (!(flag & USERCHARACTER_FLAG_EXP)) {
+            string expQuery = format("SELECT exp FROM user_characters WHERE userID = {};", userID);
+            if (!mysql_query(_connection, expQuery.c_str())) {
+                MYSQL_RES* expRes = mysql_store_result(_connection);
+                if (expRes) {
+                    MYSQL_ROW expRow = mysql_fetch_row(expRes);
+                    if (expRow && expRow[0]) {
+                        userCharacter.exp = atoll(expRow[0]);
+                    }
+                    mysql_free_result(expRes);
+                }
+            }
+        }
+        userCharacter.level = max((unsigned char)1, User::CalculateLevel(userCharacter.exp));
+        string healQuery = format("UPDATE user_characters SET level = {} WHERE userID = {};", (int)userCharacter.level, userID);
+        mysql_query(_connection, healQuery.c_str());
+        serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Auto-healed level 0 to {} for userID {}\n", (int)userCharacter.level, userID));
+    }
+
     if ((flag & USERCHARACTER_FLAG_HONORPOINTS) || (flag & USERCHARACTER_FLAG_CBOXCOUNT)) {
         string cboxQuery = format("SELECT COALESCE(SUM(count), 0) FROM user_inventory WHERE userID = {} AND itemID = 166;", userID);
         if (!mysql_query(_connection, cboxQuery.c_str())) {
@@ -1221,8 +1241,14 @@ bool DatabaseManager::SaveUserBattleResult(unsigned long userID, unsigned long l
         return false;
     }
 
-    string query = format("UPDATE user_characters SET exp = exp + {}, points = points + {}, battles = battles + {}, wins = wins + {}, frags = frags + {}, deaths = deaths + {}, level = {} WHERE userID = {};",
-        addedExp, addedPoints, recordStats ? 1 : 0, (recordStats && isWin) ? 1 : 0, recordStats ? addedFrags : 0, recordStats ? addedDeaths : 0, newLevel, userID);
+    string query;
+    if (newLevel > 0) {
+        query = format("UPDATE user_characters SET exp = exp + {}, points = points + {}, battles = battles + {}, wins = wins + {}, frags = frags + {}, deaths = deaths + {}, level = {} WHERE userID = {};",
+            addedExp, addedPoints, recordStats ? 1 : 0, (recordStats && isWin) ? 1 : 0, recordStats ? addedFrags : 0, recordStats ? addedDeaths : 0, (int)newLevel, userID);
+    } else {
+        query = format("UPDATE user_characters SET exp = exp + {}, points = points + {}, battles = battles + {}, wins = wins + {}, frags = frags + {}, deaths = deaths + {} WHERE userID = {};",
+            addedExp, addedPoints, recordStats ? 1 : 0, (recordStats && isWin) ? 1 : 0, recordStats ? addedFrags : 0, recordStats ? addedDeaths : 0, userID);
+    }
 
     if (mysql_query(_connection, query.c_str())) {
         serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on SaveUserBattleResult: {}\n", mysql_error(_connection)));
@@ -1230,8 +1256,58 @@ bool DatabaseManager::SaveUserBattleResult(unsigned long userID, unsigned long l
     }
 
     serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Updated battle result for userID {}: +{} exp, +{} points, recordStats: {}, +{} frags, +{} deaths, win: {}, level: {}\n",
-        userID, addedExp, addedPoints, recordStats ? 1 : 0, recordStats ? addedFrags : 0, recordStats ? addedDeaths : 0, (recordStats && isWin) ? 1 : 0, newLevel));
+        userID, addedExp, addedPoints, recordStats ? 1 : 0, recordStats ? addedFrags : 0, recordStats ? addedDeaths : 0, (recordStats && isWin) ? 1 : 0, (int)newLevel));
 
+    return true;
+}
+
+bool DatabaseManager::AddUserExp(unsigned long userID, unsigned long long addedExp, unsigned char* outNewLevel) {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    UserCharacterResult ucr = GetUserCharacter(userID, USERCHARACTER_FLAG_LEVEL | USERCHARACTER_FLAG_EXP);
+    if (!ucr.result) {
+        return false;
+    }
+
+    unsigned char oldLevel = ucr.userCharacter.level ? ucr.userCharacter.level : 1;
+    unsigned long long newExp = ucr.userCharacter.exp + addedExp;
+    unsigned char calculatedLevel = max(oldLevel, User::CalculateLevel(newExp));
+    if (outNewLevel) {
+        *outNewLevel = calculatedLevel;
+    }
+
+    string query = format("UPDATE user_characters SET exp = {}, level = {} WHERE userID = {};",
+        newExp, (int)calculatedLevel, userID);
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on AddUserExp: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Added {} exp for userID {}: newExp = {}, level = {}\n",
+        addedExp, userID, newExp, (int)calculatedLevel));
+
+    return true;
+}
+
+bool DatabaseManager::SetUserLevel(unsigned long userID, unsigned char newLevel) {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    if (newLevel < 1) newLevel = 1;
+    if (newLevel > 72) newLevel = 72;
+
+    string query = format("UPDATE user_characters SET level = {} WHERE userID = {};", (int)newLevel, userID);
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on SetUserLevel: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Set level for userID {} to {}\n", userID, (int)newLevel));
     return true;
 }
 
@@ -1852,6 +1928,18 @@ bool DatabaseManager::EnsureQuestTables() {
     // Ensure isTracked column exists
     mysql_query(_connection, "ALTER TABLE `user_quests` ADD COLUMN `isTracked` TINYINT UNSIGNED NOT NULL DEFAULT 0;");
 
+    const char* createStatsSql =
+        "CREATE TABLE IF NOT EXISTS `user_quest_stats` ("
+        "  `userID` INT UNSIGNED NOT NULL PRIMARY KEY,"
+        "  `specialStreak` SMALLINT UNSIGNED NOT NULL DEFAULT 0,"
+        "  `specialMaxStreak` SMALLINT UNSIGNED NOT NULL DEFAULT 0,"
+        "  `maxDailyCompleted` TINYINT UNSIGNED NOT NULL DEFAULT 0,"
+        "  `allClearCount` TINYINT UNSIGNED NOT NULL DEFAULT 0,"
+        "  `lastSpecialDate` DATE NULL,"
+        "  FOREIGN KEY (`userID`) REFERENCES `users` (`userID`) ON DELETE CASCADE"
+        ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+    mysql_query(_connection, createStatsSql);
+
     return true;
 }
 
@@ -1943,6 +2031,48 @@ bool DatabaseManager::ResetDailyQuests(unsigned long userID) {
     return true;
 }
 
+bool DatabaseManager::ResetUserQuestRecord(unsigned long userID, unsigned int questID) {
+    if (_connection == NULL || questID == 0) return false;
+
+    string query = format(
+        "UPDATE user_quests SET state = 0, count0 = 0, count1 = 0, count2 = 0, count3 = 0, count4 = 0, count5 = 0, lastUpdatedDate = CURRENT_DATE "
+        "WHERE userID = {} AND questID = {};", userID, questID);
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on ResetUserQuestRecord: {}\n", mysql_error(_connection)));
+        return false;
+    }
+    return true;
+}
+
+bool DatabaseManager::ResetUserDailyQuests(unsigned long userID) {
+    if (_connection == NULL) return false;
+
+    string query = format(
+        "UPDATE user_quests SET state = 0, count0 = 0, count1 = 0, count2 = 0, count3 = 0, count4 = 0, count5 = 0, lastUpdatedDate = CURRENT_DATE "
+        "WHERE userID = {} AND questID <= 100;", userID);
+    mysql_query(_connection, query.c_str());
+
+    // 重設今日全清標記
+    string qStats = format("UPDATE user_quest_stats SET allClearCount = 0 WHERE userID = {};", userID);
+    mysql_query(_connection, qStats.c_str());
+
+    return true;
+}
+
+bool DatabaseManager::ResetUserWeeklyQuests(unsigned long userID) {
+    if (_connection == NULL) return false;
+
+    string query = format(
+        "UPDATE user_quests SET state = 0, count0 = 0, count1 = 0, count2 = 0, count3 = 0, count4 = 0, count5 = 0, lastUpdatedDate = CURRENT_DATE "
+        "WHERE userID = {} AND questID >= 501 AND questID <= 600;", userID);
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on ResetUserWeeklyQuests: {}\n", mysql_error(_connection)));
+        return false;
+    }
+    return true;
+}
+
 bool DatabaseManager::DeleteUserSpecialQuest(unsigned long userID) {
     if (_connection == NULL) return false;
 
@@ -1973,6 +2103,199 @@ bool DatabaseManager::SetUserQuestTracked(unsigned long userID, unsigned int que
 
     return true;
 }
+
+bool DatabaseManager::GetUserQuestStats(unsigned long userID, UserQuestStats& outStats) {
+    if (_connection == NULL) return false;
+
+    outStats.honorPoints = GetUserHonorPoints(userID);
+    outStats.specialQuestCount = 0;
+    outStats.specialQuestStreakRecord = 0;
+    outStats.todayRegularQuest = 0;
+    outStats.allClearCount = 0;
+    outStats.resetSpecialQuestCount = 5;
+    outStats.todayPCQuest = 0; // 網咖任務暫未實現，固定為 0
+
+    // 1. 查詢今日完成的每日任務個數 (questID <= 100 且 state >= 1 且 lastUpdatedDate = CURRENT_DATE)
+    string qDaily = format(
+        "SELECT COUNT(*) FROM user_quests WHERE userID = {} AND questID <= 100 AND state >= 1 AND lastUpdatedDate = CURRENT_DATE;",
+        userID);
+    if (mysql_query(_connection, qDaily.c_str()) == 0) {
+        MYSQL_RES* res = mysql_store_result(_connection);
+        if (res) {
+            MYSQL_ROW row = mysql_fetch_row(res);
+            if (row && row[0]) {
+                outStats.todayRegularQuest = (unsigned char)atoi(row[0]);
+            }
+            mysql_free_result(res);
+        }
+    }
+
+    // 2. 查詢持久化統計數據
+    unsigned char recordRegularQuest = 0;
+    string qStats = format(
+        "SELECT specialStreak, specialMaxStreak, maxDailyCompleted, allClearCount, CAST(lastSpecialDate AS CHAR), "
+        "       IF(lastSpecialDate IS NULL, 999, DATEDIFF(CURRENT_DATE, lastSpecialDate)) "
+        "FROM user_quest_stats WHERE userID = {};", userID);
+    if (mysql_query(_connection, qStats.c_str()) == 0) {
+        MYSQL_RES* res = mysql_store_result(_connection);
+        if (res) {
+            MYSQL_ROW row = mysql_fetch_row(res);
+            if (row) {
+                unsigned short currentStreak = (unsigned short)atoi(row[0]);
+                unsigned short maxStreak = (unsigned short)atoi(row[1]);
+                int daysDiff = (row[5] != NULL) ? atoi(row[5]) : 999;
+
+                // 如果距離上次完成特殊任務超過 1 天 (中斷)，連續天數歸 0，但最高紀錄保留
+                if (daysDiff > 1) {
+                    currentStreak = 0;
+                }
+
+                outStats.specialQuestCount = currentStreak;
+                outStats.specialQuestStreakRecord = maxStreak;
+                recordRegularQuest = (unsigned char)atoi(row[2]);
+                outStats.allClearCount = (unsigned short)atoi(row[3]);
+            }
+            mysql_free_result(res);
+        }
+    }
+
+    // 3. 今日最高紀錄動態覆寫
+    if (outStats.todayRegularQuest > recordRegularQuest) {
+        recordRegularQuest = outStats.todayRegularQuest;
+        string qUp = format(
+            "INSERT INTO user_quest_stats (userID, maxDailyCompleted) VALUES ({}, {}) "
+            "ON DUPLICATE KEY UPDATE maxDailyCompleted = VALUES(maxDailyCompleted);",
+            userID, (int)recordRegularQuest);
+        mysql_query(_connection, qUp.c_str());
+    }
+
+    return true;
+}
+
+bool DatabaseManager::RecordSpecialQuestCompleted(unsigned long userID) {
+    if (_connection == NULL) return false;
+
+    // 檢查 lastSpecialDate
+    string qCheck = format(
+        "SELECT specialStreak, specialMaxStreak, CAST(lastSpecialDate AS CHAR), DATEDIFF(CURRENT_DATE, lastSpecialDate) "
+        "FROM user_quest_stats WHERE userID = {};", userID);
+
+    unsigned short streak = 1;
+    unsigned short maxStreak = 1;
+
+    if (mysql_query(_connection, qCheck.c_str()) == 0) {
+        MYSQL_RES* res = mysql_store_result(_connection);
+        if (res) {
+            MYSQL_ROW row = mysql_fetch_row(res);
+            if (row) {
+                unsigned short oldStreak = (unsigned short)atoi(row[0]);
+                unsigned short oldMax = (unsigned short)atoi(row[1]);
+                if (row[2] != NULL && row[3] != NULL) {
+                    int diff = atoi(row[3]);
+                    if (diff == 0) {
+                        // 今日已經完成過，不重複累加天數
+                        mysql_free_result(res);
+                        return true;
+                    }
+                    else if (diff == 1) {
+                        // 昨天完成過，連續 +1
+                        streak = oldStreak + 1;
+                    }
+                    else {
+                        // 中斷，重新計為 1
+                        streak = 1;
+                    }
+                }
+                else {
+                    streak = 1;
+                }
+                maxStreak = std::max(oldMax, streak);
+            }
+            mysql_free_result(res);
+        }
+    }
+
+    string qSave = format(
+        "INSERT INTO user_quest_stats (userID, specialStreak, specialMaxStreak, lastSpecialDate) "
+        "VALUES ({}, {}, {}, CURRENT_DATE) "
+        "ON DUPLICATE KEY UPDATE specialStreak = {}, specialMaxStreak = {}, lastSpecialDate = CURRENT_DATE;",
+        userID, streak, maxStreak, streak, maxStreak);
+
+    if (mysql_query(_connection, qSave.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on RecordSpecialQuestCompleted: {}\n", mysql_error(_connection)));
+        return false;
+    }
+    return true;
+}
+
+bool DatabaseManager::RecordDailyQuestCompleted(unsigned long userID) {
+    if (_connection == NULL) return false;
+
+    // 計算今日已完成的每日任務個數 (state >= 1)
+    string qDaily = format(
+        "SELECT COUNT(*) FROM user_quests WHERE userID = {} AND questID <= 100 AND state >= 1 AND lastUpdatedDate = CURRENT_DATE;",
+        userID);
+    unsigned short todayCount = 0;
+    if (mysql_query(_connection, qDaily.c_str()) == 0) {
+        MYSQL_RES* res = mysql_store_result(_connection);
+        if (res) {
+            MYSQL_ROW row = mysql_fetch_row(res);
+            if (row && row[0]) {
+                todayCount = (unsigned short)atoi(row[0]);
+            }
+            mysql_free_result(res);
+        }
+    }
+
+    // 查詢當前統計數據 (maxDailyCompleted, allClearCount, lastAllClearDate)
+    string qCheck = format(
+        "SELECT maxDailyCompleted, allClearCount, CAST(lastAllClearDate AS CHAR), "
+        "       IF(lastAllClearDate IS NULL, 999, DATEDIFF(CURRENT_DATE, lastAllClearDate)) "
+        "FROM user_quest_stats WHERE userID = {};", userID);
+
+    unsigned char maxCompleted = (unsigned char)todayCount;
+    unsigned short allClearCount = 0;
+    int allClearDiff = 999;
+
+    if (mysql_query(_connection, qCheck.c_str()) == 0) {
+        MYSQL_RES* res = mysql_store_result(_connection);
+        if (res) {
+            MYSQL_ROW row = mysql_fetch_row(res);
+            if (row) {
+                if (row[0]) maxCompleted = (unsigned char)std::max<int>(atoi(row[0]), todayCount);
+                if (row[1]) allClearCount = (unsigned short)atoi(row[1]);
+                if (row[3]) allClearDiff = atoi(row[3]);
+            }
+            mysql_free_result(res);
+        }
+    }
+
+    // 當今日完成的每日任務達到 20 個（全部完成）且今天尚未計入過 All Clear 時，累計天數/次數 +1
+    if (todayCount >= 20 && allClearDiff != 0) {
+        allClearCount++;
+        string qSave = format(
+            "INSERT INTO user_quest_stats (userID, maxDailyCompleted, allClearCount, lastAllClearDate) "
+            "VALUES ({}, {}, {}, CURRENT_DATE) "
+            "ON DUPLICATE KEY UPDATE "
+            "  maxDailyCompleted = GREATEST(maxDailyCompleted, {}), "
+            "  allClearCount = {}, "
+            "  lastAllClearDate = CURRENT_DATE;",
+            userID, maxCompleted, allClearCount, todayCount, allClearCount);
+        mysql_query(_connection, qSave.c_str());
+    }
+    else {
+        string qSave = format(
+            "INSERT INTO user_quest_stats (userID, maxDailyCompleted) "
+            "VALUES ({}, {}) "
+            "ON DUPLICATE KEY UPDATE "
+            "  maxDailyCompleted = GREATEST(maxDailyCompleted, {});",
+            userID, maxCompleted, todayCount);
+        mysql_query(_connection, qSave.c_str());
+    }
+
+    return true;
+}
+
 
 
 

@@ -16,8 +16,10 @@
 9. [官方繁中物品全集（631项）与动态加载校验器（ItemDefinitionManager）](#9-官方繁中物品全集631项与动态加载校验器itemdefinitionmanager)
 10. [管理员聊天指令体系（/additem, /addallitem, 分类过滤与黑名单）](#10-管理员聊天指令体系additem-addallitem-分类过滤与黑名单)
 11. [仓库一键重置脚本与客户端原生即时刷新（Delta Purge / status=0）](#11-仓库一键重置脚本与客户端原生即时刷新delta-purge--status0)
-12. [客户端崩溃（COpenglDetect / CrashReport.dmp）根因定位与协议防下溢修复](#12-客户端崩溃copengldetect--crashreportdmp根因定位与协议防下溢修复)
-13. [修改文件清单与影响范围](#13-修改文件清单与影响范围)
+13. [任务系统（Quest）协议适配与战局规则引擎](#13-任务系统quest协议适配与战局规则引擎)
+14. [每日任务全清次数（All Clear）与网咖任务面板逆向修复](#14-每日任务全清次数all-clear与网咖任务面板逆向修复)
+15. [地图与游戏模式对照库（MAP_AND_MODE_REFERENCE）](#15-地图与游戏模式对照库map_and_mode_reference)
+16. [修改文件清单与影响范围](#16-修改文件清单与影响范围)
 
 ---
 
@@ -312,26 +314,114 @@
 
 ---
 
-## 13. 修改文件清单与影响范围
+## 13. 任务系统（Quest）协议适配与战局规则引擎
+
+### 13.1 系统架构与设计背景
+CSO TW 2013 官方任务系统（Packet 71 / `0x47` `PacketID::Quest`）包含四大任务体系：
+1. **每日任务（Daily Quest，Type 0）**：每日系统随机指派 20 项日常挑战，完成单项获得经验/Point（如 200 點），完成全部 20 个触发全清统计。
+2. **特殊任务（Special Quest，Type 1）**：包含 5 个阶段性/连环任务，支持重置挑战，累积连续完成与最高连续纪录。
+3. **每周任务（Weekly Quest，Type 2）**：周期性重度目标任务。
+4. **荣誉任务（Honor Quest，Type 3）**：永久荣誉勋章成就，达成奖励专属荣誉点数（Honor Points）与荣誉称号。
+
+### 13.2 协议交互与核心 Subtype 实装
+* **Subtype 1 (`InitList`)**：玩家登录或打开任务面板时，服务端下发完整任务列表（包含任务 ID、分类、目标进度、状态 Flags）。
+* **Subtype 2 (`UpdateQuest`)**：战局内达成击杀/胜利等条件时，增量下发任务当前进度与状态。
+* **Subtype 4 (`UpdateStats`)**：下发「我的任务情报」综合统计面板（掩码 `0x02AF`，包含荣誉点数、特殊任务完成数/最高纪录、今日完成每日任务数、全清天数、特殊任务重置剩余次数及网咖任务完成数）。
+* **Subtype 11 (`ClaimRewardReq`) & Subtype 12 (`ClaimRewardAck`)**：玩家点击「领取奖励」时，服务端核验并发放 Point / 经验 / 道具，回执驱动客户端弹出获得奖励视窗与特效。
+* **Subtype 14 (`UpdateResetCount`)**：客户端在重置特殊任务或每日刷新时，通知客户端即时刷新「重置(X/5)」按钮文字，解决原本必须重开介面才刷新按钮文本的问题。
+* **Subtype 31 (`PreviewRewardReq`) & Subtype 41 (`PreviewRewardAck`)**：玩家点击任务奖励预览时，下发奖励图标、数量与品类（精确适配道具、Point、荣誉点数图标）。
+* **Subtype 32 (`ResetSpecialQuest`)**：特殊任务重置请求。消耗道具 378（特殊任务重置券）或每日免费 5 次配额，扣除后即时刷新重置次数并重新生成特殊任务。
+
+### 13.3 战局规则引擎与开关体系
+* **战局事件监听**：
+  * 深入挂钩 `Packet_HostManager` 与战局结算流程，精确监听常规击杀（Kill）、爆头（Headshot）、手雷/刀杀、胜利（Win）、人质解救（Rescue）、C4 安放/拆除、灾厄承伤与输出等事件。
+* **灵活开关与热重载**：
+  * 在 `configs/quest.json` 中配置分类总开关：
+    ```json
+    "Settings": {
+      "enable_daily": true,
+      "enable_special": true,
+      "enable_weekly": true,
+      "enable_honor": true
+    }
+    ```
+  * 各任务条目支持单独配置 `"enabled": false/true`。
+  * 支持 GM 聊天指令 `/reloadquest` 免重启热重载任务配置；
+  * 支持 GM 管理指令 `/finishquest <questID>` 快速完成指定任务、`/resetquestcount` 重置今日任务完成统计。
+
+---
+
+## 14. 每日任务全清次数（All Clear）与网咖任务面板逆向修复
+
+### 14.1 问题表现
+* 玩家在游戏「我的任务情报」面板中：
+  1. 「今天每日任务已全部完成」右侧错误显示为「12次」（玩家当日已完成的每日任务个数），而非累计的全清天数；
+  2. 「今天达成的网咖任务」同样显示为「12/20个」，与每日任务数值完全重叠，而当前服务端尚未开放网咖特权与任务。
+
+### 14.2 客户端二进制与 UI 布局深度逆向
+1. **反编译 `GameUI.dll`（`0x100773F0` `CQuestMyDlg::UpdateStats`）**：
+   * 客户端在解析 Subtype 4 / 统计数据时：
+     - `*(this + 5)`：读取 `*(uint8*)(v3 + 19)`，由封包 **Bit 9（0x0200, UInt8）** 下发；
+     - `*(this + 6)`：读取 `*(uint8*)(v3 + 12)`，由封包 **Bit 3（0x0008, UInt8）** 下发；
+     - `*(this + 7)`：读取 `*(uint16*)(v3 + 14)`，由封包 **Bit 5（0x0020, UInt16）** 下发，使用 `#CSO_Quest_Count2` 格式化为 `%d次`。
+2. **UI 资源定义解析（`resource/quest/quest_my_pcbang.res`）**：
+   * 客户端实际加载的是网咖版界面布局：
+     - **Row 1（ypos 27，控件名 `TodayRegularQuest`）**：文本标签为 `#CSO_TodayPCQuest_Label`（**今天达成的网咖任务**），对应 `*(this + 5)`，读取 `v3 + 19`（Bit 9）；
+     - **Row 2（ypos 55，控件名 `RemainingRegularQuest`）**：文本标签为 `#CSO_TodayRegularQuest_Label`（**今天已完成的每日任务**），对应 `*(this + 6)`，读取 `v3 + 12`（Bit 3）；
+     - **Row 3（ypos 83，控件名 `QuestAllClear`）**：文本标签为 `#CSO_QuestAllClear_Label`（**今天每日任务已全部完成**），对应 `*(this + 7)`，读取 `v3 + 14`（Bit 5）。
+3. **数值错位根因**：
+   * 原服务端封包打包逻辑将 `todayRegularQuest`（12）写入了 Bit 5（UInt16），导致其直接填入 `v3 + 14`，被格式化为 `12次`；
+   * 原服务端将 `questAllClear` 写入了 Bit 9，且缺少网咖任务的隔离，导致网咖任务行与每日任务行数值紊乱。
+
+### 14.3 修复措施与官方全清机制还原
+1. **数据库表升级（`csodatabase.user_quest_stats`）**：
+   * `allClearCount` 字段升级为 `smallint unsigned NOT NULL DEFAULT 0`；
+   * 新增 `lastAllClearDate DATE DEFAULT NULL` 字段，杜绝当日重复累计全清次数。
+2. **全清累加逻辑对齐**：
+   * 官方机制：当日完成全部 20 个每日任务（`todayRegularQuest >= 20`）且当日尚未记录时，`allClearCount` 永久累计 +1，更新 `lastAllClearDate = CURRENT_DATE`；次日若未全清，历史累计次数保持不变。
+3. **服务端结构与封包序列化重构**：
+   * `UserQuestStats` 结构体重定义：
+     - `todayRegularQuest`（Bit 3，UInt8）：今日已完成每日任务数（如 12/20 个）；
+     - `allClearCount`（Bit 5，UInt16）：累计全清次数（如 0 次）；
+     - `todayPCQuest`（Bit 9，UInt8）：网咖任务达成数，当前显式固定为 0。
+   * 在 `SendPacket_Quest_InitList` 与 `SendPacket_Quest_UpdateStats` 中严格对齐 Bit 3、Bit 5、Bit 9 的写入顺序与数据类型。
+4. **游戏内表现还原**：
+   * 「今天达成的网咖任务」精准显示 `0/0個`（固定为 0）；
+   * 「今天已完成的每日任务」精准显示 `12/20個`；
+   * 「今天每日任务已全部完成」精准显示 `0次`。
+
+---
+
+## 15. 地图与游戏模式对照库（MAP_AND_MODE_REFERENCE）
+
+为确保任务系统（击杀条件、指定模式/地图胜利）以及房间管理逻辑的 100% 官方一致性，工程内系统整理并归纳了 CSO TW 2013 官方模式与地图对照基准库：
+* `configs/gamemodelist.csv` / `gamemode_names_tw.json`：收录 20+ 官方游戏模式中英文代码、GameMode ID 与本地化名称；
+* `configs/maplist.csv` / `map_names_tw.json`：收录 100+ 官方地图文件名、Map ID 与官方繁中对照；
+* `configs/MAP_AND_MODE_REFERENCE.md`：详细提供房间创建、脚本过滤与任务规则编写的统一技术规范。
+
+---
+
+## 16. 修改文件清单与影响范围
 
 | 文件相对路径 | 修改模块 | 主要改动说明 |
 | :--- | :--- | :--- |
-| `managers/packetmanager.h` / `.cpp` | 基础网络协议 | `SendPacket_Inventory` 增加 `deletedSlots` 支持（`status = 0` 原生槽位删除），实现实时仓库更新；调整 `BuildUserCharacter` 打包。 |
-| `managers/packet_umsgmanager.h` / `.cpp` | 聊天与管理指令 | 增加 `ServerYell`（6）全服大喇叭广播；实装 `/additem`、`/addallitem`、`/resetinv`；指令回显与精准反馈。 |
-| `managers/itemdefinitionmanager.h` / `.cpp` | 道具定义管理 | 动态解析 `item.csv`，SHA-256 哈希硬编码校验，分类过滤与黑名单控制。 |
-| `managers/packet_clientcheckmanager.cpp` | 客户端心跳校验 | `SendPacket_ClientCheck` 发送 8 字节数据，修复客户端读取下溢与 Error.log 报错。 |
-| `managers/databasemanager.h` / `.cpp` | 数据库交互 | 增加 `ResetUserInventory`，实现原子化清空与官方 107 件初始装备重建；角色战绩保存。 |
-| `serverconfig.h` / `.cpp` | 配置文件 | 扩展物品黑名单与分类白名单/排除列表配置项解析。 |
-| `room/room.h` / `room/room.cpp` | 房间模型与逻辑 | 引入 `RoomTeam` 命名空间枚举，定义 `RoomUser` 结构，补充换队/准备等接口与阵营自动分配。 |
+| `managers/packet_questmanager.h` / `.cpp` | 任务网络协议 | 实现任务列表初始化（1）、进度更新（2）、统计下发（4）、奖励领取（11/12）、重置次数刷新（14）、奖励预览（31/41）、特殊任务重置（32）；修复 Bit 3/5/9 错位。 |
+| `managers/questmanager.h` / `.cpp` | 任务规则与状态机 | 每日/特殊/每周/荣誉任务调度，战局事件规则引擎，任务开关分级控制，奖励发放与重置配额管理。 |
+| `managers/databasemanager.h` / `.cpp` | 数据库交互 | 升级 `user_quest_stats`（`allClearCount`、`lastAllClearDate`）；实现每日全清检测与持久化；支持 `todayPCQuest = 0` 固定；新增仓库重置与战绩更新。 |
+| `managers/packet_umsgmanager.h` / `.cpp` | 聊天与管理指令 | 增加 `ServerYell`（6）全服广播；实装 `/additem`、`/addallitem`、`/resetinv`、`/finishquest`、`/reloadquest`、`/resetquestcount`。 |
+| `managers/packet_hostmanager.cpp` | 战局主机通信 | 挂钩击杀、爆头、胜负等局内事件并回调 `QuestManager::OnGameEvent` 推进任务进度。 |
+| `managers/packetmanager.h` / `.cpp` | 基础网络协议 | `SendPacket_Inventory` 增加 `deletedSlots` 支持（`status = 0` 即时更新）；调整 `BuildUserCharacter`。 |
+| `managers/itemdefinitionmanager.h` / `.cpp` | 道具定义管理 | 动态解析 `item.csv`，SHA-256 哈希校验，分类过滤与黑名单控制。 |
+| `managers/packet_clientcheckmanager.cpp` | 客户端心跳校验 | 发送 8 字节校验数据，消除客户端 Error.log 报错与读取下溢。 |
+| `room/room.h` / `room/room.cpp` | 房间模型与逻辑 | 引入 `RoomTeam`，定义 `RoomUser`，队伍自动分配与换队接口。 |
 | `managers/packet_roommanager.h` / `.cpp` | 房间通信 | 打包真实阵营与槽位，处理 `ChangeTeam`（17）与 `UserReady`（3），广播 `TeamChange`（13）。 |
-| `managers/packet_hostmanager.h` / `.cpp` | 主机/局内通信 | 继承房间阵营至 `GameMatchUser`，激活主机时广播 `HostJoin`，放宽 `SelectTeam` 状态检查。 |
-| `managers/packet_itemmanager.h` / `.cpp` | 道具背包 | 修复各槽位武器装备独立性，防止覆盖失效；适配服饰/头饰槽位。 |
-| `managers/packet_favoritemanager.h` / `.cpp` | 预设组合 | 持久化玩家武器组合（A/B/C）到数据库，解决重新登录组合丢失问题。 |
-| `configs/item.csv` / `bin/configs/item.csv` | 游戏数据 | 官方 631 件物品属性数据表，供服务端动态解析与校准。 |
+| `configs/quest.json` / `bin/configs/quest.json` | 任务配置文件 | 配置每日任务（20项）、特殊任务、荣誉任务、开关 `Settings` 与奖励点数/道具。 |
+| `configs/MAP_AND_MODE_REFERENCE.md` | 地图/模式规范文档 | 官方 2013 地图与游戏模式权威对照清单与编码标准。 |
+| `configs/gamemodelist.csv` / `maplist.csv` 等 | 游戏基础数据表 | 模式与地图对照列表及繁中 JSON 映射字典。 |
 | `ITEM_LIST.md` | 物品全集文档 | 包含 11 大类、631 项道具官方繁中对照与快速添加指令表。 |
-| `reset_inventory.ps1` / `.bat` | 测试辅助工具 | 一键重置测试账号仓库为官方 107 件初始装备脚本。 |
 | `CHANGELOG_AND_FIXES.md` | 核心工程文档 | 全面记录项目架构、逆向分析、BUG 修复与运维排错指南。 |
 
 ---
-*文档更新时间：2026-10-03*  
+*文档更新时间：2026-10-08*  
 *对应版本：cso-master-server (Release/x64) - CSO TW 2013 / CB2 深度适配版*
+

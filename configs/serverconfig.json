@@ -6,6 +6,7 @@
 	"EncryptCipherMethod": 1,
 	"UDPAuthKey": "",
 	"MaxPlayers": 600,
+	"QuestMinPlayers": 4,
 	"ServerID": 1,
 	"ChannelID": 1,
 	"LauncherVersion": 67,
@@ -200,7 +201,8 @@
 		"AllowPlayerDailyCommands": true,
 		"AllowPlayerNotice": false,
 		"AllowPlayerReloadShop": false,
-		"AllowPlayerReloadEnhance": false
+		"AllowPlayerReloadEnhance": false,
+		"AllowPlayerReloadQuest": false
 	},
 	"Shop": {
 		"BroadcastOnReload": false

@@ -25,6 +25,7 @@ ServerConfig::ServerConfig() {
 	sqlUser = "";
 	sqlPassword = "";
 	sqlDatabase = "";
+	questMinPlayers = 4;
 }
 
 string defaultServerConfig = R"({
@@ -391,6 +392,9 @@ bool ServerConfig::Load() {
 			if (p.contains("AllowPlayerReloadEnhance") && p["AllowPlayerReloadEnhance"].is_boolean()) {
 				permissions.allowPlayerReloadEnhance = p["AllowPlayerReloadEnhance"].get<bool>();
 			}
+			if (p.contains("AllowPlayerReloadQuest") && p["AllowPlayerReloadQuest"].is_boolean()) {
+				permissions.allowPlayerReloadQuest = p["AllowPlayerReloadQuest"].get<bool>();
+			}
 		}
 
 		if (config.contains("Shop") && config["Shop"].is_object()) {
@@ -398,6 +402,10 @@ bool ServerConfig::Load() {
 			if (s.contains("BroadcastOnReload") && s["BroadcastOnReload"].is_boolean()) {
 				shop.broadcastOnReload = s["BroadcastOnReload"].get<bool>();
 			}
+		}
+
+		if (config.contains("QuestMinPlayers")) {
+			questMinPlayers = config.value("QuestMinPlayers", (unsigned char)4);
 		}
 
 		serverConsole.Print(PrefixType::Info, "[ ServerConfig ] Loaded server configs!\n");

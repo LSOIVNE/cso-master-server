@@ -20,12 +20,13 @@ void Packet_MessengerManager::ParsePacket_Messenger(TCPConnection::Packet::point
 		return;
 	}
 
-	// Client sends this packet (ID 93) to notify the server that a lobby chat message was sent
+	// Client sends this packet (ID 93) when a lobby chat message was sent
 	// (decrements remaining chat count for low-level players).
-	// We simply acknowledge it - no action needed on server side.
+	// Immediately reply with ChatCount 255 to maintain unlimited lobby chatting.
 	unsigned char subType = packet->ReadUInt8();
+	SendPacket_Messenger_ChatCount(connection, 255);
 
-	serverConsole.Print(PrefixType::Info, format("[ Packet_MessengerManager ] User ({}) sent Packet_Messenger - subType: {}\n", user->GetUserLogName(), subType));
+	serverConsole.Print(PrefixType::Info, format("[ Packet_MessengerManager ] User ({}) sent Packet_Messenger - subType: {} -> Replied ChatCount 255\n", user->GetUserLogName(), subType));
 }
 
 void Packet_MessengerManager::SendPacket_Messenger_ChatCount(TCPConnection::pointer connection, unsigned char count) {

@@ -1,0 +1,137 @@
+{
+  "0": {
+    "id": 0,
+    "token": "#CSO_GameMode_Original",
+    "name": "一般"
+  },
+  "1": {
+    "id": 1,
+    "token": "#CSO_GameMode_DeathMatch",
+    "name": "死鬥"
+  },
+  "2": {
+    "id": 2,
+    "token": "#CSO_GameMode_TeamDeathMatch",
+    "name": "團隊死鬥"
+  },
+  "3": {
+    "id": 3,
+    "token": "#CSO_GameMode_Bot",
+    "name": "一般 (虛擬對手)"
+  },
+  "4": {
+    "id": 4,
+    "token": "#CSO_GameMode_BotDM",
+    "name": "死鬥 (虛擬對手)"
+  },
+  "5": {
+    "id": 5,
+    "token": "#CSO_GameMode_BotTDM",
+    "name": "團隊死鬥 (虛擬對手)"
+  },
+  "8": {
+    "id": 8,
+    "token": "#CSO_GameMode_Zombi",
+    "name": "殭屍經典"
+  },
+  "9": {
+    "id": 9,
+    "token": "#CSO_GameMode_Zombi_Expand",
+    "name": "殭屍異變"
+  },
+  "11": {
+    "id": 11,
+    "token": "#CSO_GameMode_Zombi_Team",
+    "name": "大亂鬥"
+  },
+  "12": {
+    "id": 12,
+    "token": "#CSO_GameMode_Challenge",
+    "name": "挑戰模式"
+  },
+  "13": {
+    "id": 13,
+    "token": "#CSO_GameMode_Zombi_Team_Ann",
+    "name": "大亂鬥殲滅戰"
+  },
+  "14": {
+    "id": 14,
+    "token": "#CSO_GameMode_Zombi_3",
+    "name": "殭屍英雄"
+  },
+  "15": {
+    "id": 15,
+    "token": "#CSO_GameMode_Scenario",
+    "name": "災厄之章"
+  },
+  "16": {
+    "id": 16,
+    "token": "#CSO_GameMode_Soccer",
+    "name": "足球"
+  },
+  "17": {
+    "id": 17,
+    "token": "#CSO_GameMode_Human_Scenario",
+    "name": "戰神之章"
+  },
+  "18": {
+    "id": 18,
+    "token": "#CSO_GameMode_PVPVE",
+    "name": "機甲爭霸"
+  },
+  "19": {
+    "id": 19,
+    "token": "#CSO_GameMode_TDM_Item",
+    "name": "趣味奪寶戰"
+  },
+  "10": {
+    "id": 10,
+    "token": "#CSO_GameMode_Hidden",
+    "name": "魔幻空間"
+  },
+  "6": {
+    "id": 6,
+    "token": "#CSO_GameMode_Official",
+    "name": "全國公開賽"
+  },
+  "7": {
+    "id": 7,
+    "token": "#CSO_GameMode_Official_TieBreak",
+    "name": "全國公開賽-延長賽"
+  },
+  "20": {
+    "id": 20,
+    "token": "#CSO_GameMode_Zombi_Escape",
+    "name": "殭屍大逃殺"
+  },
+  "21": {
+    "id": 21,
+    "token": "#CSO_GameMode_Bazooka",
+    "name": "轟炸擂台"
+  },
+  "22": {
+    "id": 22,
+    "token": "#CSO_GameMode_GunDeath",
+    "name": "槍王之王"
+  },
+  "23": {
+    "id": 23,
+    "token": "#CSO_GameMode_LightOri",
+    "name": "悠遊模式"
+  },
+  "24": {
+    "id": 24,
+    "token": "#CSO_GameMode_BotZombie",
+    "name": "殭屍經典(虛擬對手)"
+  },
+  "25": {
+    "id": 25,
+    "token": "#CSO_GameMode_BattleRush",
+    "name": "即刻救援"
+  },
+  "26": {
+    "id": 26,
+    "token": "#CSO_GameMode_ZombieShelter",
+    "name": "夜襲生存戰"
+  }
+}

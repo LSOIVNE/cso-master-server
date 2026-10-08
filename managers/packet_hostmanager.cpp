@@ -404,16 +404,37 @@ void Packet_HostManager::parsePacket_Host_PlayerKilled(User* user, TCPConnection
 	unsigned long victimUserID = packet->ReadUInt32_LE();
 	unsigned char victimWeaponID = packet->ReadUInt8();
 	signed char victimArmor = packet->ReadUInt8();
-	unsigned short distance = packet->ReadUInt16_LE();
+	signed char victimHealth = packet->ReadUInt8();
 
-	serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] User ({}) has sent Packet_Host PlayerKilled - attackerUserID: {}, attackerWeaponID: {}, attackerArmor: {}, attackerHealth: {}, victimUserID: {}, victimWeaponID: {}, victimArmor: {}, distance: {}\n", user->GetUserLogName(), attackerUserID, attackerWeaponID, attackerArmor, attackerHealth, victimUserID, victimWeaponID, victimArmor, distance));
+	float attX = 0.0f, attY = 0.0f, attZ = 0.0f, vicX = 0.0f, vicY = 0.0f, vicZ = 0.0f;
+	if (packet->GetBuffer().size() >= (size_t)(packet->GetReadOffset() + 24)) {
+		attX = packet->ReadBytes<float>();
+		attY = packet->ReadBytes<float>();
+		attZ = packet->ReadBytes<float>();
+		vicX = packet->ReadBytes<float>();
+		vicY = packet->ReadBytes<float>();
+		vicZ = packet->ReadBytes<float>();
+	}
 
-	if (attackerUserID) {
-		User* attackerUser = userManager.GetUserByUserID(attackerUserID);
-		User* victimUser = userManager.GetUserByUserID(victimUserID);
-		if (attackerUser) {
-			questManager.OnPlayerKilled(attackerUser, victimUser, attackerWeaponID, false, distance);
-		}
+	float dx = attX - vicX;
+	float dy = attY - vicY;
+	float dz = attZ - vicZ;
+	unsigned short distance = (unsigned short)sqrt(dx * dx + dy * dy + dz * dz);
+
+	bool isHeadshot = (attackerWeaponID & 0x80) != 0;
+	unsigned char realWeaponID = attackerWeaponID & 0x7F;
+
+	serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] User ({}) has sent Packet_Host PlayerKilled - attackerUserID: {}, weapon: {} (HS: {}), attackerArmor: {}, attackerHealth: {}, victimUserID: {}, victimWeaponID: {}, victimArmor: {}, victimHealth: {}, distance: {}\n",
+		user->GetUserLogName(), attackerUserID, (int)realWeaponID, isHeadshot ? 1 : 0, attackerArmor, attackerHealth, victimUserID, victimWeaponID, victimArmor, victimHealth, distance));
+
+	User* attackerUser = attackerUserID ? userManager.GetUserByUserID(attackerUserID) : NULL;
+	User* victimUser = victimUserID ? userManager.GetUserByUserID(victimUserID) : NULL;
+
+	if (attackerUser) {
+		questManager.OnPlayerKilled(attackerUser, victimUser, realWeaponID, isHeadshot, distance);
+	}
+	if (victimUser) {
+		questManager.OnPlayerDied(victimUser);
 	}
 }
 

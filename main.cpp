@@ -46,6 +46,8 @@ static BOOL WINAPI ConsoleCtrlHandler(DWORD CtrlType) {
 }
 
 int main() {
+	srand(static_cast<unsigned int>(time(nullptr)));
+
 	if (!serverConsole.Init()) {
 		serverConsole.Print(PrefixType::Fatal, "[ ServerConsole ] Failed to initialize server console!\n");
 		return -1;

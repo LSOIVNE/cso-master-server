@@ -45,6 +45,8 @@ public:
 	void SendPacket_UMsg_RollingBanner(TCPConnection::pointer connection, const string& text);
 	void SendPacket_UMsg_ServerYell(TCPConnection::pointer connection, const string& senderNickName, const string& text);
 	void SendPacket_UMsg_BulletinNotice(TCPConnection::pointer connection, unsigned short noticeID, unsigned char flags, const string& title, const string& content);
+	void SendPacket_UMsg_ItemAwardNotice(TCPConnection::pointer connection, const vector<AwardItem>& items, unsigned int points, unsigned int exp, unsigned int honor, const string& titleKey, const string& msgKey, const vector<string>& args = {});
+	void SendPacket_UMsg_ItemAwardNotice(TCPConnection::pointer connection, const vector<AwardItem>& items, unsigned int points, const string& titleKey, const string& msgKey, const vector<string>& args = {});
 	void SendPacket_UMsg_ItemAwardNotice(TCPConnection::pointer connection, const vector<AwardItem>& items, const string& titleKey, const string& msgKey, const vector<string>& args = {});
 	void SendPacket_UMsg_NoticeMessage(TCPConnection::pointer connection, const string& text);
 	void SendPacket_UMsg_ServerMessage(TCPConnection::pointer connection, Packet_UMsgType type, const string& text, const vector<string>& additionalText = {});

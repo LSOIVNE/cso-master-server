@@ -104,6 +104,8 @@ public:
 	bool UpdateUserInventoryItemEnhance(unsigned long userID, unsigned short slotID, unsigned long enhanceBits);
 	bool ResetUserInventory(unsigned long userID);
 	bool SaveUserBattleResult(unsigned long userID, unsigned long long addedExp, unsigned long long addedPoints, unsigned short addedFrags, unsigned short addedDeaths, bool isWin, unsigned char newLevel, bool recordStats = true);
+	bool AddUserExp(unsigned long userID, unsigned long long addedExp, unsigned char* outNewLevel = nullptr);
+	bool SetUserLevel(unsigned long userID, unsigned char newLevel);
 	bool DeductUserFunds(unsigned long userID, bool isPoints, unsigned long long amount);
 	bool AddUserFunds(unsigned long userID, bool isPoints, unsigned long long amount);
 	bool EnsureBingoTables();
@@ -133,11 +135,27 @@ public:
 	bool GetUserQuests(unsigned long userID, map<unsigned int, UserQuestRecord>& outQuests);
 	bool SaveUserQuest(unsigned long userID, const UserQuestRecord& record);
 	bool ResetDailyQuests(unsigned long userID);
+	bool ResetUserQuestRecord(unsigned long userID, unsigned int questID);
+	bool ResetUserDailyQuests(unsigned long userID);
+	bool ResetUserWeeklyQuests(unsigned long userID);
 	bool DeleteUserSpecialQuest(unsigned long userID);
 	bool SetUserQuestTracked(unsigned long userID, unsigned int questID, unsigned char isTracked);
+	bool GetUserQuestStats(unsigned long userID, struct UserQuestStats& outStats);
+	bool RecordSpecialQuestCompleted(unsigned long userID);
+	bool RecordDailyQuestCompleted(unsigned long userID);
 
 private:
 	MYSQL* _connection;
+};
+
+struct UserQuestStats {
+	unsigned int honorPoints = 0;
+	unsigned short specialQuestCount = 0;        // 特殊任務連續完成天數 (Bit 1, UInt16)
+	unsigned short specialQuestStreakRecord = 0;  // 特殊任務連續完成最高紀錄 (Bit 2, UInt16)
+	unsigned char todayRegularQuest = 0;         // 今天已完成的每日任務個數 (Bit 3, UInt8)
+	unsigned short allClearCount = 0;            // 今天每日任務已全部完成累積天數/次數 (Bit 5, UInt16)
+	unsigned char resetSpecialQuestCount = 5;    // 特殊任務剩餘重置次數 (Bit 7, UInt8)
+	unsigned char todayPCQuest = 0;              // 今天達成的網咖任務個數 (Bit 9, UInt8, 暫未實現固定為0)
 };
 
 extern DatabaseManager databaseManager;

@@ -13,6 +13,7 @@
 #include "enhancemanager.h"
 #include "titlemanager.h"
 #include "questmanager.h"
+#include "packet_messengermanager.h"
 #include "serverconfig.h"
 #include <sstream>
 #include <unordered_set>
@@ -173,7 +174,7 @@ void Packet_UMsgManager::SendPacket_UMsg_BulletinNotice(TCPConnection::pointer c
 	packet->Send();
 }
 
-void Packet_UMsgManager::SendPacket_UMsg_ItemAwardNotice(TCPConnection::pointer connection, const vector<AwardItem>& items, const string& titleKey, const string& msgKey, const vector<string>& args) {
+void Packet_UMsgManager::SendPacket_UMsg_ItemAwardNotice(TCPConnection::pointer connection, const vector<AwardItem>& items, unsigned int points, unsigned int exp, unsigned int honor, const string& titleKey, const string& msgKey, const vector<string>& args) {
 	if (connection == NULL) {
 		return;
 	}
@@ -185,7 +186,7 @@ void Packet_UMsgManager::SendPacket_UMsg_ItemAwardNotice(TCPConnection::pointer 
 
 	packet->WriteUInt8(Packet_UMsgType::ItemAwardNotice);
 
-	// 1. List 1: Award Items
+	// 1. List 1: Award Items (type 1 in client: 10 bytes each)
 	packet->WriteUInt8((unsigned char)items.size());
 	for (const auto& item : items) {
 		packet->WriteUInt16_LE(item.itemID);
@@ -194,12 +195,38 @@ void Packet_UMsgManager::SendPacket_UMsg_ItemAwardNotice(TCPConnection::pointer 
 		packet->WriteUInt32_LE(item.flags);
 	}
 
-	// 2 ~ 6. Five empty lists (Lists 2, 3, 4, 5, 6)
+	// 2. List 2: Unknown (type 0 in client) - empty
 	packet->WriteUInt8(0);
+
+	// 3. List 3: Titles (type 3 in client) - empty
 	packet->WriteUInt8(0);
-	packet->WriteUInt8(0);
-	packet->WriteUInt8(0);
-	packet->WriteUInt8(0);
+
+	// 4. List 4: Award Points (type 4 in client: format "%d點Point", icon "Point" -> "gfx/vgui/basket/point.tga")
+	if (points > 0) {
+		packet->WriteUInt8(1);
+		packet->WriteUInt32_LE(points);
+	}
+	else {
+		packet->WriteUInt8(0);
+	}
+
+	// 5. List 5: Exp (type 5 in client: format "經驗值%d", icon "Exp" -> "gfx/vgui/basket/exp.tga")
+	if (exp > 0) {
+		packet->WriteUInt8(1);
+		packet->WriteUInt32_LE(exp);
+	}
+	else {
+		packet->WriteUInt8(0);
+	}
+
+	// 6. List 6: Honor (type 6 in client: format "榮譽點數%d點", icon "Honor" -> "gfx/vgui/basket/honor.tga")
+	if (honor > 0) {
+		packet->WriteUInt8(1);
+		packet->WriteUInt32_LE(honor);
+	}
+	else {
+		packet->WriteUInt8(0);
+	}
 
 	// 7. titleKey (client formats as "#CSO_Warning_%s")
 	packet->WriteString(titleKey);
@@ -214,6 +241,14 @@ void Packet_UMsgManager::SendPacket_UMsg_ItemAwardNotice(TCPConnection::pointer 
 	}
 
 	packet->Send();
+}
+
+void Packet_UMsgManager::SendPacket_UMsg_ItemAwardNotice(TCPConnection::pointer connection, const vector<AwardItem>& items, unsigned int points, const string& titleKey, const string& msgKey, const vector<string>& args) {
+	SendPacket_UMsg_ItemAwardNotice(connection, items, points, 0, 0, titleKey, msgKey, args);
+}
+
+void Packet_UMsgManager::SendPacket_UMsg_ItemAwardNotice(TCPConnection::pointer connection, const vector<AwardItem>& items, const string& titleKey, const string& msgKey, const vector<string>& args) {
+	SendPacket_UMsg_ItemAwardNotice(connection, items, 0, 0, 0, titleKey, msgKey, args);
 }
 
 void Packet_UMsgManager::SendPacket_UMsg_ServerYell(TCPConnection::pointer connection, const string& senderNickName, const string& text) {
@@ -420,6 +455,8 @@ void Packet_UMsgManager::parsePacket_UMsg_ChannelChat(User* user, TCPConnection:
 	for (auto& u : users) {
 		packet_UMsgManager.SendPacket_UMsg_Chat(u->GetConnection(), Packet_UMsgType::ChannelChat, userCharacterResult.userCharacter.nickName, text);
 	}
+
+	packet_MessengerManager.SendPacket_Messenger_ChatCount(connection, 255);
 }
 
 void Packet_UMsgManager::parsePacket_UMsg_RoomChat(User* user, TCPConnection::Packet::pointer packet) {
@@ -536,6 +573,7 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		cmdLower != "/notice" && cmdLower != "/msg" && cmdLower != "/gm" && cmdLower != "/dialog" &&
 		cmdLower != "/banner" && cmdLower != "/yell" && cmdLower != "/reloadnotice" &&
 		cmdLower != "/addpoints" && cmdLower != "/addgash" &&
+		cmdLower != "/setlevel" && cmdLower != "/level" && cmdLower != "/addexp" &&
 		cmdLower != "/reloadshop" &&
 		cmdLower != "/reloadcraft" &&
 		cmdLower != "/reloadenhance" &&
@@ -550,14 +588,27 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		cmdLower != "/questfinish" &&
 		cmdLower != "/questdone" &&
 		cmdLower != "/fq" &&
-		cmdLower != "/completequest" &&
 		cmdLower != "/resetquests" &&
 		cmdLower != "/questreset" &&
+		cmdLower != "/resetquest" &&
+		cmdLower != "/rq" &&
+		cmdLower != "/rdq" &&
+		cmdLower != "/resetdailyquest" &&
+		cmdLower != "/resetdailyquests" &&
+		cmdLower != "/rwq" &&
+		cmdLower != "/resetweeklyquest" &&
+		cmdLower != "/resetweeklyquests" &&
+		cmdLower != "/rsq" &&
+		cmdLower != "/resetspecialquest" &&
 		cmdLower != "/resetquestcount" &&
 		cmdLower != "/questresetcount" &&
 		cmdLower != "/rqc" &&
 		cmdLower != "/reloadquest" &&
-		cmdLower != "/questreload") {
+		cmdLower != "/questreload" &&
+		cmdLower != "/qmp" &&
+		cmdLower != "/questminplayers" &&
+		cmdLower != "/qe" &&
+		cmdLower != "/questevent") {
 		return false;
 	}
 
@@ -574,7 +625,7 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 	};
 
 	if (cmdLower == "/additem" || cmdLower == "/addallitem" || cmdLower == "/resetinv" || cmdLower == "/resetitem" ||
-		cmdLower == "/addpoints" || cmdLower == "/addgash") {
+		cmdLower == "/addpoints" || cmdLower == "/addgash" || cmdLower == "/setlevel" || cmdLower == "/level" || cmdLower == "/addexp") {
 		if (!serverConfig.permissions.allowPlayerItemCommands && !isGM) {
 			SendNotice("權限不足：測試指令已被管理員停用！");
 			return true;
@@ -595,6 +646,12 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 	else if (cmdLower == "/reloadenhance") {
 		if (!serverConfig.permissions.allowPlayerReloadEnhance && !isGM) {
 			SendNotice("權限不足：配置重載指令已被管理員限制，僅限 GM 使用！");
+			return true;
+		}
+	}
+	else if (cmdLower == "/reloadquest" || cmdLower == "/questreload") {
+		if (!serverConfig.permissions.allowPlayerReloadQuest && !isGM) {
+			SendNotice("權限不足：任務配置重載指令已被管理員限制，僅限 GM 使用！");
 			return true;
 		}
 	}
@@ -1173,6 +1230,69 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		}
 		return true;
 	}
+	else if (cmdLower == "/setlevel" || cmdLower == "/level") {
+		string lvStr;
+		if (!(ss >> lvStr)) {
+			SendNotice("[系統] 用法：/setlevel <等級> (1~72)");
+			return true;
+		}
+
+		unsigned char lv = 0;
+		try {
+			lv = (unsigned char)stoul(lvStr);
+		}
+		catch (...) {
+			SendNotice("[系統] 請輸入有效的等級 (1~72)！用法：/setlevel <等級>");
+			return true;
+		}
+
+		if (lv < 1) lv = 1;
+		if (lv > 72) lv = 72;
+
+		if (databaseManager.SetUserLevel(userID, lv)) {
+			UserCharacterResult ucr = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
+			packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, ucr.userCharacter });
+			packet_MessengerManager.SendPacket_Messenger_ChatCount(connection, 255);
+			SendNotice(format("[系統] 您的等級已成功設置為 {} 級！", (int)lv));
+		}
+		else {
+			SendNotice("[系統] 設置等級失敗，數據庫寫入錯誤！");
+		}
+		return true;
+	}
+	else if (cmdLower == "/addexp") {
+		string expStr;
+		if (!(ss >> expStr)) {
+			SendNotice("[系統] 用法：/addexp <經驗值>");
+			return true;
+		}
+
+		unsigned long long expAdd = 0;
+		try {
+			expAdd = stoull(expStr);
+		}
+		catch (...) {
+			SendNotice("[系統] 請輸入有效的經驗值！用法：/addexp <經驗值>");
+			return true;
+		}
+
+		if (expAdd == 0) {
+			SendNotice("[系統] 請輸入大於 0 的有效經驗值！");
+			return true;
+		}
+
+		unsigned char newLevel = 0;
+		if (databaseManager.AddUserExp(userID, expAdd, &newLevel)) {
+			UserCharacterResult ucr = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
+			packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, ucr.userCharacter });
+			packet_MessengerManager.SendPacket_Messenger_ChatCount(connection, 255);
+			SendNotice(format("[系統] 成功增加經驗值：+{}！當前等級：{} 級，累計經驗值：{}。", expAdd, (int)newLevel, ucr.userCharacter.exp));
+		}
+		else {
+			SendNotice("[系統] 增加經驗值失敗，數據庫寫入錯誤！");
+		}
+		return true;
+	}
 	else if (cmdLower == "/reloadshop") {
 		if (packet_ShopManager.LoadShopConfig()) {
 			if (serverConfig.shop.broadcastOnReload) {
@@ -1392,20 +1512,29 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		}
 		return true;
 	}
-	else if (cmdLower == "/finishquest" || cmdLower == "/questfinish" || cmdLower == "/questdone" || cmdLower == "/fq" || cmdLower == "/completequest") {
+	else if (cmdLower == "/finishquest" || cmdLower == "/questfinish" || cmdLower == "/questdone" || cmdLower == "/fq") {
 		string qidStr;
 		if (!(ss >> qidStr)) {
-			SendNotice("[系統] 用法：/finishquest <QuestID> (或 /fq, /questfinish)");
+			unsigned int currentSpecial = questManager.GetUserDailySpecialQuestID(user);
+			const QuestConfig* spCfg = questManager.GetQuest(currentSpecial);
+			string spName = spCfg ? spCfg->name : "未知";
+			SendNotice("[系統] 用法：/fq <QuestID> (或輸入 /fq special 直接完成當前特殊任務)");
+			SendNotice(format("[系統] 提示：您當前的特殊任務 ID 為 [{}]【{}】。", currentSpecial, spName));
 			return true;
 		}
 
 		unsigned int qid = 0;
-		try {
-			qid = stoul(qidStr);
+		if (qidStr == "special" || qidStr == "s") {
+			qid = questManager.GetUserDailySpecialQuestID(user);
 		}
-		catch (...) {
-			SendNotice("[系統] 請輸入有效的任務 ID！");
-			return true;
+		else {
+			try {
+				qid = stoul(qidStr);
+			}
+			catch (...) {
+				SendNotice("[系統] 請輸入有效的任務 ID (或輸入 /fq special)！");
+				return true;
+			}
 		}
 
 		if (questManager.CompleteQuest(user, qid)) {
@@ -1418,12 +1547,178 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		}
 		return true;
 	}
-	else if (cmdLower == "/resetquests" || cmdLower == "/questreset") {
-		if (questManager.ResetUserQuests(user)) {
-			SendNotice("[系統] 您的每日任務已重置為初始進行中狀態！");
+	else if (cmdLower == "/questreset" || cmdLower == "/resetquest" || cmdLower == "/resetquests" ||
+			cmdLower == "/rq" || cmdLower == "/rsq" || cmdLower == "/resetspecialquest") {
+		string arg1;
+		if (!(ss >> arg1) || cmdLower == "/rsq" || cmdLower == "/resetspecialquest") {
+			// 無參數 或 /rsq：默認重設當日特殊任務為未完成狀態
+			unsigned int targetID = 0;
+			if (!arg1.empty() && (cmdLower == "/rsq" || cmdLower == "/resetspecialquest")) {
+				try { targetID = stoul(arg1); } catch (...) {}
+			}
+			if (questManager.ForceResetSpecialQuest(user, targetID)) {
+				unsigned int curSp = (targetID > 0) ? targetID : questManager.GetUserDailySpecialQuestID(user);
+				const QuestConfig* spCfg = questManager.GetQuest(curSp);
+				string spName = spCfg ? spCfg->name : "特殊任務";
+				SendNotice(format("[系統] 已成功重置特殊任務 [{}]【{}】為進行中（未完成）狀態！", curSp, spName));
+			}
+			else {
+				SendNotice("[系統] 重置特殊任務失敗！");
+			}
+			return true;
+		}
+
+		string argLower = arg1;
+		transform(argLower.begin(), argLower.end(), argLower.begin(), [](unsigned char c) { return (char)tolower(c); });
+
+		if (argLower == "special" || argLower == "s") {
+			unsigned int targetID = 0;
+			ss >> targetID;
+			if (questManager.ForceResetSpecialQuest(user, targetID)) {
+				unsigned int curSp = (targetID > 0) ? targetID : questManager.GetUserDailySpecialQuestID(user);
+				const QuestConfig* spCfg = questManager.GetQuest(curSp);
+				string spName = spCfg ? spCfg->name : "特殊任務";
+				SendNotice(format("[系統] 已成功重置特殊任務 [{}]【{}】為進行中（未完成）狀態！", curSp, spName));
+			}
+			else {
+				SendNotice("[系統] 重置特殊任務失敗，請檢查任務 ID 是否正確！");
+			}
+			return true;
+		}
+		else if (argLower == "daily" || argLower == "d") {
+			unsigned int specificQID = 0;
+			ss >> specificQID;
+			if (questManager.ResetDailyQuests(user, specificQID)) {
+				if (specificQID > 0) {
+					const QuestConfig* qCfg = questManager.GetQuest(specificQID);
+					string qName = qCfg ? qCfg->name : to_string(specificQID);
+					SendNotice(format("[系統] 已成功重置每日任務 [{}]【{}】為進行中（未完成）狀態！", specificQID, qName));
+				}
+				else {
+					SendNotice("[系統] 已成功重置所有每日任務為進行中（未完成）狀態！");
+				}
+			}
+			else {
+				SendNotice("[系統] 重置每日任務失敗！");
+			}
+			return true;
+		}
+		else if (argLower == "weekly" || argLower == "w") {
+			unsigned int specificQID = 0;
+			ss >> specificQID;
+			if (questManager.ResetWeeklyQuests(user, specificQID)) {
+				if (specificQID > 0) {
+					const QuestConfig* qCfg = questManager.GetQuest(specificQID);
+					string qName = qCfg ? qCfg->name : to_string(specificQID);
+					SendNotice(format("[系統] 已成功重置每周任務 [{}]【{}】為進行中（未完成）狀態！", specificQID, qName));
+				}
+				else {
+					SendNotice("[系統] 已成功重置所有每周任務為進行中（未完成）狀態！");
+				}
+			}
+			else {
+				SendNotice("[系統] 重置每周任務失敗！");
+			}
+			return true;
+		}
+		else if (argLower == "all" || argLower == "a") {
+			if (questManager.ResetAllQuests(user)) {
+				SendNotice("[系統] 已成功將所有每日任務、每周任務與特殊任務重置為進行中（未完成）狀態！");
+			}
+			else {
+				SendNotice("[系統] 重置任務失敗！");
+			}
+			return true;
 		}
 		else {
-			SendNotice("[系統] 重置任務失敗！");
+			// 數字參數：自動判斷 ID 類型
+			try {
+				unsigned int qid = stoul(arg1);
+				if (qid >= 1001 && qid <= 1019) {
+					// 指定切換並重設特殊任務
+					if (questManager.ForceResetSpecialQuest(user, qid)) {
+						const QuestConfig* spCfg = questManager.GetQuest(qid);
+						string spName = spCfg ? spCfg->name : "特殊任務";
+						SendNotice(format("[系統] 已成功切換並重置特殊任務為 [{}]【{}】（進行中狀態）！", qid, spName));
+					}
+					else {
+						SendNotice(format("[系統] 特殊任務 ID {} 無效或重置失敗！", qid));
+					}
+				}
+				else if (qid <= 100) {
+					// 每日任務
+					if (questManager.ResetDailyQuests(user, qid)) {
+						const QuestConfig* qCfg = questManager.GetQuest(qid);
+						string qName = qCfg ? qCfg->name : to_string(qid);
+						SendNotice(format("[系統] 已成功重置每日任務 [{}]【{}】為進行中（未完成）狀態！", qid, qName));
+					}
+					else {
+						SendNotice(format("[系統] 每日任務 ID {} 重置失敗！", qid));
+					}
+				}
+				else if (qid >= 501 && qid <= 600) {
+					// 每周任務
+					if (questManager.ResetWeeklyQuests(user, qid)) {
+						const QuestConfig* qCfg = questManager.GetQuest(qid);
+						string qName = qCfg ? qCfg->name : to_string(qid);
+						SendNotice(format("[系統] 已成功重置每周任務 [{}]【{}】為進行中（未完成）狀態！", qid, qName));
+					}
+					else {
+						SendNotice(format("[系統] 每周任務 ID {} 重置失敗！", qid));
+					}
+				}
+				else {
+					// 其他任務 (如榮譽任務等)
+					if (questManager.ResetSingleQuest(user, qid)) {
+						const QuestConfig* qCfg = questManager.GetQuest(qid);
+						string qName = qCfg ? qCfg->name : to_string(qid);
+						SendNotice(format("[系統] 已成功重置任務 [{}]【{}】為進行中（未完成）狀態！", qid, qName));
+					}
+					else {
+						SendNotice(format("[系統] 任務 ID {} 不存在或重置失敗！", qid));
+					}
+				}
+			}
+			catch (...) {
+				SendNotice("[系統] 用法：/questreset [ID | daily | weekly | special [ID] | all]");
+				SendNotice("[系統] 提示：直接輸入 /questreset 默認重置當日特殊任務；/questreset 1005 可重設為指定特殊任務。");
+			}
+			return true;
+		}
+	}
+	else if (cmdLower == "/rdq" || cmdLower == "/resetdailyquest" || cmdLower == "/resetdailyquests") {
+		unsigned int specificQID = 0;
+		ss >> specificQID;
+		if (questManager.ResetDailyQuests(user, specificQID)) {
+			if (specificQID > 0) {
+				const QuestConfig* qCfg = questManager.GetQuest(specificQID);
+				string qName = qCfg ? qCfg->name : to_string(specificQID);
+				SendNotice(format("[系統] 已成功重置每日任務 [{}]【{}】為進行中（未完成）狀態！", specificQID, qName));
+			}
+			else {
+				SendNotice("[系統] 已成功重置所有每日任務為進行中（未完成）狀態！");
+			}
+		}
+		else {
+			SendNotice("[系統] 重置每日任務失敗！");
+		}
+		return true;
+	}
+	else if (cmdLower == "/rwq" || cmdLower == "/resetweeklyquest" || cmdLower == "/resetweeklyquests") {
+		unsigned int specificQID = 0;
+		ss >> specificQID;
+		if (questManager.ResetWeeklyQuests(user, specificQID)) {
+			if (specificQID > 0) {
+				const QuestConfig* qCfg = questManager.GetQuest(specificQID);
+				string qName = qCfg ? qCfg->name : to_string(specificQID);
+				SendNotice(format("[系統] 已成功重置每周任務 [{}]【{}】為進行中（未完成）狀態！", specificQID, qName));
+			}
+			else {
+				SendNotice("[系統] 已成功重置所有每周任務為進行中（未完成）狀態！");
+			}
+		}
+		else {
+			SendNotice("[系統] 重置每周任務失敗！");
 		}
 		return true;
 	}
@@ -1434,10 +1729,81 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 	}
 	else if (cmdLower == "/reloadquest" || cmdLower == "/questreload") {
 		if (questManager.Reload()) {
-			SendNotice("[系統] 任務配置已成功重載！(configs/quest.json)");
+			SendNotice("[系統] 任務與獎勵池配置已成功重載！(configs/quest.json)");
 		}
 		else {
 			SendNotice("[系統] 重載任務配置失敗，請檢查 configs/quest.json 格式！");
+		}
+		return true;
+	}
+	else if (cmdLower == "/qmp" || cmdLower == "/questminplayers") {
+		string countStr;
+		if (ss >> countStr) {
+			try {
+				int cnt = stoi(countStr);
+				if (cnt >= 1 && cnt <= 32) {
+					serverConfig.questMinPlayers = (unsigned char)cnt;
+					SendNotice(format("[系統] 任務最少玩家人數門檻已動態設置為：{} 人！", cnt));
+				}
+				else {
+					SendNotice("[系統] 請輸入有效的人數範圍 (1~32)！");
+				}
+			}
+			catch (...) {
+				SendNotice("[系統] 用法：/qmp <人數> (預設為 4，測試時可設為 1)");
+			}
+		}
+		else {
+			SendNotice(format("[系統] 當前任務最少玩家人數門檻為：{} 人。(用法：/qmp <人數>)", serverConfig.questMinPlayers));
+		}
+		return true;
+	}
+	else if (cmdLower == "/qe" || cmdLower == "/questevent") {
+		string evtType;
+		if (!(ss >> evtType)) {
+			SendNotice("[系統] 用法：/qe <c4_plant|c4_defuse|hostage|morale|supply|wall|boss|skill|capture>");
+			return true;
+		}
+		transform(evtType.begin(), evtType.end(), evtType.begin(), [](unsigned char c) { return (char)tolower(c); });
+		if (evtType == "c4_plant") {
+			questManager.OnBombEvent(user, true);
+			SendNotice("[系統] 已觸發事件：C4 安裝 (每日任務 [4] 爆破專家)");
+		}
+		else if (evtType == "c4_defuse") {
+			questManager.OnBombEvent(user, false);
+			SendNotice("[系統] 已觸發事件：C4 拆除 (每日任務 [4] 爆破專家)");
+		}
+		else if (evtType == "hostage") {
+			questManager.OnHostageRescued(user);
+			SendNotice("[系統] 已觸發事件：解救人質 (每日任務 [5] 人質危機)");
+		}
+		else if (evtType == "morale") {
+			questManager.OnMoraleBoost(user);
+			SendNotice("[系統] 已觸發事件：士氣提升 (每日任務 [11] 士氣提升)");
+		}
+		else if (evtType == "supply") {
+			questManager.OnSupplyBoxPicked(user);
+			SendNotice("[系統] 已觸發事件：拾取補給箱 (每日任務 [14] 奪回補給箱)");
+		}
+		else if (evtType == "wall") {
+			questManager.OnWallUpgraded(user);
+			SendNotice("[系統] 已觸發事件：升級防線 (每日任務 [17] 銅牆鐵壁)");
+		}
+		else if (evtType == "boss" || evtType == "starman" || evtType == "titan") {
+			string bossName = (evtType == "titan") ? "titan" : "starman";
+			questManager.OnBossKilled(user, bossName);
+			SendNotice(format("[系統] 已觸發事件：擊殺 Boss {} (每日任務 [16]殘暴達叔 / [18]獵殺泰坦 / 榮譽)", bossName));
+		}
+		else if (evtType == "skill") {
+			questManager.OnSpecialSkillKill(user);
+			SendNotice("[系統] 已觸發事件：特殊技能擊殺 (每日任務 [19] 空中轟炸)");
+		}
+		else if (evtType == "capture") {
+			questManager.OnPointCaptured(user);
+			SendNotice("[系統] 已觸發事件：佔領據點 (每日任務 [21] 佔領據點)");
+		}
+		else {
+			SendNotice("[系統] 未知事件！支援事件：c4_plant, c4_defuse, hostage, morale, supply, wall, boss, skill, capture");
 		}
 		return true;
 	}
