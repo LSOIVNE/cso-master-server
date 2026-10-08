@@ -1221,28 +1221,6 @@ bool QuestManager::ForceResetSpecialQuest(User* user, unsigned int targetSpecial
 	return true;
 }
 
-bool QuestManager::SetSpecialQuestUnopened(User* user) {
-	if (user == NULL) return false;
-
-	unsigned long userID = user->GetUserID();
-	unsigned int currentSpecialID = GetUserDailySpecialQuestID(user);
-
-	UserQuestRecord rec;
-	rec.questID = currentSpecialID;
-	rec.state = 3; // Unopened cover
-	rec.isTracked = 0;
-	databaseManager.SaveUserQuest(userID, rec);
-
-	packet_QuestManager.SendPacket_Quest_InitList(user);
-	SyncUserQuestStats(user);
-
-	const QuestConfig* q = GetQuest(currentSpecialID);
-	string qName = q ? q->name : "特殊任務";
-	serverConsole.Print(PrefixType::Info, format("[ QuestManager ] User ({}) current special quest [{}] '{}' set to Unopened cover (state = 3)!\n",
-		user->GetUserLogName(), currentSpecialID, qName));
-	return true;
-}
-
 bool QuestManager::ResetAllQuests(User* user) {
 	if (user == NULL) return false;
 

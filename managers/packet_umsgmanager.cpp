@@ -1553,18 +1553,6 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		}
 		return true;
 	}
-	else if (cmdLower == "/cover" || cmdLower == "/testcover") {
-		if (questManager.SetSpecialQuestUnopened(user)) {
-			unsigned int curSp = questManager.GetUserDailySpecialQuestID(user);
-			const QuestConfig* spCfg = questManager.GetQuest(curSp);
-			string spName = spCfg ? spCfg->name : "特殊任務";
-			SendNotice(format("[系統] 已成功將特殊任務 [{}]【{}】設為未開封（信封封面）狀態！", curSp, spName));
-		}
-		else {
-			SendNotice("[系統] 設置未開封封面失敗！");
-		}
-		return true;
-	}
 	else if (cmdLower == "/questreset" || cmdLower == "/resetquest" || cmdLower == "/resetquests" ||
 			cmdLower == "/rq" || cmdLower == "/rsq" || cmdLower == "/resetspecialquest") {
 		string arg1;

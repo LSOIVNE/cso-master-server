@@ -149,7 +149,6 @@ public:
 	bool ResetDailyQuests(User* user, unsigned int specificQID = 0);
 	bool ResetWeeklyQuests(User* user, unsigned int specificQID = 0);
 	bool ForceResetSpecialQuest(User* user, unsigned int targetSpecialID = 0);
-	bool SetSpecialQuestUnopened(User* user);
 	bool ResetAllQuests(User* user);
 	bool ClaimReward(User* user, unsigned int questID, unsigned char rewardIndex = 0);
 	bool SetQuestTracked(User* user, unsigned int questID, unsigned char tracked);
