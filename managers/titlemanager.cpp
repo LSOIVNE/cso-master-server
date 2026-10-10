@@ -24,27 +24,10 @@ bool TitleManager::Reload() {
 }
 
 bool TitleManager::loadConfigs() {
-	const std::vector<std::string> searchPaths = {
-		"configs\\title.json",
-		"configs/title.json",
-		"title.json",
-		"..\\configs\\title.json",
-		"..\\..\\configs\\title.json",
-		"bin\\configs\\title.json"
-	};
-
-	std::ifstream file;
-	std::string resolvedPath;
-	for (const auto& path : searchPaths) {
-		file.open(path);
-		if (file.is_open()) {
-			resolvedPath = path;
-			break;
-		}
-	}
-
+	const std::string resolvedPath = "configs/title.json";
+	std::ifstream file(resolvedPath);
 	if (!file.is_open()) {
-		serverConsole.Print(PrefixType::Error, "[ TitleManager ] Cannot open title.json from any search path!\n");
+		serverConsole.Print(PrefixType::Error, "[ TitleManager ] Cannot open configs/title.json!\n");
 		return false;
 	}
 

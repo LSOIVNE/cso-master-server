@@ -180,6 +180,7 @@ copy /Y "$(TargetDir)$(ProjectName).pdb" "$(SolutionDir)bin\$(ProjectName).pdb"<
     <ClCompile Include="managers\packet_favoritemanager.cpp" />
     <ClCompile Include="managers\packet_itemmanager.cpp" />
     <ClCompile Include="managers\itemboxmanager.cpp" />
+    <ClCompile Include="managers\rewarditemmanager.cpp" />
     <ClCompile Include="managers\craftmanager.cpp" />
     <ClCompile Include="managers\enhancemanager.cpp" />
     <ClCompile Include="managers\titlemanager.cpp" />
@@ -198,6 +199,7 @@ copy /Y "$(TargetDir)$(ProjectName).pdb" "$(SolutionDir)bin\$(ProjectName).pdb"<
     <ClCompile Include="managers\noticemanager.cpp" />
     <ClCompile Include="networking\tcp_connection.cpp" />
     <ClCompile Include="networking\tcp_server.cpp" />
+    <ClCompile Include="networking\registration_server.cpp" />
     <ClCompile Include="networking\udp_server.cpp" />
     <ClCompile Include="room\room.cpp" />
     <ClCompile Include="room\gamematch.cpp" />
@@ -229,6 +231,7 @@ copy /Y "$(TargetDir)$(ProjectName).pdb" "$(SolutionDir)bin\$(ProjectName).pdb"<
     <ClInclude Include="managers\packet_favoritemanager.h" />
     <ClInclude Include="managers\packet_itemmanager.h" />
     <ClInclude Include="managers\itemboxmanager.h" />
+    <ClInclude Include="managers\rewarditemmanager.h" />
     <ClInclude Include="managers\craftmanager.h" />
     <ClInclude Include="managers\enhancemanager.h" />
     <ClInclude Include="managers\titlemanager.h" />
@@ -247,6 +250,7 @@ copy /Y "$(TargetDir)$(ProjectName).pdb" "$(SolutionDir)bin\$(ProjectName).pdb"<
     <ClInclude Include="managers\noticemanager.h" />
     <ClInclude Include="networking\tcp_connection.h" />
     <ClInclude Include="networking\tcp_server.h" />
+    <ClInclude Include="networking\registration_server.h" />
     <ClInclude Include="networking\udp_server.h" />
     <ClInclude Include="room\room.h" />
     <ClInclude Include="room\gamematch.h" />

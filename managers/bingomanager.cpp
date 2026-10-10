@@ -48,25 +48,9 @@ bool BingoManager::Init(const std::string& configPath) {
 }
 
 bool BingoManager::LoadConfig(const std::string& configPath) {
-	std::vector<std::string> searchPaths = {
-		configPath,
-		"configs/bingo.json",
-		"configs\\bingo.json",
-		"bin/configs/bingo.json",
-		"bin\\configs\\bingo.json",
-		"../configs/bingo.json"
-	};
-
-	std::string resolvedPath = "";
-	for (const auto& path : searchPaths) {
-		if (std::filesystem::exists(path)) {
-			resolvedPath = path;
-			break;
-		}
-	}
-
-	if (resolvedPath.empty()) {
-		serverConsole.Print(PrefixType::Error, format("[ BingoManager ] Failed to locate bingo config file! (tried {})\n", configPath));
+	std::string resolvedPath = configPath.empty() ? "configs/bingo.json" : configPath;
+	if (!std::filesystem::exists(resolvedPath)) {
+		serverConsole.Print(PrefixType::Error, format("[ BingoManager ] Config file not found: {}\n", resolvedPath));
 		return false;
 	}
 

@@ -23,32 +23,10 @@ bool Packet_ShopManager::Init(const std::string& configPath) {
 }
 
 bool Packet_ShopManager::LoadShopConfig(const std::string& configPath) {
-	std::vector<std::string> searchPaths = {
-		configPath,
-		"configs/shop.json",
-		"configs\\shop.json",
-		"bin/configs/shop.json",
-		"bin\\configs\\shop.json",
-		"shop.json",
-		"..\\configs\\shop.json"
-	};
-
-	std::ifstream file;
-	std::string loadedPath;
-
-	for (const auto& path : searchPaths) {
-		if (path.empty()) continue;
-		if (std::filesystem::exists(path)) {
-			file.open(path);
-			if (file.is_open()) {
-				loadedPath = path;
-				break;
-			}
-		}
-	}
-
+	std::string loadedPath = configPath.empty() ? "configs/shop.json" : configPath;
+	std::ifstream file(loadedPath);
 	if (!file.is_open()) {
-		serverConsole.Print(PrefixType::Error, "[ Packet_ShopManager ] Failed to locate shop.json in any search path!\n");
+		serverConsole.Print(PrefixType::Error, format("[ Packet_ShopManager ] Failed to open shop config: {}\n", loadedPath));
 		return false;
 	}
 
@@ -226,6 +204,10 @@ void Packet_ShopManager::ParsePacket_Shop(TCPConnection::Packet::pointer packet)
 			parsePacket_Shop_RequestShopList(user);
 			break;
 		}
+		case Packet_ShopType::RequestGiftList: {
+			parsePacket_Shop_RequestGiftList(user);
+			break;
+		}
 		case Packet_ShopType::Buy: {
 			parsePacket_Shop_Buy(user, packet);
 			break;
@@ -270,7 +252,7 @@ void Packet_ShopManager::parsePacket_Shop_Buy(User* user, TCPConnection::Packet:
 	auto it = _offersBySubId.find(subProductID);
 	if (it == _offersBySubId.end()) {
 		serverConsole.Print(PrefixType::Warn, format("[ Packet_ShopManager ] SubProductID {} not found in shop catalog!\n", subProductID));
-		sendPacket_Shop_BuyReply(connection, 2, "Product offer not found");
+		sendPacket_Shop_BuyReply(connection, 0, "BUY_FAIL_NOITEM");
 		return;
 	}
 
@@ -281,7 +263,7 @@ void Packet_ShopManager::parsePacket_Shop_Buy(User* user, TCPConnection::Packet:
 	if (!databaseManager.DeductUserFunds(userID, offer.isPoints, offer.price)) {
 		serverConsole.Print(PrefixType::Warn, format("[ Packet_ShopManager ] User ({}) has insufficient {} for product '{}' (offer {}, price {})\n",
 			user->GetUserLogName(), offer.isPoints ? "Points" : "Cash", offer.productName, offer.subProductID, offer.price));
-		sendPacket_Shop_BuyReply(connection, 3, "Insufficient funds");
+		sendPacket_Shop_BuyReply(connection, 0, offer.isPoints ? "BUY_FAIL_NO_POINT" : "BUY_FAIL_NO_CASH");
 		return;
 	}
 
@@ -384,7 +366,11 @@ void Packet_ShopManager::parsePacket_Shop_Buy(User* user, TCPConnection::Packet:
 		}
 
 		// 1. Send successful BuyReply to client
-		sendPacket_Shop_BuyReply(connection, 1, "");
+		std::vector<unsigned short> purchasedItemIDs;
+		for (const auto& reward : offer.packageItems) {
+			purchasedItemIDs.push_back(reward.itemID);
+		}
+		sendPacket_Shop_BuyReply(connection, 1, "", purchasedItemIDs);
 
 		// 2. Immediately sync updated inventory to client (Packet 154)
 		packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
@@ -490,7 +476,7 @@ void Packet_ShopManager::parsePacket_Shop_Buy(User* user, TCPConnection::Packet:
 	}
 
 	// 1. Send successful BuyReply to client
-	sendPacket_Shop_BuyReply(connection, 1, "");
+	sendPacket_Shop_BuyReply(connection, 1, "", { (unsigned short)offer.productID });
 
 	// 2. Immediately sync updated inventory to client (Packet 154)
 	packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
@@ -555,7 +541,7 @@ void Packet_ShopManager::SendPacket_Shop_ShopList(TCPConnection::pointer connect
 	packet->Send();
 }
 
-void Packet_ShopManager::sendPacket_Shop_BuyReply(TCPConnection::pointer connection, unsigned char status, const std::string& message) {
+void Packet_ShopManager::sendPacket_Shop_BuyReply(TCPConnection::pointer connection, unsigned char status, const std::string& message, const std::vector<unsigned short>& itemIDs) {
 	if (connection == NULL) {
 		return;
 	}
@@ -570,7 +556,10 @@ void Packet_ShopManager::sendPacket_Shop_BuyReply(TCPConnection::pointer connect
 	packet->WriteString(message);
 
 	if (status == 1) {
-		packet->WriteUInt16_LE(0);
+		packet->WriteUInt16_LE((unsigned short)itemIDs.size());
+		for (unsigned short id : itemIDs) {
+			packet->WriteUInt16_LE(id);
+		}
 	}
 
 	packet->Send();
@@ -583,3 +572,34 @@ void Packet_ShopManager::BroadcastShopList() {
 		}
 	}
 }
+
+void Packet_ShopManager::parsePacket_Shop_RequestGiftList(User* user) {
+	if (user == NULL) {
+		return;
+	}
+
+	auto& connection = user->GetConnection();
+	if (connection == NULL) {
+		return;
+	}
+
+	serverConsole.Print(PrefixType::Info, format("[ Packet_ShopManager ] User ({}) has requested gift list\n", user->GetUserLogName()));
+	SendPacket_Shop_GiftList(connection);
+}
+
+void Packet_ShopManager::SendPacket_Shop_GiftList(TCPConnection::pointer connection) {
+	if (connection == NULL) {
+		return;
+	}
+
+	auto packet = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::Shop });
+	if (packet == NULL) {
+		return;
+	}
+
+	packet->WriteUInt8(Packet_ShopType::GiftList); // 3
+	packet->WriteUInt8(1); // isSuccess = 1 (success)
+	packet->WriteUInt16_LE(0); // count = 0 (empty gift list, UInt16 LE)
+	packet->Send();
+}
+

@@ -14,6 +14,247 @@
                 "Grade4": 3.0
             },
             "Items": [
+			    {
+                    "ItemID": 20022,
+                    "Name": "法蘭克+疾跑",
+                    "Duration": 10,
+                    "Count": 1,
+                    "Grade": 2,
+                    "PackageItems": [200,201]
+                },
+				{
+                    "ItemID": 20022,
+                    "Name": "法蘭克+疾跑",
+                    "Duration": 30,
+                    "Count": 1,
+                    "Grade": 2,
+                    "PackageItems": [200,201]
+                },
+				{
+                    "ItemID": 20023,
+                    "Name": "庫卡+燃燒彈",
+                    "Duration": 10,
+                    "Count": 1,
+                    "Grade": 2,
+                    "PackageItems": [215,216]
+                },
+				{
+                    "ItemID": 20023,
+                    "Name": "庫卡+燃燒彈",
+                    "Duration": 30,
+                    "Count": 1,
+                    "Grade": 2,
+                    "PackageItems": [215,216]
+                },
+				{
+                    "ItemID": 20017,
+                    "Name": "莎拉+鋒利銀刃",
+                    "Duration": 10,
+                    "Count": 1,
+                    "Grade": 2,
+                    "PackageItems": [163,164]
+                },
+				{
+                    "ItemID": 20017,
+                    "Name": "莎拉+鋒利銀刃",
+                    "Duration": 30,
+                    "Count": 1,
+                    "Grade": 2,
+                    "PackageItems": [163,164]
+                },
+				{
+                    "ItemID": 20018,
+                    "Name": "達叔+好威鐵鎚",
+                    "Duration": 10,
+                    "Count": 1,
+                    "Grade": 2,
+                    "PackageItems": [175,176]
+                },
+				{
+                    "ItemID": 20018,
+                    "Name": "達叔+好威鐵鎚",
+                    "Duration": 30,
+                    "Count": 1,
+                    "Grade": 2,
+                    "PackageItems": [175,176]
+                },
+				{
+                    "ItemID": 20039,
+                    "Name": "殘暴雷比亞+致命重傷",
+                    "Duration": 10,
+                    "Count": 1,
+                    "Grade": 2,
+                    "PackageItems": [358,359]
+                },
+				{
+                    "ItemID": 20039,
+                    "Name": "殘暴雷比亞+致命重傷",
+                    "Duration": 30,
+                    "Count": 1,
+                    "Grade": 2,
+                    "PackageItems": [358,359]
+                },
+				{
+                    "ItemID": 20113,
+                    "Name": "雷比亞進化體+精準射擊",
+                    "Duration": 10,
+                    "Count": 1,
+                    "Grade": 2,
+                    "PackageItems": [305,306]
+                },
+				{
+                    "ItemID": 20113,
+                    "Name": "雷比亞進化體+精準射擊",
+                    "Duration": 30,
+                    "Count": 1,
+                    "Grade": 2,
+                    "PackageItems": [305,306]
+                },
+				{
+                    "ItemID": 20116,
+                    "Name": "瘋狂基因藥水",
+                    "Duration": 10,
+                    "Count": 1,
+                    "Grade": 1,
+					"PackageItems": [137]
+                },
+				{
+                    "ItemID": 20016,
+                    "Name": "狂暴手榴彈",
+                    "Duration": 30,
+                    "Count": 1,
+                    "Grade": 1,
+					"PackageItems": [138]
+                },
+				{
+                    "ItemID": 181,
+                    "Name": "殭屍Point加倍券",
+                    "Duration": 3,
+                    "Count": 1,
+                    "Grade": 1
+                },
+				{
+                    "ItemID": 260,
+                    "Name": "復活券",
+                    "Count": 30,
+                    "Grade": 1
+                },
+				{
+                    "ItemID": 107,
+                    "Name": "離場全優惠券",
+                    "Count": 10,
+                    "Grade": 1
+                },
+				{
+                    "ItemID": 205,
+                    "Name": "葛雷大頭貼噴漆",
+                    "Duration": -1,
+                    "Count": 1,
+                    "Grade": 2
+                },
+				{
+                    "ItemID": 206,
+                    "Name": "安娜大頭貼噴漆",
+                    "Duration": -1,
+                    "Count": 1,
+                    "Grade": 2
+                },
+				{
+                    "ItemID": 183,
+                    "Name": "娜塔莎大頭貼噴漆",
+                    "Duration": -1,
+                    "Count": 1,
+                    "Grade": 2
+                },
+				{
+                    "ItemID": 184,
+                    "Name": "潔西卡大頭貼噴漆",
+                    "Duration": -1,
+                    "Count": 1,
+                    "Grade": 2
+                },
+				{
+                    "ItemID": 111,
+                    "Name": "詳細傷害提示",
+                    "Duration": 30,
+                    "Count": 1,
+                    "Grade": 1
+                },
+				{
+                    "ItemID": 10012,
+                    "Name": "50,000 點 Point",
+                    "Count": 1,
+                    "Grade": 3,
+                    "BonusPoints": 50000
+                },
+                {
+                    "ItemID": 20013,
+                    "Name": "豪華經典槍組",
+                    "Duration": 30,
+                    "Count": 1,
+                    "Grade": 3,
+                    "PackageItems": [5, 4, 7, 8, 38, 13, 11, 10, 9, 37, 36, 14, 21, 15, 39, 22, 18, 16, 19, 20, 23, 33, 34, 35, 24, 32]
+                },
+                {
+                    "ItemID": 20000,
+                    "Name": "衝鋒槍組",
+                    "Duration": 30,
+                    "Count": 1,
+                    "Grade": 2,
+                    "PackageItems": [13, 11, 10, 9, 37, 36]
+                },
+                {
+                    "ItemID": 20010,
+                    "Name": "頂尖步槍組",
+                    "Duration": 30,
+                    "Count": 1,
+                    "Grade": 2,
+                    "PackageItems": [21, 15]
+                },
+                {
+                    "ItemID": 20011,
+                    "Name": "頂尖槍組",
+                    "Duration": 30,
+                    "Count": 1,
+                    "Grade": 3,
+                    "PackageItems": [4, 21, 15, 14]
+                },
+                {
+                    "ItemID": 55,
+                    "Name": "台灣霹靂小組 + 55,000 Point",
+                    "Duration": 30,
+                    "Count": 1,
+                    "Grade": 3,
+                    "BonusPoints": 55000,
+                    "PackageItems": [55]
+                },
+                {
+                    "ItemID": 54,
+                    "Name": "南韓707特戰營 + 30,000Point",
+                    "Duration": 30,
+                    "Count": 1,
+                    "Grade": 3,
+                    "BonusPoints": 30000,
+                    "PackageItems": [54]
+                },
+				{
+                    "ItemID": 151,
+                    "Name": "娜塔莎+35,000Point",
+                    "Duration": -1,
+                    "Count": 1,
+                    "Grade": 3,
+                    "BonusPoints": 35000,
+                    "PackageItems": [151]
+                },
+				{
+                    "ItemID": 153,
+                    "Name": "潔西卡+35,000Point",
+                    "Duration": -1,
+                    "Count": 1,
+                    "Grade": 3,
+                    "BonusPoints": 35000,
+                    "PackageItems": [151]
+                },
                 {
                     "ItemID": 244,
                     "Name": "黃金M4A1",
@@ -410,6 +651,22 @@
                 "Grade4": 3.0
             },
             "Items": [
+			    {
+                    "ItemID": 20053,
+                    "Name": "費南多+聖水手榴彈",
+                    "Duration": 30,
+                    "Count": 1,
+                    "Grade": 2,
+                    "PackageItems": [392,394]
+                },
+				{
+                    "ItemID": 20054,
+                    "Name": "布萊兒+銀製魯格",
+                    "Duration": 30,
+                    "Count": 1,
+                    "Grade": 2,
+                    "PackageItems": [393,395]
+                },
                 {
                     "ItemID": 434,
                     "Name": "黃金StG44",

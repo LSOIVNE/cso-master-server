@@ -61,6 +61,9 @@
     <ClCompile Include="managers\itemboxmanager.cpp">
       <Filter>managers</Filter>
     </ClCompile>
+    <ClCompile Include="managers\rewarditemmanager.cpp">
+      <Filter>managers</Filter>
+    </ClCompile>
     <ClCompile Include="managers\craftmanager.cpp">
       <Filter>managers</Filter>
     </ClCompile>
@@ -198,6 +201,9 @@
       <Filter>managers</Filter>
     </ClInclude>
     <ClInclude Include="managers\itemboxmanager.h">
+      <Filter>managers</Filter>
+    </ClInclude>
+    <ClInclude Include="managers\rewarditemmanager.h">
       <Filter>managers</Filter>
     </ClInclude>
     <ClInclude Include="managers\craftmanager.h">

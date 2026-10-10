@@ -13,7 +13,7 @@
                 "NoticeID": 2,
                 "Category": 1,
                 "Title": "武器裝備測試說明",
-                "Content": "目前伺服器開放全武器道具自由測試！\n使用指令：\n- /additem <ID> [天數/數量]：獲取指定道具\n- /addallitem [分類] [天數]：批量獲取各類經典裝備\n- /resetinv：還原官方初始預設倉庫"
+                "Content": "目前伺服器開放全武器道具自由測試！\n使用指令：\n- /additem <ID> [天數/數量]：獲取指定道具(彈出戰利品視窗)\n- /deleteitem <ID> [數量]：刪除指定道具(別名：/delitem)\n- /addallitem [分類] [天數]：批量獲取各類經典裝備\n- /resetinv：還原官方初始預設倉庫"
             },
             {
                 "NoticeID": 3,

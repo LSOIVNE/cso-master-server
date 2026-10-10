@@ -1,4 +1,5 @@
 #include "packet_umsgmanager.h"
+#include "packet_roommanager.h"
 #include "usermanager.h"
 #include "roommanager.h"
 #include "packetmanager.h"
@@ -13,6 +14,7 @@
 #include "enhancemanager.h"
 #include "titlemanager.h"
 #include "questmanager.h"
+#include "rewarditemmanager.h"
 #include "packet_messengermanager.h"
 #include "serverconfig.h"
 #include <sstream>
@@ -21,32 +23,6 @@
 #include <windows.h>
 
 Packet_UMsgManager packet_UMsgManager;
-
-std::string Utf8ToCp950(const std::string& utf8Str) {
-	if (utf8Str.empty()) return "";
-	int wlen = MultiByteToWideChar(CP_UTF8, 0, utf8Str.data(), (int)utf8Str.size(), NULL, 0);
-	if (wlen <= 0) return utf8Str;
-	std::wstring wstr(wlen, 0);
-	MultiByteToWideChar(CP_UTF8, 0, utf8Str.data(), (int)utf8Str.size(), &wstr[0], wlen);
-	int mblen = WideCharToMultiByte(950, 0, wstr.data(), (int)wstr.size(), NULL, 0, NULL, NULL);
-	if (mblen <= 0) return utf8Str;
-	std::string result(mblen, 0);
-	WideCharToMultiByte(950, 0, wstr.data(), (int)wstr.size(), &result[0], mblen, NULL, NULL);
-	return result;
-}
-
-std::string Cp950ToUtf8(const std::string& cp950Str) {
-	if (cp950Str.empty()) return "";
-	int wlen = MultiByteToWideChar(950, 0, cp950Str.data(), (int)cp950Str.size(), NULL, 0);
-	if (wlen <= 0) return cp950Str;
-	std::wstring wstr(wlen, 0);
-	MultiByteToWideChar(950, 0, cp950Str.data(), (int)cp950Str.size(), &wstr[0], wlen);
-	int u8len = WideCharToMultiByte(CP_UTF8, 0, wstr.data(), (int)wstr.size(), NULL, 0, NULL, NULL);
-	if (u8len <= 0) return cp950Str;
-	std::string result(u8len, 0);
-	WideCharToMultiByte(CP_UTF8, 0, wstr.data(), (int)wstr.size(), &result[0], u8len, NULL, NULL);
-	return result;
-}
 
 static void SendClientNotice(TCPConnection::pointer connection, Packet_UMsgType chatType, const std::string& utf8Msg) {
 	std::string cleanMsg = utf8Msg;
@@ -234,11 +210,17 @@ void Packet_UMsgManager::SendPacket_UMsg_ItemAwardNotice(TCPConnection::pointer 
 		packet->WriteUInt8(0);
 	}
 
+	auto SanitizeKey = [](const string& key) -> string {
+		if (key.rfind("#CSO_Warning_", 0) == 0) return key.substr(13);
+		if (key.rfind("CSO_Warning_", 0) == 0) return key.substr(12);
+		return key;
+	};
+
 	// 7. titleKey (client formats as "#CSO_Warning_%s")
-	packet->WriteString(titleKey);
+	packet->WriteString(SanitizeKey(titleKey));
 
 	// 8. msgKey (client formats as "#CSO_Warning_%s")
-	packet->WriteString(msgKey);
+	packet->WriteString(SanitizeKey(msgKey));
 
 	// 9. Formatted arguments list
 	packet->WriteUInt8((unsigned char)args.size());
@@ -255,6 +237,25 @@ void Packet_UMsgManager::SendPacket_UMsg_ItemAwardNotice(TCPConnection::pointer 
 
 void Packet_UMsgManager::SendPacket_UMsg_ItemAwardNotice(TCPConnection::pointer connection, const vector<AwardItem>& items, const string& titleKey, const string& msgKey, const vector<string>& args) {
 	SendPacket_UMsg_ItemAwardNotice(connection, items, 0, 0, 0, titleKey, msgKey, args);
+}
+
+void Packet_UMsgManager::SendPacket_UMsg_ItemExpireNotice(TCPConnection::pointer connection, const vector<unsigned short>& itemIDs) {
+	if (connection == NULL || itemIDs.empty()) {
+		return;
+	}
+
+	auto packet = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::UMsg });
+	if (packet == NULL) {
+		return;
+	}
+
+	packet->WriteUInt8(Packet_UMsgType::ItemExpireNotice);
+	packet->WriteUInt8((unsigned char)min(itemIDs.size(), (size_t)255));
+	for (size_t i = 0; i < min(itemIDs.size(), (size_t)255); ++i) {
+		packet->WriteUInt16_LE(itemIDs[i]);
+	}
+
+	packet->Send();
 }
 
 void Packet_UMsgManager::SendPacket_UMsg_ServerYell(TCPConnection::pointer connection, const string& senderNickName, const string& text) {
@@ -288,8 +289,14 @@ void Packet_UMsgManager::SendPacket_UMsg_ServerMessage(TCPConnection::pointer co
 		return;
 	}
 
+	string cleanText = text;
+	if (type == Packet_UMsgType::WarningMessage) {
+		if (cleanText.rfind("#CSO_Warning_", 0) == 0) cleanText = cleanText.substr(13);
+		else if (cleanText.rfind("CSO_Warning_", 0) == 0) cleanText = cleanText.substr(12);
+	}
+
 	packet->WriteUInt8(type);
-	packet->WriteString(text);
+	packet->WriteString(cleanText);
 	packet->WriteUInt8((unsigned char)additionalText.size());
 	for (auto& t : additionalText) {
 		packet->WriteString(t);
@@ -575,7 +582,8 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 	string cmdLower = cmd;
 	transform(cmdLower.begin(), cmdLower.end(), cmdLower.begin(), [](unsigned char c) { return (char)tolower(c); });
 
-	if (cmdLower != "/additem" && cmdLower != "/addallitem" && cmdLower != "/resetinv" && cmdLower != "/resetitem" &&
+	if (cmdLower != "/additem" && cmdLower != "/addallitem" && cmdLower != "/deleteitem" && cmdLower != "/delitem" && cmdLower != "/resetinv" && cmdLower != "/resetitem" &&
+		cmdLower != "/bighead" &&
 		cmdLower != "/notice" && cmdLower != "/msg" && cmdLower != "/gm" && cmdLower != "/dialog" &&
 		cmdLower != "/banner" && cmdLower != "/yell" && cmdLower != "/reloadnotice" &&
 		cmdLower != "/addpoints" && cmdLower != "/addgash" &&
@@ -583,6 +591,8 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		cmdLower != "/reloadshop" &&
 		cmdLower != "/reloadcraft" &&
 		cmdLower != "/reloadenhance" &&
+		cmdLower != "/reloadreward" &&
+		cmdLower != "/reloadrewarditem" &&
 		cmdLower != "/resetdaily" &&
 		cmdLower != "/nextdaily" &&
 		cmdLower != "/addtitle" &&
@@ -630,7 +640,7 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		SendClientNotice(connection, chatType, msg);
 	};
 
-	if (cmdLower == "/additem" || cmdLower == "/addallitem" || cmdLower == "/resetinv" || cmdLower == "/resetitem" ||
+	if (cmdLower == "/additem" || cmdLower == "/addallitem" || cmdLower == "/deleteitem" || cmdLower == "/delitem" || cmdLower == "/resetinv" || cmdLower == "/resetitem" ||
 		cmdLower == "/addpoints" || cmdLower == "/addgash" || cmdLower == "/setlevel" || cmdLower == "/level" || cmdLower == "/addexp") {
 		if (!serverConfig.permissions.allowPlayerItemCommands && !isGM) {
 			SendNotice("權限不足：測試指令已被管理員停用！");
@@ -651,6 +661,12 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 	}
 	else if (cmdLower == "/reloadenhance") {
 		if (!serverConfig.permissions.allowPlayerReloadEnhance && !isGM) {
+			SendNotice("權限不足：配置重載指令已被管理員限制，僅限 GM 使用！");
+			return true;
+		}
+	}
+	else if (cmdLower == "/reloadreward" || cmdLower == "/reloadrewarditem") {
+		if (!serverConfig.permissions.allowPlayerReloadShop && !isGM) {
 			SendNotice("權限不足：配置重載指令已被管理員限制，僅限 GM 使用！");
 			return true;
 		}
@@ -744,6 +760,12 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 					if (databaseManager.UpdateUserInventoryExpiration(userID, itemID, 0)) {
 						packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
 						SendNotice(format("[系統] 物品「{}」(ID: {}) 原為期限物品，已成功升級為永久！", itemDef->name, itemID));
+						AwardItem award;
+						award.itemID = itemID;
+						award.count = 1;
+						award.duration = 0xFFFF;
+						award.flags = 0;
+						SendPacket_UMsg_ItemAwardNotice(connection, { award }, "CSO_Warning_HSCENARIO_MONSTER_DROP_ITEM_TITLE", "CSO_Warning_HSCENARIO_MONSTER_DROP_ITEM_GIVE");
 					}
 					else {
 						SendNotice("[系統] 更新物品期限失敗，數據庫寫入錯誤！");
@@ -758,6 +780,12 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 					if (databaseManager.UpdateUserInventoryExpiration(userID, itemID, newExp)) {
 						packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
 						SendNotice(format("[系統] 物品「{}」(ID: {}) 成功延長 {} 天期限！", itemDef->name, itemID, days));
+						AwardItem award;
+						award.itemID = itemID;
+						award.count = 1;
+						award.duration = (unsigned short)days;
+						award.flags = 0;
+						SendPacket_UMsg_ItemAwardNotice(connection, { award }, "CSO_Warning_HSCENARIO_MONSTER_DROP_ITEM_TITLE", "CSO_Warning_HSCENARIO_MONSTER_DROP_ITEM_GIVE");
 					}
 					else {
 						SendNotice("[系統] 延長物品期限失敗，數據庫寫入錯誤！");
@@ -792,6 +820,12 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 				else {
 					SendNotice(format("[系統] 成功添加「{}」(ID: {})，期限：{} 天。", itemDef->name, itemID, days));
 				}
+				AwardItem award;
+				award.itemID = itemID;
+				award.count = 1;
+				award.duration = (expirationTime == 0) ? 0xFFFF : (unsigned short)days;
+				award.flags = 0;
+				SendPacket_UMsg_ItemAwardNotice(connection, { award }, "CSO_Warning_HSCENARIO_MONSTER_DROP_ITEM_TITLE", "CSO_Warning_HSCENARIO_MONSTER_DROP_ITEM_GIVE");
 			}
 			else {
 				SendNotice("[系統] 添加物品失敗，數據庫寫入錯誤！");
@@ -805,6 +839,12 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 					if (databaseManager.UpdateUserInventoryItemCount(userID, itemID, addCount)) {
 						packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
 						SendNotice(format("[系統] 物品「{}」(ID: {}) 已在倉庫，疊加數量 +{}，總計：{} 個。", itemDef->name, itemID, addCount, min((unsigned int)ownedItem.count + addCount, 999U)));
+						AwardItem award;
+						award.itemID = itemID;
+						award.count = addCount;
+						award.duration = 0;
+						award.flags = 0;
+						SendPacket_UMsg_ItemAwardNotice(connection, { award }, "CSO_Warning_HSCENARIO_MONSTER_DROP_ITEM_TITLE", "CSO_Warning_HSCENARIO_MONSTER_DROP_ITEM_GIVE");
 					}
 					else {
 						SendNotice("[系統] 更新物品數量失敗，數據庫寫入錯誤！");
@@ -834,6 +874,12 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 			if (databaseManager.AddUserInventoryItems(userID, { newItem })) {
 				packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
 				SendNotice(format("[系統] 成功添加「{}」(ID: {})，數量：{} 個。", itemDef->name, itemID, count));
+				AwardItem award;
+				award.itemID = itemID;
+				award.count = count;
+				award.duration = 0;
+				award.flags = 0;
+				SendPacket_UMsg_ItemAwardNotice(connection, { award }, "CSO_Warning_HSCENARIO_MONSTER_DROP_ITEM_TITLE", "CSO_Warning_HSCENARIO_MONSTER_DROP_ITEM_GIVE");
 			}
 			else {
 				SendNotice("[系統] 添加物品失敗，數據庫寫入錯誤！");
@@ -1108,6 +1154,134 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		}
 		return true;
 	}
+	else if (cmdLower == "/deleteitem" || cmdLower == "/delitem") {
+		string itemIDStr;
+		if (!(ss >> itemIDStr)) {
+			SendNotice("用法：/deleteitem <物品ID> [數量] (別名：/delitem，未指定數量則全部刪除)");
+			return true;
+		}
+
+		unsigned short itemID = 0;
+		try {
+			itemID = (unsigned short)stoul(itemIDStr);
+		}
+		catch (...) {
+			SendNotice("[系統] 物品 ID 格式錯誤，必須為數字。");
+			return true;
+		}
+
+		auto inventory = user->GetUserInventory();
+		bool owned = false;
+		for (const auto& item : inventory) {
+			if (item.itemID == itemID) {
+				owned = true;
+				break;
+			}
+		}
+
+		if (!owned) {
+			SendNotice(format("[系統] 您的倉庫中找不到 ID 為 {} 的物品！", itemID));
+			return true;
+		}
+
+		string p2Str;
+		bool hasP2 = false;
+		unsigned short countToDelete = 0;
+		if (ss >> p2Str) {
+			try {
+				countToDelete = (unsigned short)min(stoul(p2Str), 65535UL);
+				hasP2 = true;
+			}
+			catch (...) {}
+		}
+
+		vector<unsigned short> deletedSlots;
+		unsigned short actualDeleted = 0;
+		if (databaseManager.DeleteUserInventoryItem(userID, itemID, hasP2 ? countToDelete : 0, deletedSlots, actualDeleted)) {
+			// 1. Realtime sync updated inventory to client (including removed slots)
+			packetManager.SendPacket_Inventory(connection, user->GetUserInventory(), deletedSlots);
+
+			// 2. Pop up native ItemExpireNotice dialog (Packet 67 Type 62: CSO_ItemExpireTitle / CSO_ItemExpireMsg with item icon)
+			SendPacket_UMsg_ItemExpireNotice(connection, { itemID });
+
+			// 3. Send system notice in chat
+			const ItemDefinition* itemDef = itemDefinitionManager.GetItem(itemID);
+			string itemName = (itemDef != NULL) ? itemDef->name : format("物品 (ID: {})", itemID);
+			SendNotice(format("[系統] 成功刪除「{}」(ID: {})，數量：{} 個。", itemName, itemID, actualDeleted));
+		}
+		else {
+			SendNotice("[系統] 刪除物品失敗，數據庫操作錯誤！");
+		}
+
+		return true;
+	}
+	else if (cmdLower == "/bighead") {
+		if (user->GetUserStatus() != UserStatus::InRoom) {
+			SendNotice("[房間] 必須在房間內使用此指令！");
+			return true;
+		}
+
+		Room* room = roomManager.GetRoomByRoomID(user->GetCurrentRoomID());
+		if (!room) {
+			SendNotice("[房間] 找不到當前房間！");
+			return true;
+		}
+
+		if (room->GetRoomHostUser() != user) {
+			SendNotice("[房間] 只有室長可以調整大頭模式！");
+			return true;
+		}
+
+		unsigned char modeID = room->GetRoomSettings().gameModeID;
+		if (!IsBigHeadCompatibleMode(modeID)) {
+			SendNotice("[房間] 大頭模式僅適用於災厄之章/庇護所/殭屍/BOT等支援模式！");
+			return true;
+		}
+
+		if (!user->HasItem(439) && !isGM) {
+			SendNotice("[房間] 您未持有「大頭製造器」，無法啟用大頭模式！");
+			return true;
+		}
+
+		string subCmd;
+		ss >> subCmd;
+		transform(subCmd.begin(), subCmd.end(), subCmd.begin(), [](unsigned char c) { return (char)tolower(c); });
+
+		bool enable = false;
+		if (subCmd == "on" || subCmd == "1" || subCmd == "true") {
+			enable = true;
+		}
+		else if (subCmd == "off" || subCmd == "0" || subCmd == "false") {
+			enable = false;
+		}
+		else {
+			enable = (room->GetRoomSettings().unkh1000 == 0);
+		}
+
+		room->SetBigHeadDisabled(!enable);
+
+		RoomSettings updateSettings;
+		updateSettings.highFlag = ROOMSETTINGS_HFLAG_UNK1000;
+		updateSettings.unkh1000 = enable ? 1 : 0;
+
+		room->UpdateRoomSettings(updateSettings);
+
+		for (auto& u : room->GetRoomUsers()) {
+			if (u && u->GetConnection()) {
+				packet_RoomManager.SendPacket_Room_ReplyUpdateRoomSettings(u->GetConnection(), updateSettings);
+			}
+		}
+
+		roomManager.SendUpdateRoomPacketToAll(room, ROOMLIST_FLAG_UNK2000);
+
+		if (enable) {
+			SendNotice("[房間] 大頭模式已開啟！");
+		}
+		else {
+			SendNotice("[房間] 大頭模式已關閉。");
+		}
+		return true;
+	}
 
 	else if (cmdLower == "/notice") {
 		string noticeText;
@@ -1259,7 +1433,7 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 			UserCharacterResult ucr = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
 			packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, ucr.userCharacter });
 			packet_MessengerManager.SendPacket_Messenger_ChatCount(connection, 255);
-			SendNotice(format("[系統] 您的等級已成功設置為 {} 級！", (int)lv));
+			SendNotice(format("[系統] 您的等級已成功設置為 {} 級 (經驗值: {})！", (int)lv, ucr.userCharacter.exp));
 		}
 		else {
 			SendNotice("[系統] 設置等級失敗，數據庫寫入錯誤！");
@@ -1331,6 +1505,16 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		}
 		else {
 			SendNotice("[系統] 重載武器強化配置失敗，請檢查 configs/enhance.json 格式！");
+		}
+		return true;
+	}
+	else if (cmdLower == "/reloadreward" || cmdLower == "/reloadrewarditem") {
+		if (rewardItemManager.Reload()) {
+			SendNotice(format("[系統] 獎勵道具配置已成功重載！共載入 {} 個獎勵道具。(configs/rewarditem.json)",
+				rewardItemManager.GetRewardItemCount()));
+		}
+		else {
+			SendNotice("[系統] 重載獎勵道具配置失敗，請檢查 configs/rewarditem.json 格式！");
 		}
 		return true;
 	}

@@ -9,3 +9,11 @@ bin/logs
 logs/
 bin/*.exe
 bin/*.pdb
+*.log
+*.db
+build_check/
+.workbuddy-ai/
+HANDOFF_*.md
+bps.json
+dbgtools.json
+mods.json

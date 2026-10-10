@@ -5,7 +5,8 @@ enum class Packet_UpdateInfoType {
 	Unk0 = 0,
 	Unk1 = 1,
 	ChangeNickname = 2,
-	ChangeCamoNickname = 3
+	ChangeCamoNickname = 3,
+	SetRegion = 4
 };
 
 class Packet_UpdateInfoManager {
@@ -21,6 +22,7 @@ private:
 	void parsePacket_UpdateInfo_Unk1(User* user);
 	void parsePacket_UpdateInfo_ChangeNickname(User* user, TCPConnection::Packet::pointer packet);
 	void parsePacket_UpdateInfo_ChangeCamoNickname(User* user, TCPConnection::Packet::pointer packet);
+	void parsePacket_UpdateInfo_SetRegion(User* user, TCPConnection::Packet::pointer packet);
 };
 
 extern Packet_UpdateInfoManager packet_UpdateInfoManager;

@@ -49,12 +49,32 @@ constexpr auto ROOMSETTINGS_HFLAG_UNK200 =			0x200;
 constexpr auto ROOMSETTINGS_HFLAG_UNK400 =			0x400;
 constexpr auto ROOMSETTINGS_HFLAG_UNK800 =			0x800;
 constexpr auto ROOMSETTINGS_HFLAG_UNK1000 =			0x1000;
-constexpr auto ROOMSETTINGS_HFLAG_ALL =				0x3;
+constexpr auto ROOMSETTINGS_HFLAG_ALL =				ROOMSETTINGS_HFLAG_UNK1000;
 
 enum class RoomState {
 	Waiting = 0,
 	Playing = 2
 };
+
+inline bool IsBigHeadCompatibleMode(unsigned char gameModeID) noexcept {
+	// 官方 2014 SGP sub_591050 逆向證實：大頭製造器僅支援模式 15 (災厄之章) 與模式 17 (戰神之章)
+	return (gameModeID == 15 || gameModeID == 17);
+}
+
+inline unsigned char CalculateRoomModeSubFlag(const User* hostUser, unsigned char gameModeID, bool bigheadDisabled = false) noexcept {
+	if (!hostUser) return 0;
+	if (IsBigHeadCompatibleMode(gameModeID)) {
+		if (!bigheadDisabled && hostUser->HasItem(439)) {
+			return 1;
+		}
+	}
+	else if (gameModeID == 0) {
+		if (hostUser->HasItem(537)) {
+			return 2;
+		}
+	}
+	return 0;
+}
 
 struct unk80000000_vec {
 	unsigned long unk8000000_vec_1 = 0;
@@ -200,10 +220,19 @@ public:
 	bool SetUserTeam(User* user, unsigned char team);
 	bool SetUserReady(User* user, unsigned char ready);
 
+	bool IsBigHeadDisabled() const noexcept {
+		return _bigheadDisabled;
+	}
+
+	void SetBigHeadDisabled(bool disabled) noexcept {
+		_bigheadDisabled = disabled;
+	}
+
 private:
 	unsigned short _roomID;
 	User* _roomHostUser;
 	RoomSettings _roomSettings;
 	vector<RoomUser> _roomUsers;
 	GameMatch* _gameMatch;
+	bool _bigheadDisabled = false;
 };

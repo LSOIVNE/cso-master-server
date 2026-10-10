@@ -8,7 +8,9 @@ enum Packet_ShopType {
 	RequestShopList = 0,
 	ShopList = 0,
 	Buy = 1,
-	BuyReply = 1
+	BuyReply = 1,
+	RequestGiftList = 3,
+	GiftList = 3
 };
 
 struct ShopPackageReward {
@@ -51,12 +53,14 @@ public:
 	size_t GetProductCount() const { return _products.size(); }
 	size_t GetOfferCount() const { return _offersBySubId.size(); }
 	void SendPacket_Shop_ShopList(TCPConnection::pointer connection);
+	void SendPacket_Shop_GiftList(TCPConnection::pointer connection);
 	void BroadcastShopList();
 
 private:
 	void parsePacket_Shop_RequestShopList(User* user);
+	void parsePacket_Shop_RequestGiftList(User* user);
 	void parsePacket_Shop_Buy(User* user, TCPConnection::Packet::pointer packet);
-	void sendPacket_Shop_BuyReply(TCPConnection::pointer connection, unsigned char status, const std::string& message = "");
+	void sendPacket_Shop_BuyReply(TCPConnection::pointer connection, unsigned char status, const std::string& message = "", const std::vector<unsigned short>& itemIDs = {});
 
 private:
 	std::vector<ShopProduct> _products;

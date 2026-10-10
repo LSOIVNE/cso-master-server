@@ -33,6 +33,10 @@ void Packet_OptionManager::ParsePacket_Option(TCPConnection::Packet::pointer pac
 			parsePacket_Option_Unk1(user, packet);
 			break;
 		}
+		case Packet_OptionType::Unk2: {
+			parsePacket_Option_Unk2(user, packet);
+			break;
+		}
 		default: {
 			serverConsole.Print(PrefixType::Warn, format("[ Packet_OptionManager ] User ({}) has sent unregistered Packet_OptionManager type: {}!\n", user->GetUserLogName(), type));
 			break;
@@ -87,4 +91,14 @@ void Packet_OptionManager::parsePacket_Option_Unk1(User* user, TCPConnection::Pa
 	unsigned long unk1 = packet->ReadUInt32_LE();
 
 	serverConsole.Print(PrefixType::Info, format("[ Packet_OptionManager ] User ({}) has sent Packet_Option Unk1 - unk1: {}\n", user->GetUserLogName(), unk1));
+}
+
+void Packet_OptionManager::parsePacket_Option_Unk2(User* user, TCPConnection::Packet::pointer packet) {
+	if (user == NULL || packet == NULL) {
+		return;
+	}
+
+	unsigned char unk2 = packet->ReadUInt8();
+
+	serverConsole.Print(PrefixType::Info, format("[ Packet_OptionManager ] User ({}) has sent Packet_Option Unk2 - unk2: {}\n", user->GetUserLogName(), (int)unk2));
 }

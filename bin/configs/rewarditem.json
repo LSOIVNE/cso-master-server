@@ -1,0 +1,2358 @@
+{
+  "_comment": "CSO Taiwan 2013 Authentic RewardItem Configuration File",
+  "settings": {
+    "defaultPoints": 10000,
+    "defaultCBoxCount": 5,
+    "defaultDecoderCount": 5,
+    "defaultTitleKey": "HSCENARIO_MONSTER_DROP_ITEM_TITLE",
+    "defaultMsgKey": "HSCENARIO_MONSTER_DROP_ITEM_GIVE"
+  },
+  "rewardItems": [
+    {
+      "itemID": 1001,
+      "name": "等級1獎勵箱",
+      "titleKey": "GIFT_LEVEL1_TITLE",
+      "msgKey": "GIFT_LEVEL1_MSG",
+      "rewards": [
+        {
+          "itemID": 1002,
+          "name": "等級3獎勵箱"
+        },
+        {
+          "itemID": 1,
+          "duration": 30,
+          "name": ".40 槍神雙槍"
+        },
+		{
+          "itemID": 5,
+          "duration": 3,
+          "name": "ES FIVE-SEVEN"
+        },
+		{
+          "itemID": 26,
+          "duration": 3,
+          "name": "煙霧彈"
+        },
+		{
+          "itemID": 30,
+          "duration": 3,
+          "name": "閃光彈"
+        },
+		{
+          "itemID": 136,
+          "duration": 3,
+          "name": "高攜彈生存背心"
+        },
+		{
+          "itemID": 258,
+          "count": 5,
+          "name": "初級治療券"
+        },
+		{
+          "itemID": 343,
+          "duration": 10,
+          "name": "炎殺黑龍-TAR21"
+        },
+		{
+          "itemID": 24,
+          "duration": 3,
+          "name": "M249"
+        }
+      ]
+    },
+    {
+      "itemID": 1002,
+      "name": "等級3獎勵箱",
+      "requiredLevel": 3,
+      "titleKey": "GIFT_LEVEL2_TITLE",
+      "msgKey": "GIFT_LEVEL2_MSG",
+      "rewards": [
+        {
+          "itemID": 1003,
+          "name": "等級5獎勵箱"
+        },
+        {
+          "itemID": 37,
+          "duration": 3,
+          "name": "MP7A1"
+        },
+		{
+          "itemID": 109,
+          "duration": 3,
+          "name": "擴大攻擊範圍"
+        },
+		{
+          "itemID": 20,
+          "duration": 3,
+          "name": "Clarion 5.56"
+        },
+        {
+          "itemID": 23,
+          "duration": 3,
+          "name": "IDF 防衛者"
+        }
+      ]
+    },
+    {
+      "itemID": 1003,
+      "name": "等級5獎勵箱",
+      "requiredLevel": 5,
+      "titleKey": "GIFT_LEVEL3_TITLE",
+      "msgKey": "GIFT_LEVEL3_MSG",
+      "rewards": [
+        {
+          "itemID": 1004,
+          "name": "等級10獎勵箱"
+        },
+        {
+          "itemID": 8,
+          "duration": 5,
+          "name": "LEONE YG1265 連發散彈槍"
+        },
+		{
+          "itemID": 137,
+          "duration": 5,
+          "name": "瘋狂基因藥水"
+        },
+		{
+          "itemID": 84,
+          "duration": 5,
+          "name": "兇手提示"
+        },
+		{
+          "itemID": 414,
+          "duration": 5,
+          "name": "橫掃千軍-PKM"
+        }
+      ]
+    },
+    {
+      "itemID": 1004,
+      "name": "等級10獎勵箱",
+      "requiredLevel": 10,
+      "titleKey": "GIFT_LEVEL4_TITLE",
+      "msgKey": "GIFT_LEVEL4_MSG",
+      "rewards": [
+        {
+          "itemID": 1005,
+          "name": "等級15獎勵箱"
+        },
+        {
+          "itemID": 4,
+          "duration": 7,
+          "name": "夜鷹 .50C"
+        },
+		{
+          "itemID": 38,
+          "duration": 7,
+          "name": "USAS12"
+        },
+		{
+          "itemID": 46,
+          "duration": 7,
+          "name": "歐洲治安維持部隊"
+        },
+		{
+          "itemID": 56,
+          "duration": 7,
+          "name": "中國大陸特種部隊"
+        },
+		{
+          "itemID": 173,
+          "count": 1,
+          "name": "電子解碼器"
+        },
+		{
+          "itemID": 138,
+          "duration": 7,
+          "name": "狂暴手榴彈"
+        },
+		{
+          "itemID": 322,
+          "duration": 7,
+          "name": "霹靂戰警"
+        },
+		{
+          "itemID": 157,
+          "duration": 7,
+          "name": "芬蘭之星-TRG"
+        },
+		{
+          "itemID": 187,
+          "duration": 7,
+          "name": "審判之眼-SL8"
+        }
+      ]
+    },
+    {
+      "itemID": 1005,
+      "name": "等級15獎勵箱",
+      "requiredLevel": 15,
+      "titleKey": "GIFT_LEVEL5_TITLE",
+      "msgKey": "GIFT_LEVEL5_MSG",
+      "rewards": [
+        {
+          "itemID": 1006,
+          "name": "等級20獎勵箱"
+        },
+        {
+          "itemID": 15,
+          "duration": 10,
+          "name": "MAVERICK M4A1 卡賓"
+        },
+		{
+          "itemID": 21,
+          "duration": 10,
+          "name": "CV-47"
+        },
+		{
+          "itemID": 163,
+          "duration": 10,
+          "name": "莎拉"
+        },
+		{
+          "itemID": 164,
+          "duration": 10,
+          "name": "鋒利銀刃"
+        },
+        {
+          "itemID": 271,
+          "duration": 10,
+          "name": "黑暗騎士-HK23"
+        }
+      ]
+    },
+    {
+      "itemID": 1006,
+      "name": "等級20獎勵箱",
+      "requiredLevel": 20,
+      "titleKey": "GIFT_LEVEL6_TITLE",
+      "msgKey": "GIFT_LEVEL6_MSG",
+      "rewards": [
+        {
+          "itemID": 1007,
+          "name": "等級25獎勵箱"
+        },
+        {
+          "itemID": 148,
+          "duration": 10,
+          "name": "殲滅者-MG3"
+        },
+		{
+          "itemID": 197,
+          "duration": 10,
+          "name": "閃靈獵手-M1887"
+        },
+		{
+          "itemID": 304,
+          "duration": 10,
+          "name": "黑色旋風-M14"
+        },
+		{
+          "itemID": 111,
+          "duration": 10,
+          "name": "詳細傷害提示"
+        },
+        {
+          "itemID": 308,
+          "duration": 10,
+          "name": "銀色戰將"
+        }
+      ]
+    },
+    {
+      "itemID": 1007,
+      "name": "等級25獎勵箱",
+      "requiredLevel": 25,
+      "titleKey": "GIFT_LEVEL7_TITLE",
+      "msgKey": "GIFT_LEVEL7_MSG",
+      "rewards": [
+        {
+          "itemID": 1008,
+          "name": "等級30獎勵箱"
+        },
+        {
+          "itemID": 233,
+          "duration": 10,
+          "name": "獵戶座-M24"
+        },
+		{
+          "itemID": 175,
+          "duration": 10,
+          "name": "達叔"
+        },
+		{
+          "itemID": 176,
+          "duration": 10,
+          "name": "好威鐵鎚"
+        }
+      ]
+    },
+    {
+      "itemID": 1008,
+      "name": "等級30獎勵箱",
+      "requiredLevel": 30,
+      "titleKey": "GIFT_LEVEL8_TITLE",
+      "msgKey": "GIFT_LEVEL8_MSG",
+      "rewards": [
+        {
+          "itemID": 1016,
+          "name": "等級35獎勵箱"
+        },
+        {
+          "itemID": 246,
+          "duration": 30,
+          "name": "迷彩麥格農狙擊槍"
+        },
+		{
+          "itemID": 173,
+          "count": 3,
+          "name": "電子解碼器"
+        },
+		{
+          "itemID": 396,
+          "count": 3,
+          "name": "A世代解碼器"
+        },
+		{
+          "itemID": 307,
+          "duration": 30,
+          "name": "雙子銀狼"
+        },
+		{
+          "itemID": 371,
+          "duration": 30,
+          "name": "魯格"
+        },
+		{
+          "itemID": 431,
+          "duration": 30,
+          "name": "MK48"
+        }
+      ]
+    },
+    {
+      "itemID": 1016,
+      "name": "等級35獎勵箱",
+      "requiredLevel": 35,
+      "titleKey": "GIFT_LEVEL9_TITLE",
+      "msgKey": "GIFT_LEVEL9_MSG",
+      "rewards": [
+        {
+          "itemID": 1017,
+          "name": "等級40獎勵箱"
+        },
+        {
+          "itemID": 337,
+          "duration": 30,
+          "name": "疾風獵鷹-WA2000"
+        },
+		{
+          "itemID": 259,
+          "count": 10,
+          "name": "高級治療券"
+        },
+		{
+          "itemID": 391,
+          "duration": 30,
+          "name": "薩旦"
+        },
+		{
+          "itemID": 306,
+          "duration": 30,
+          "name": "精準射擊"
+        }
+      ]
+    },
+    {
+      "itemID": 1017,
+      "name": "等級40獎勵箱",
+      "requiredLevel": 40,
+      "titleKey": "GIFT_LEVEL10_TITLE",
+      "msgKey": "GIFT_LEVEL10_MSG",
+      "rewards": [
+        {
+          "itemID": 1018,
+          "name": "等級45獎勵箱"
+        },
+		{
+          "itemID": 334,
+          "count": 10,
+          "name": "全自動迷你砲塔"
+        },
+		{
+          "itemID": 242,
+          "duration": 30,
+          "name": "黑白雙煞-Dual Infinity"
+        },
+		{
+          "itemID": 400,
+          "duration": 30,
+          "name": "StG44"
+        },
+		{
+          "itemID": 390,
+          "duration": 30,
+          "name": "笆蒂"
+        },
+		{
+          "itemID": 359,
+          "duration": 30,
+          "name": "致命重傷"
+        }
+      ]
+    },
+    {
+      "itemID": 1018,
+      "name": "等級45獎勵箱",
+      "requiredLevel": 45,
+      "titleKey": "GIFT_LEVEL11_TITLE",
+      "msgKey": "GIFT_LEVEL11_MSG",
+      "rewards": [
+        {
+          "itemID": 1019,
+          "name": "等級50獎勵箱"
+        },
+        {
+          "itemID": 271,
+          "duration": 30,
+          "name": "黑暗騎士-HK23"
+        },
+		{
+          "itemID": 14,
+          "duration": 30,
+          "name": "麥格農狙擊槍(AWP)"
+        },
+		{
+          "itemID": 260,
+          "count": 10,
+          "name": "復活券"
+        }
+      ]
+    },
+    {
+      "itemID": 1019,
+      "name": "等級50獎勵箱",
+      "requiredLevel": 50,
+      "titleKey": "GIFT_LEVEL12_TITLE",
+      "msgKey": "GIFT_LEVEL12_MSG",
+      "rewards": [
+        {
+          "itemID": 1020,
+          "name": "等級55獎勵箱"
+        },
+        {
+          "itemID": 261,
+          "duration": 30,
+          "name": "噬血榴炮-M79"
+        },
+		{
+          "itemID": 173,
+          "count": 3,
+          "name": "電子解碼器"
+        },
+		{
+          "itemID": 396,
+          "count": 3,
+          "name": "A世代解碼器"
+        },
+		{
+          "itemID": 422,
+          "duration": 30,
+          "name": "戰魂-SPAS12"
+        }
+      ]
+    },
+    {
+      "itemID": 1020,
+      "name": "等級55獎勵箱",
+      "requiredLevel": 55,
+      "titleKey": "GIFT_LEVEL13_TITLE",
+      "msgKey": "GIFT_LEVEL13_MSG",
+      "rewards": [
+        {
+          "itemID": 1021,
+          "name": "等級60獎勵箱"
+        },
+        {
+          "itemID": 148,
+          "duration": 30,
+          "name": "殲滅者-MG3"
+        },
+        {
+          "itemID": 382,
+          "duration": 30,
+          "name": "魔鬼上將"
+        },
+		{
+          "itemID": 300,
+          "count": 10,
+          "name": "啟示錄接關券"
+        }
+      ]
+    },
+    {
+      "itemID": 1021,
+      "name": "等級60獎勵箱",
+      "requiredLevel": 60,
+      "titleKey": "GIFT_LEVEL14_TITLE",
+      "msgKey": "GIFT_LEVEL14_MSG",
+      "rewards": [
+        {
+          "itemID": 1022,
+          "name": "等級65獎勵箱"
+        },
+        {
+          "itemID": 417,
+          "duration": 10,
+          "name": "究極彗星-AT4CS"
+        },
+		{
+          "itemID": 4,
+          "duration": 30,
+          "name": "夜鷹 .50C"
+        },
+		{
+          "itemID": 344,
+          "duration": 30,
+          "name": "蛇姬之吻-M95"
+        },
+		{
+          "itemID": 176,
+          "duration": 10,
+          "name": "好威鐵鎚"
+        },
+		{
+          "itemID": 175,
+          "duration": 10,
+          "name": "達叔"
+        },
+		{
+          "itemID": 384,
+          "duration": 30,
+          "name": "深淵惡魔-KSG12"
+        }
+      ]
+    },
+    {
+      "itemID": 1022,
+      "name": "等級65獎勵箱",
+      "requiredLevel": 65,
+      "titleKey": "GIFT_LEVEL15_TITLE",
+      "msgKey": "GIFT_LEVEL15_MSG",
+      "rewards": [
+	    {
+          "itemID": 1023,
+          "name": "等級70獎勵箱"
+        },
+        {
+          "itemID": 431,
+          "duration": 30,
+          "name": "MK48"
+        },
+		{
+          "itemID": 385,
+          "duration": 30,
+          "name": "連環殺陣-AS50"
+        },
+		{
+          "itemID": 390,
+          "duration": 10,
+          "name": "笆蒂"
+        },
+		{
+          "itemID": 359,
+          "duration": 10,
+          "name": "致命重傷"
+        }
+      ]
+    },
+    {
+      "itemID": 1023,
+      "name": "等級70獎勵箱",
+      "requiredLevel": 70,
+      "titleKey": "GIFT_LEVEL16_TITLE",
+      "msgKey": "GIFT_LEVEL16_MSG",
+      "rewards": [
+        {
+          "itemID": 1024,
+          "name": "等級72獎勵箱"
+        },
+        {
+          "itemID": 304,
+          "duration": 30,
+          "name": "黑色旋風-M14"
+        },
+		{
+          "itemID": 391,
+          "duration": 10,
+          "name": "薩旦"
+        },
+		{
+          "itemID": 306,
+          "duration": 10,
+          "name": "精準射擊"
+        },
+		{
+          "itemID": 389,
+          "duration": 10,
+          "name": "煉獄之怒"
+        }
+      ]
+    },
+    {
+      "itemID": 1024,
+      "name": "等級72獎勵箱",
+      "requiredLevel": 72,
+      "titleKey": "GIFT_LEVEL17_TITLE",
+      "msgKey": "GIFT_LEVEL17_MSG",
+      "rewards": [
+        {
+          "itemID": 148,
+          "duration": 90,
+          "name": "殲滅者-MG3"
+        },
+		{
+          "itemID": 159,
+          "duration": 90,
+          "name": "麥格農狙擊槍(限定版)"
+        },
+		{
+          "itemID": 15,
+          "duration": 90,
+          "name": "MAVERICK M4A1 卡賓"
+        },
+		{
+          "itemID": 21,
+          "duration": 90,
+          "name": "CV-47"
+        },
+		{
+          "itemID": 163,
+          "duration": 10,
+          "name": "莎拉"
+        },
+		{
+          "itemID": 164,
+          "duration": 10,
+          "name": "鋒利銀刃"
+        },
+		{
+          "itemID": 173,
+          "count": 3,
+          "name": "電子解碼器"
+        },
+		{
+          "itemID": 396,
+          "count": 3,
+          "name": "A世代解碼器"
+        }
+      ]
+    },
+    {
+      "itemID": 1012,
+      "name": "黃金經驗值勳章",
+      "titleKey": "ExpCoupon_TITLE",
+      "msgKey": "ExpCoupon_MSG",
+      "rewards": [
+        {
+          "exp": 1000
+        }
+      ]
+    },
+    {
+      "itemID": 1013,
+      "name": "白銀經驗值勳章",
+      "titleKey": "ExpCoupon_TITLE",
+      "msgKey": "ExpCoupon_MSG",
+      "rewards": [
+        {
+          "exp": 500
+        }
+      ]
+    },
+    {
+      "itemID": 1014,
+      "name": "黃銅經驗值勳章",
+      "titleKey": "ExpCoupon_TITLE",
+      "msgKey": "ExpCoupon_MSG",
+      "rewards": [
+        {
+          "exp": 300
+        }
+      ]
+    },
+    {
+      "itemID": 1027,
+      "name": "經驗值兌換卷 Lv1",
+      "titleKey": "ExpCoupon_TITLE",
+      "msgKey": "ExpCoupon_MSG",
+      "rewards": [
+        {
+          "randomItems": [
+            {
+              "exp": 400
+            },
+            {
+              "exp": 500
+            },
+            {
+              "exp": 600
+            }
+          ],
+          "pickCount": 1
+        }
+      ]
+    },
+    {
+      "itemID": 1028,
+      "name": "經驗值兌換卷 Lv2",
+      "titleKey": "ExpCoupon_TITLE",
+      "msgKey": "ExpCoupon_MSG",
+      "rewards": [
+        {
+          "randomItems": [
+            {
+              "exp": 250
+            },
+            {
+              "exp": 500
+            },
+            {
+              "exp": 1000
+            }
+          ],
+          "pickCount": 1
+        }
+      ]
+    },
+    {
+      "itemID": 1029,
+      "name": "經驗值兌換卷Lv3",
+      "titleKey": "ExpCoupon_TITLE",
+      "msgKey": "ExpCoupon_MSG",
+      "rewards": [
+        {
+          "randomItems": [
+            {
+              "exp": 500
+            },
+            {
+              "exp": 1000
+            },
+            {
+              "exp": 2000
+            }
+          ],
+          "pickCount": 1
+        }
+      ]
+    },
+    {
+      "itemID": 1030,
+      "name": "Point兌換卷 Lv1",
+      "titleKey": "PntCoupon_TITLE",
+      "msgKey": "PntCoupon_MSG",
+      "rewards": [
+        {
+          "randomItems": [
+            {
+              "points": 100
+            },
+            {
+              "points": 300
+            },
+            {
+              "points": 400
+            }
+          ],
+          "pickCount": 1
+        }
+      ]
+    },
+    {
+      "itemID": 1031,
+      "name": "Point兌換卷 Lv2",
+      "titleKey": "PntCoupon_TITLE",
+      "msgKey": "PntCoupon_MSG",
+      "rewards": [
+        {
+          "randomItems": [
+            {
+              "points": 200
+            },
+            {
+              "points": 400
+            },
+            {
+              "points": 800
+            }
+          ],
+          "pickCount": 1
+        }
+      ]
+    },
+    {
+      "itemID": 1032,
+      "name": "Point兌換卷 Lv3",
+      "titleKey": "PntCoupon_TITLE",
+      "msgKey": "PntCoupon_MSG",
+      "rewards": [
+        {
+          "randomItems": [
+            {
+              "points": 800
+            },
+            {
+              "points": 1000
+            },
+            {
+              "points": 1500
+            }
+          ],
+          "pickCount": 1
+        }
+      ]
+    },
+    {
+      "itemID": 1033,
+      "name": "一般設計圖交換卷",
+      "titleKey": "PlanCoupon_TITLE",
+      "msgKey": "PlanCoupon_MSG",
+      "rewards": [
+        {
+          "randomItems": [
+            {
+              "itemID": 5001,
+              "name": "一般手槍設計圖"
+            },
+            {
+              "itemID": 5002,
+              "name": "一般散彈槍設計圖"
+            },
+            {
+              "itemID": 5003,
+              "name": "一般衝鋒槍設計圖"
+            },
+            {
+              "itemID": 5004,
+              "name": "一般步槍設計圖"
+            },
+            {
+              "itemID": 5005,
+              "name": "一般狙擊槍設計圖"
+            },
+            {
+              "itemID": 5006,
+              "name": "一般機關槍設計圖"
+            },
+            {
+              "itemID": 5007,
+              "name": "一般近戰武器設計圖"
+            }
+          ],
+          "pickCount": 1
+        }
+      ]
+    },
+    {
+      "itemID": 1034,
+      "name": "高級設計圖交換卷",
+      "titleKey": "PlanCoupon_TITLE",
+      "msgKey": "PlanCoupon_MSG",
+      "rewards": [
+        {
+          "randomItems": [
+            {
+              "itemID": 5008,
+              "name": "高級手槍設計圖"
+            },
+            {
+              "itemID": 5009,
+              "name": "高級散彈槍設計圖"
+            },
+            {
+              "itemID": 5010,
+              "name": "高級衝鋒槍設計圖"
+            },
+            {
+              "itemID": 5011,
+              "name": "高級步槍設計圖"
+            },
+            {
+              "itemID": 5012,
+              "name": "高級狙擊槍設計圖"
+            },
+            {
+              "itemID": 5013,
+              "name": "高級機關槍設計圖"
+            },
+            {
+              "itemID": 5014,
+              "name": "高級近戰武器設計圖"
+            }
+          ],
+          "pickCount": 1
+        }
+      ]
+    },
+    {
+      "itemID": 1011,
+      "name": "歡迎回來CSO",
+      "titleKey": "NEW_LEVELGIFT_GIVE_TITLE",
+      "msgKey": "NEW_LEVELGIFT_GIVE_MSG",
+      "rewards": [
+        {
+          "itemID": 15,
+          "duration": 30,
+          "name": "MAVERICK M4A1 卡賓(30日)"
+        },
+        {
+          "itemID": 21,
+          "duration": 30,
+          "name": "CV-47(30日)"
+        },
+        {
+          "itemID": 14,
+          "duration": 30,
+          "name": "麥格農狙擊槍(AWP)(30日)"
+        },
+        {
+          "itemID": 166,
+          "count": 30,
+          "name": "C-Box"
+        },
+        {
+          "itemID": 173,
+          "count": 30,
+          "name": "電子解碼器"
+        },
+        {
+          "points": 50000
+        }
+      ]
+    },
+    {
+      "itemID": 1025,
+      "name": "瘋兔禮物盒",
+      "titleKey": "RABBITBOX_TITLE",
+      "msgKey": "RABBITBOX_MSG",
+      "rewards": [
+        {
+          "itemID": 304,
+          "duration": 30,
+          "name": "黑色旋風-M14(30日)"
+        },
+        {
+          "itemID": 166,
+          "count": 10,
+          "name": "C-Box"
+        },
+        {
+          "itemID": 173,
+          "count": 10,
+          "name": "電子解碼器"
+        },
+        {
+          "points": 20000
+        }
+      ]
+    },
+    {
+      "itemID": 1026,
+      "name": "新年福袋",
+      "titleKey": "LUCKYBAG2011_TITLE",
+      "msgKey": "LUCKYBAG2011_MSG",
+      "rewards": [
+        {
+          "randomItems": [
+            {
+              "itemID": 396,
+			  "count": 3,
+              "name": "Ａ世代解碼器"
+            },
+            {
+              "itemID": 396,
+			  "count": 5,
+              "name": "Ａ世代解碼器"
+            },
+            {
+              "itemID": 396,
+			  "count": 10,
+              "name": "Ａ世代解碼器"
+            }
+          ],
+          "pickCount": 1
+        }
+      ]
+    },
+    {
+      "itemID": 1035,
+      "name": "龍騰虎躍箱",
+      "titleKey": "DragonBOX_TITLE",
+      "msgKey": "DragonBOX_MSG",
+      "rewards": [
+        {
+          "itemID": 280,
+          "duration": 30,
+          "name": "煉獄CV-47(30日)"
+        },
+        {
+          "itemID": 166,
+          "count": 20,
+          "name": "C-Box"
+        },
+        {
+          "itemID": 173,
+          "count": 20,
+          "name": "電子解碼器"
+        },
+        {
+          "points": 30000
+        }
+      ]
+    },
+    {
+      "itemID": 1037,
+      "name": "小龍箱",
+      "titleKey": "SnakeBox_TITLE",
+      "msgKey": "SnakeBox_MSG",
+      "rewards": [
+        {
+          "itemID": 344,
+          "duration": 30,
+          "name": "蛇姬之吻-M95(30日)"
+        },
+        {
+          "itemID": 166,
+          "count": 20,
+          "name": "C-Box"
+        },
+        {
+          "itemID": 173,
+          "count": 20,
+          "name": "電子解碼器"
+        },
+        {
+          "points": 30000
+        }
+      ]
+    },
+	{
+      "itemID": 275,
+      "name": "特種部隊的作戰地圖",
+      "titleKey": "SCENARIO_CLUE_REWARD_TITLE",
+      "msgKey": "SCENARIO_CLUE_REWARD_MSG",
+	  "failMsgKey": "SCENARIO_CLUE_REWARD_FAIL",
+	  "requireItems": [
+        {
+          "itemID": 275,
+          "count": 1,
+          "name": "特種部隊的作戰地圖"
+        },
+        {
+          "itemID": 276,
+          "count": 1,
+          "name": "被破壞的電磁裝置"
+        },
+        {
+          "itemID": 277,
+          "count": 1,
+          "name": "安德烈的記事本"
+        },
+        {
+          "itemID": 278,
+          "count": 1,
+          "name": "巨獸雷比亞的採樣"
+        }
+      ],
+      "rewards": [
+        {
+          "itemID": 1009,
+          "count": 1,
+          "name": "A博士的機密包裹<啟示錄>"
+        }
+      ]
+    },
+	{
+      "itemID": 276,
+      "name": "被破壞的電磁裝置",
+      "titleKey": "SCENARIO_CLUE_REWARD_TITLE",
+      "msgKey": "SCENARIO_CLUE_REWARD_MSG",
+	  "failMsgKey": "SCENARIO_CLUE_REWARD_FAIL",
+	  "requireItems": [
+        {
+          "itemID": 275,
+          "count": 1,
+          "name": "特種部隊的作戰地圖"
+        },
+        {
+          "itemID": 276,
+          "count": 1,
+          "name": "被破壞的電磁裝置"
+        },
+        {
+          "itemID": 277,
+          "count": 1,
+          "name": "安德烈的記事本"
+        },
+        {
+          "itemID": 278,
+          "count": 1,
+          "name": "巨獸雷比亞的採樣"
+        }
+      ],
+      "rewards": [
+        {
+          "itemID": 1009,
+          "count": 1,
+          "name": "A博士的機密包裹<啟示錄>"
+        }
+      ]
+    },
+	{
+      "itemID": 277,
+      "name": "安德烈的記事本",
+      "titleKey": "SCENARIO_CLUE_REWARD_TITLE",
+      "msgKey": "SCENARIO_CLUE_REWARD_MSG",
+	  "failMsgKey": "SCENARIO_CLUE_REWARD_FAIL",
+	  "requireItems": [
+        {
+          "itemID": 275,
+          "count": 1,
+          "name": "特種部隊的作戰地圖"
+        },
+        {
+          "itemID": 276,
+          "count": 1,
+          "name": "被破壞的電磁裝置"
+        },
+        {
+          "itemID": 277,
+          "count": 1,
+          "name": "安德烈的記事本"
+        },
+        {
+          "itemID": 278,
+          "count": 1,
+          "name": "巨獸雷比亞的採樣"
+        }
+      ],
+      "rewards": [
+        {
+          "itemID": 1009,
+          "count": 1,
+          "name": "A博士的機密包裹<啟示錄>"
+        }
+      ]
+    },
+	{
+      "itemID": 278,
+      "name": "巨獸雷比亞的採樣",
+      "titleKey": "SCENARIO_CLUE_REWARD_TITLE",
+      "msgKey": "SCENARIO_CLUE_REWARD_MSG",
+	  "failMsgKey": "SCENARIO_CLUE_REWARD_FAIL",
+	  "requireItems": [
+        {
+          "itemID": 275,
+          "count": 1,
+          "name": "特種部隊的作戰地圖"
+        },
+        {
+          "itemID": 276,
+          "count": 1,
+          "name": "被破壞的電磁裝置"
+        },
+        {
+          "itemID": 277,
+          "count": 1,
+          "name": "安德烈的記事本"
+        },
+        {
+          "itemID": 278,
+          "count": 1,
+          "name": "巨獸雷比亞的採樣"
+        }
+      ],
+      "rewards": [
+        {
+          "itemID": 1009,
+          "count": 1,
+          "name": "A博士的機密包裹<啟示錄>"
+        }
+      ]
+    },
+	{
+      "itemID": 326,
+      "name": "雷比亞的體液",
+      "titleKey": "SCENARIO_SEIZE_REWARD_TITLE",
+      "msgKey": "SCENARIO_SEIZE_REWARD_MSG",
+	  "failMsgKey": "SCENARIO_SEIZE_REWARD_FAIL",
+	  "requireItems": [
+        {
+          "itemID": 326,
+          "count": 1,
+          "name": "雷比亞的體液"
+        },
+        {
+          "itemID": 368,
+          "count": 1,
+          "name": "阿比隆的骨頭"
+        },
+        {
+          "itemID": 369,
+          "count": 1,
+          "name": "阿比隆的基因"
+        }
+      ],
+      "rewards": [
+        {
+          "itemID": 1009,
+          "count": 1,
+          "name": "A博士的機密包裹<啟示錄>"
+        }
+      ]
+    },
+	{
+      "itemID": 368,
+      "name": "阿比隆的骨頭",
+      "titleKey": "SCENARIO_SEIZE_REWARD_TITLE",
+      "msgKey": "SCENARIO_SEIZE_REWARD_MSG",
+	  "failMsgKey": "SCENARIO_SEIZE_REWARD_FAIL",
+	  "requireItems": [
+        {
+          "itemID": 326,
+          "count": 1,
+          "name": "雷比亞的體液"
+        },
+        {
+          "itemID": 368,
+          "count": 1,
+          "name": "阿比隆的骨頭"
+        },
+        {
+          "itemID": 369,
+          "count": 1,
+          "name": "阿比隆的基因"
+        }
+      ],
+      "rewards": [
+        {
+          "itemID": 1009,
+          "count": 1,
+          "name": "A博士的機密包裹<啟示錄>"
+        }
+      ]
+    },
+	{
+      "itemID": 369,
+      "name": "阿比隆的基因",
+      "titleKey": "SCENARIO_SEIZE_REWARD_TITLE",
+      "msgKey": "SCENARIO_SEIZE_REWARD_MSG",
+	  "failMsgKey": "SCENARIO_SEIZE_REWARD_FAIL",
+	  "requireItems": [
+        {
+          "itemID": 326,
+          "count": 1,
+          "name": "雷比亞的體液"
+        },
+        {
+          "itemID": 368,
+          "count": 1,
+          "name": "阿比隆的骨頭"
+        },
+        {
+          "itemID": 369,
+          "count": 1,
+          "name": "阿比隆的基因"
+        }
+      ],
+      "rewards": [
+        {
+          "itemID": 1009,
+          "count": 1,
+          "name": "A博士的機密包裹<啟示錄>"
+        }
+      ]
+    },
+    {
+      "itemID": 1009,
+      "name": "A博士的機密包裹<啟示錄>",
+      "titleKey": "ConfidentialTrunk_TITLE",
+      "msgKey": "ConfidentialTrunk_MSG",
+      "rewards": [
+		{
+		  "randomItems": [
+			{
+			  "itemID": 285,
+			  "duration": 30,
+			  "name": "體能強化禁藥"
+			},
+			{
+			  "itemID": 286,
+			  "duration": 30,
+			  "name": "火力強化禁藥"
+			},
+			{
+			  "itemID": 287,
+			  "duration": 30,
+			  "name": "研究資金"
+			},
+			{
+			  "itemID": 288,
+			  "duration": 30,
+			  "name": "回收裝置"
+			},
+			{
+			  "itemID": 464,
+			  "duration": 30,
+			  "name": "弱點分析裝置<啟示錄>"
+			}
+		  ],
+		  "pickCount": 1
+		}
+      ]
+    },
+    {
+      "itemID": 1010,
+      "name": "A博士的秘密物資",
+      "titleKey": "ConfidentialTrunk_TITLE",
+      "msgKey": "ConfidentialTrunk_MSG",
+      "rewards": [
+        {
+          "itemID": 166,
+          "count": 10,
+          "name": "C-Box"
+        },
+        {
+          "itemID": 173,
+          "count": 10,
+          "name": "電子解碼器"
+        },
+        {
+          "points": 20000
+        }
+      ]
+    },
+	{
+      "itemID": 338,
+      "name": "卡曼契的黑盒子",
+      "titleKey": "SCENARIO_DATA_REWARD_TITLE",
+      "msgKey": "SCENARIO_DATA_REWARD_MSG",
+	  "failMsgKey": "SCENARIO_DATA_REWARD_FAIL",
+	  "requireItems": [
+        {
+          "itemID": 338,
+          "count": 1,
+          "name": "卡曼契的黑盒子"
+        },
+        {
+          "itemID": 340,
+          "count": 1,
+          "name": "駕駛軍官的軍牌"
+        },
+        {
+          "itemID": 349,
+          "count": 1,
+          "name": "雷霆之眼控制器"
+        }
+      ],
+      "rewards": [
+        {
+          "itemID": 1015,
+          "count": 1,
+          "name": "A博士的神秘包裹<戰神之章>"
+        }
+      ]
+    },
+	{
+      "itemID": 340,
+      "name": "駕駛軍官的軍牌",
+      "titleKey": "SCENARIO_DATA_REWARD_TITLE",
+      "msgKey": "SCENARIO_DATA_REWARD_MSG",
+	  "failMsgKey": "SCENARIO_DATA_REWARD_FAIL",
+	  "requireItems": [
+        {
+          "itemID": 338,
+          "count": 1,
+          "name": "卡曼契的黑盒子"
+        },
+        {
+          "itemID": 340,
+          "count": 1,
+          "name": "駕駛軍官的軍牌"
+        },
+        {
+          "itemID": 349,
+          "count": 1,
+          "name": "雷霆之眼控制器"
+        }
+      ],
+      "rewards": [
+        {
+          "itemID": 1015,
+          "count": 1,
+          "name": "A博士的神秘包裹<戰神之章>"
+        }
+      ]
+    },
+	{
+      "itemID": 349,
+      "name": "雷霆之眼控制器",
+      "titleKey": "SCENARIO_DATA_REWARD_TITLE",
+      "msgKey": "SCENARIO_DATA_REWARD_MSG",
+	  "failMsgKey": "SCENARIO_DATA_REWARD_FAIL",
+	  "requireItems": [
+        {
+          "itemID": 338,
+          "count": 1,
+          "name": "卡曼契的黑盒子"
+        },
+        {
+          "itemID": 340,
+          "count": 1,
+          "name": "駕駛軍官的軍牌"
+        },
+        {
+          "itemID": 349,
+          "count": 1,
+          "name": "雷霆之眼控制器"
+        }
+      ],
+      "rewards": [
+        {
+          "itemID": 1015,
+          "count": 1,
+          "name": "A博士的神秘包裹<戰神之章>"
+        }
+      ]
+    },
+    {
+      "itemID": 1015,
+      "name": "A博士的神秘包裹<戰神之章>",
+      "titleKey": "ConfidentialTrunkH_TITLE",
+      "msgKey": "ConfidentialTrunkH_MSG",
+      "rewards": [
+        {
+		  "randomItems": [
+			{
+			  "itemID": 350,
+			  "duration": 10,
+			  "name": "體能強化禁藥<戰神之章>"
+			},
+			{
+			  "itemID": 351,
+			  "duration": 10,
+			  "name": "火力強化禁藥<戰神之章>"
+			},
+			{
+			  "itemID": 352,
+			  "duration": 10,
+			  "name": "研究資金<戰神之章>"
+			},
+			{
+			  "itemID": 353,
+			  "duration": 10,
+			  "name": "回收裝置<戰神之章>"
+			}
+		  ],
+		  "pickCount": 1
+		}
+      ]
+    },
+	{
+      "itemID": 409,
+      "name": "<麥瑪西>研究報告1",
+      "titleKey": "SCENARIO2_CLUE_REWARD_TITLE",
+      "msgKey": "SCENARIO2_CLUE_REWARD_MSG",
+	  "failMsgKey": "SCENARIO2_CLUE_REWARD_FAIL",
+	  "requireItems": [
+        {
+          "itemID": 409,
+          "count": 1,
+          "name": "<麥瑪西>研究報告1"
+        },
+        {
+          "itemID": 410,
+          "count": 1,
+          "name": "<麥瑪西>研究報告2"
+        },
+        {
+          "itemID": 411,
+          "count": 1,
+          "name": "<麥瑪西>研究報告3"
+        },
+		{
+          "itemID": 412,
+          "count": 1,
+          "name": "<麥瑪西>研究報告4"
+        }
+      ],
+      "rewards": [
+        {
+          "itemID": 1036,
+          "count": 1,
+          "name": "A博士的機密包裹<第二章>"
+        }
+      ]
+    },
+	{
+      "itemID": 410,
+      "name": "<麥瑪西>研究報告2",
+      "titleKey": "SCENARIO2_CLUE_REWARD_TITLE",
+      "msgKey": "SCENARIO2_CLUE_REWARD_MSG",
+	  "failMsgKey": "SCENARIO2_CLUE_REWARD_FAIL",
+	  "requireItems": [
+        {
+          "itemID": 409,
+          "count": 1,
+          "name": "<麥瑪西>研究報告1"
+        },
+        {
+          "itemID": 410,
+          "count": 1,
+          "name": "<麥瑪西>研究報告2"
+        },
+        {
+          "itemID": 411,
+          "count": 1,
+          "name": "<麥瑪西>研究報告3"
+        },
+		{
+          "itemID": 412,
+          "count": 1,
+          "name": "<麥瑪西>研究報告4"
+        }
+      ],
+      "rewards": [
+        {
+          "itemID": 1036,
+          "count": 1,
+          "name": "A博士的機密包裹<第二章>"
+        }
+      ]
+    },
+	{
+      "itemID": 411,
+      "name": "<麥瑪西>研究報告3",
+      "titleKey": "SCENARIO2_CLUE_REWARD_TITLE",
+      "msgKey": "SCENARIO2_CLUE_REWARD_MSG",
+	  "failMsgKey": "SCENARIO2_CLUE_REWARD_FAIL",
+	  "requireItems": [
+        {
+          "itemID": 409,
+          "count": 1,
+          "name": "<麥瑪西>研究報告1"
+        },
+        {
+          "itemID": 410,
+          "count": 1,
+          "name": "<麥瑪西>研究報告2"
+        },
+        {
+          "itemID": 411,
+          "count": 1,
+          "name": "<麥瑪西>研究報告3"
+        },
+		{
+          "itemID": 412,
+          "count": 1,
+          "name": "<麥瑪西>研究報告4"
+        }
+      ],
+      "rewards": [
+        {
+          "itemID": 1036,
+          "count": 1,
+          "name": "A博士的機密包裹<第二章>"
+        }
+      ]
+    },
+	{
+      "itemID": 412,
+      "name": "<麥瑪西>研究報告4",
+      "titleKey": "SCENARIO2_CLUE_REWARD_TITLE",
+      "msgKey": "SCENARIO2_CLUE_REWARD_MSG",
+	  "failMsgKey": "SCENARIO2_CLUE_REWARD_FAIL",
+	  "requireItems": [
+        {
+          "itemID": 409,
+          "count": 1,
+          "name": "<麥瑪西>研究報告1"
+        },
+        {
+          "itemID": 410,
+          "count": 1,
+          "name": "<麥瑪西>研究報告2"
+        },
+        {
+          "itemID": 411,
+          "count": 1,
+          "name": "<麥瑪西>研究報告3"
+        },
+		{
+          "itemID": 412,
+          "count": 1,
+          "name": "<麥瑪西>研究報告4"
+        }
+      ],
+      "rewards": [
+        {
+          "itemID": 1036,
+          "count": 1,
+          "name": "A博士的機密包裹<第二章>"
+        }
+      ]
+    },
+    {
+      "itemID": 1036,
+      "name": "A博士的機密包裹<第二章>",
+      "titleKey": "ConfidentialTrunk2_TITLE",
+      "msgKey": "ConfidentialTrunk2_MSG",
+      "rewards": [
+        {
+		  "randomItems": [
+			{
+			  "itemID": 285,
+			  "duration": 30,
+			  "name": "體能強化禁藥"
+			},
+			{
+			  "itemID": 286,
+			  "duration": 30,
+			  "name": "火力強化禁藥"
+			},
+			{
+			  "itemID": 287,
+			  "duration": 30,
+			  "name": "研究資金"
+			},
+			{
+			  "itemID": 288,
+			  "duration": 30,
+			  "name": "回收裝置"
+			},
+			{
+			  "itemID": 465,
+			  "duration": 30,
+			  "name": "弱點分析裝置<第二章>"
+			}
+		  ],
+		  "pickCount": 1
+		}
+      ]
+    },
+	{
+      "itemID": 485,
+      "name": "<秘密兵器>研究報告1",
+      "titleKey": "SCENARIO3_CLUE_REWARD_TITLE",
+      "msgKey": "SCENARIO3_CLUE_REWARD_MSG",
+	  "failMsgKey": "SCENARIO3_CLUE_REWARD_FAIL",
+	  "requireItems": [
+        {
+          "itemID": 485,
+          "count": 1,
+          "name": "<秘密兵器>研究報告1"
+        },
+        {
+          "itemID": 507,
+          "count": 1,
+          "name": "<秘密兵器>研究報告2"
+        },
+        {
+          "itemID": 514,
+          "count": 1,
+          "name": "<秘密兵器>研究報告 No.3"
+        },
+		{
+          "itemID": 546,
+          "count": 1,
+          "name": "<秘密兵器>研究報告4"
+        }
+      ],
+      "rewards": [
+        {
+          "itemID": 1038,
+          "count": 1,
+          "name": "A博士的機密包裹<第三章>"
+        }
+      ]
+    },
+	{
+      "itemID": 507,
+      "name": "<秘密兵器>研究報告",
+      "titleKey": "SCENARIO3_CLUE_REWARD_TITLE",
+      "msgKey": "SCENARIO3_CLUE_REWARD_MSG",
+	  "failMsgKey": "SCENARIO3_CLUE_REWARD_FAIL",
+	  "requireItems": [
+        {
+          "itemID": 485,
+          "count": 1,
+          "name": "<秘密兵器>研究報告1"
+        },
+        {
+          "itemID": 507,
+          "count": 1,
+          "name": "<秘密兵器>研究報告2"
+        },
+        {
+          "itemID": 514,
+          "count": 1,
+          "name": "<秘密兵器>研究報告 No.3"
+        },
+		{
+          "itemID": 546,
+          "count": 1,
+          "name": "<秘密兵器>研究報告4"
+        }
+      ],
+      "rewards": [
+        {
+          "itemID": 1038,
+          "count": 1,
+          "name": "A博士的機密包裹<第三章>"
+        }
+      ]
+    },
+	{
+      "itemID": 514,
+      "name": "<秘密兵器>研究報告 No.3",
+      "titleKey": "SCENARIO3_CLUE_REWARD_TITLE",
+      "msgKey": "SCENARIO3_CLUE_REWARD_MSG",
+	  "failMsgKey": "SCENARIO3_CLUE_REWARD_FAIL",
+	  "requireItems": [
+        {
+          "itemID": 485,
+          "count": 1,
+          "name": "<秘密兵器>研究報告1"
+        },
+        {
+          "itemID": 507,
+          "count": 1,
+          "name": "<秘密兵器>研究報告2"
+        },
+        {
+          "itemID": 514,
+          "count": 1,
+          "name": "<秘密兵器>研究報告 No.3"
+        },
+		{
+          "itemID": 546,
+          "count": 1,
+          "name": "<秘密兵器>研究報告4"
+        }
+      ],
+      "rewards": [
+        {
+          "itemID": 1038,
+          "count": 1,
+          "name": "A博士的機密包裹<第三章>"
+        }
+      ]
+    },
+	{
+      "itemID": 546,
+      "name": "<秘密兵器>研究報告4",
+      "titleKey": "SCENARIO3_CLUE_REWARD_TITLE",
+      "msgKey": "SCENARIO3_CLUE_REWARD_MSG",
+	  "failMsgKey": "SCENARIO3_CLUE_REWARD_FAIL",
+	  "requireItems": [
+        {
+          "itemID": 485,
+          "count": 1,
+          "name": "<秘密兵器>研究報告1"
+        },
+        {
+          "itemID": 507,
+          "count": 1,
+          "name": "<秘密兵器>研究報告2"
+        },
+        {
+          "itemID": 514,
+          "count": 1,
+          "name": "<秘密兵器>研究報告 No.3"
+        },
+		{
+          "itemID": 546,
+          "count": 1,
+          "name": "<秘密兵器>研究報告4"
+        }
+      ],
+      "rewards": [
+        {
+          "itemID": 1038,
+          "count": 1,
+          "name": "A博士的機密包裹<第三章>"
+        }
+      ]
+    },
+    {
+      "itemID": 1038,
+      "name": "A博士的機密包裹<第三章>",
+      "titleKey": "ConfidentialTrunk3_TITLE",
+      "msgKey": "ConfidentialTrunk3_MSG",
+      "rewards": [
+        {
+		  "randomItems": [
+			{
+			  "itemID": 285,
+			  "duration": 30,
+			  "name": "體能強化禁藥"
+			},
+			{
+			  "itemID": 286,
+			  "duration": 30,
+			  "name": "火力強化禁藥"
+			},
+			{
+			  "itemID": 287,
+			  "duration": 30,
+			  "name": "研究資金"
+			},
+			{
+			  "itemID": 288,
+			  "duration": 30,
+			  "name": "回收裝置"
+			},
+			{
+			  "itemID": 547,
+			  "duration": 30,
+			  "name": "弱點分析裝置<第三章>"
+			}
+		  ],
+		  "pickCount": 1
+		}
+      ]
+    },
+    {
+      "itemID": 2000,
+      "name": "殘暴達叔禮物盒",
+      "titleKey": "GIFT_2000_TITLE",
+      "msgKey": "GIFT_2000_MSG",
+      "rewards": [
+        {
+          "itemID": 166,
+          "count": 10,
+          "name": "C-Box"
+        },
+        {
+          "itemID": 173,
+          "count": 10,
+          "name": "電子解碼器"
+        },
+        {
+          "points": 20000
+        }
+      ]
+    },
+    {
+      "itemID": 2001,
+      "name": "巨獸禮物盒",
+      "titleKey": "GIFT_2001_TITLE",
+      "msgKey": "GIFT_2001_MSG",
+      "rewards": [
+        {
+          "itemID": 166,
+          "count": 10,
+          "name": "C-Box"
+        },
+        {
+          "itemID": 173,
+          "count": 10,
+          "name": "電子解碼器"
+        },
+        {
+          "points": 20000
+        }
+      ]
+    },
+    {
+      "itemID": 2002,
+      "name": "2週年紀念禮物盒",
+      "titleKey": "NEW_LEVELGIFT_GIVE_TITLE",
+      "msgKey": "NEW_LEVELGIFT_GIVE_MSG",
+      "rewards": [
+        {
+          "itemID": 166,
+          "count": 22,
+          "name": "C-Box"
+        },
+        {
+          "itemID": 173,
+          "count": 22,
+          "name": "電子解碼器"
+        },
+        {
+          "points": 22222
+        }
+      ]
+    },
+    {
+      "itemID": 2003,
+      "name": "M武器盒",
+      "titleKey": "MBOX_TITLE",
+      "msgKey": "MBOX_MSG",
+      "rewards": [
+        {
+          "itemID": 15,
+          "duration": 30,
+          "name": "MAVERICK M4A1 卡賓(30日)"
+        },
+        {
+          "itemID": 166,
+          "count": 10,
+          "name": "C-Box"
+        },
+        {
+          "points": 15000
+        }
+      ]
+    },
+    {
+      "itemID": 2004,
+      "name": "好運銀鈴",
+      "titleKey": "SILVERBELL_TITLE",
+      "msgKey": "SILVERBELL_MSG",
+      "rewards": [
+        {
+          "randomItems": [
+            {
+              "itemID": 160,
+              "duration": 0,
+			  "weight": 10,
+              "name": "紅色M249"
+            },
+            {
+              "itemID": 258,
+              "count": 5,
+			  "weight": 50,
+              "name": "初級治療券"
+            },
+            {
+              "itemID": 258,
+              "count": 10,
+			  "weight": 50,
+              "name": "初級治療券"
+            },
+            {
+              "itemID": 259,
+              "count": 5,
+			  "weight": 50,
+              "name": "高級治療券"
+            },
+            {
+              "itemID": 259,
+              "count": 10,
+			  "weight": 50,
+              "name": "高級治療券"
+            },
+			{
+              "itemID": 260,
+              "count": 5,
+			  "weight": 50,
+              "name": "復活券"
+            },
+			{
+              "itemID": 5102,
+              "count": 1,
+			  "weight": 50,
+              "name": "3日耐久材料"
+            },
+			{
+              "itemID": 5103,
+              "count": 1,
+			  "weight": 50,
+              "name": "10日耐久材料"
+            },
+			{
+              "itemID": 5104,
+              "count": 1,
+			  "weight": 50,
+              "name": "30日耐久材料"
+            }
+          ],
+          "pickCount": 1
+        }
+      ]
+    },
+    {
+      "itemID": 2005,
+      "name": "好運金鈴",
+      "titleKey": "SILVERBELL_TITLE",
+      "msgKey": "SILVERBELL_MSG",
+      "rewards": [
+        {
+          "randomItems": [
+		    {
+              "itemID": 32,
+              "duration": 3,
+			  "weight": 50,
+              "name": "QBB95"
+            },
+			{
+              "itemID": 24,
+              "duration": 3,
+			  "weight": 50,
+              "name": "M249"
+            },
+			{
+              "itemID": 35,
+              "duration": 3,
+			  "weight": 50,
+              "name": "VSK94"
+            },
+            {
+              "itemID": 246,
+              "duration": 0,
+			  "weight": 10,
+              "name": "迷彩麥格農狙擊槍"
+            },
+            {
+              "itemID": 164,
+              "duration": 90,
+			  "weight": 30,
+              "name": "鋒利銀刃"
+            },
+            {
+              "itemID": 176,
+              "duration": 90,
+			  "weight": 30,
+              "name": "好威鐵鎚"
+            },
+            {
+              "itemID": 433,
+              "duration": 0,
+			  "weight": 25,
+              "name": "蜜拉‧羅莉"
+            },
+            {
+              "itemID": 419,
+              "duration": 0,
+			  "weight": 25,
+              "name": "露西亞"
+            }
+          ],
+          "pickCount": 1
+        }
+      ]
+    },
+    {
+      "itemID": 2006,
+      "name": "時間轉換器(魔鬼上將)",
+      "titleKey": "XM2010RANDOM_TITLE",
+      "msgKey": "XM2010RANDOM_MSG",
+      "rewards": [
+        {
+          "randomItems": [
+		    {
+              "itemID": 5102,
+              "count": 1,
+			  "weight": 50,
+              "name": "3日耐久材料"
+            },
+			{
+              "itemID": 5103,
+              "count": 1,
+			  "weight": 50,
+              "name": "10日耐久材料"
+            },
+            {
+              "itemID": 5104,
+              "count": 1,
+			  "weight": 50,
+              "name": "30日耐久材料"
+            },
+            {
+              "itemID": 5105,
+              "count": 1,
+			  "weight": 20,
+              "name": "90日耐久材料"
+            },
+            {
+              "itemID": 5106,
+              "count": 1,
+			  "weight": 15,
+              "name": "長期耐久材料"
+            }
+          ],
+          "pickCount": 2
+        },
+        {
+          "randomItems": [
+            {
+              "itemID": 382,
+              "duration": 15,
+              "name": "魔鬼上將"
+            },
+            {
+              "itemID": 382,
+              "duration": 30,
+              "name": "魔鬼上將"
+            },
+            {
+              "itemID": 382,
+              "duration": 0,
+              "name": "魔鬼上將"
+            }
+          ],
+          "pickCount": 1
+        }
+      ]
+    },
+    {
+      "itemID": 2007,
+      "name": "Z BOX",
+      "titleKey": "ZBOX_TITLE",
+      "msgKey": "ZBOX_MSG",
+      "rewards": [
+        {
+          "itemID": 166,
+          "count": 10,
+          "name": "C-Box"
+        },
+        {
+          "itemID": 173,
+          "count": 10,
+          "name": "電子解碼器"
+        },
+        {
+          "points": 20000
+        }
+      ]
+    },
+    {
+      "itemID": 2010,
+      "name": "魔幻箱",
+      "titleKey": "DT30EventBox_TITLE",
+      "msgKey": "DT30EventBox_MSG",
+      "rewards": [
+        {
+          "itemID": 166,
+          "count": 10,
+          "name": "C-Box"
+        },
+        {
+          "itemID": 173,
+          "count": 10,
+          "name": "電子解碼器"
+        },
+        {
+          "points": 20000
+        },
+        {
+          "randomItems": [
+            {
+              "itemID": 15,
+              "duration": 1,
+              "name": "MAVERICK M4A1 卡賓(1日)"
+            },
+            {
+              "itemID": 21,
+              "duration": 1,
+              "name": "CV-47(1日)"
+            },
+            {
+              "itemID": 14,
+              "duration": 1,
+              "name": "麥格農狙擊槍(AWP)(1日)"
+            },
+            {
+              "itemID": 12,
+              "duration": 1,
+              "name": "K&M 衝鋒槍(1日)"
+            },
+            {
+              "itemID": 4,
+              "duration": 1,
+              "name": "夜鷹 .50C(1日)"
+            },
+            {
+              "itemID": 24,
+              "duration": 1,
+              "name": "M249(1日)"
+            },
+            {
+              "itemID": 5204,
+              "count": 5,
+              "name": "精密強化零件"
+            },
+            {
+              "itemID": 5203,
+              "count": 10,
+              "name": "一般強化零件"
+            }
+          ],
+          "pickCount": 1
+        }
+      ]
+    },
+    {
+      "itemID": 2047,
+      "name": "銀色幸運餅乾",
+      "titleKey": "NEW_LEVELGIFT_GIVE_TITLE",
+      "msgKey": "NEW_LEVELGIFT_GIVE_MSG",
+      "rewards": [
+        {
+          "itemID": 166,
+          "count": 5,
+          "name": "C-Box"
+        },
+        {
+          "itemID": 173,
+          "count": 5,
+          "name": "電子解碼器"
+        },
+        {
+          "points": 10000
+        }
+      ]
+    },
+    {
+      "itemID": 2048,
+      "name": "金色幸運餅乾",
+      "titleKey": "NEW_LEVELGIFT_GIVE_TITLE",
+      "msgKey": "NEW_LEVELGIFT_GIVE_MSG",
+      "rewards": [
+        {
+          "itemID": 166,
+          "count": 10,
+          "name": "C-Box"
+        },
+        {
+          "itemID": 173,
+          "count": 10,
+          "name": "電子解碼器"
+        },
+        {
+          "points": 20000
+        }
+      ]
+    },
+	{
+      "itemID": 5212,
+      "name": "完美傷害強化材料",
+      "titleKey": "REINFORCE_PERFECT_ITEM_GIVE_TITLE",
+      "msgKey": "REINFORCE_PERFECT_ITEM_GIVE_MSG",
+      "failMsgKey": "REINFORCE_PER_PART_ITEM_USE_FAIL",
+      "requireItems": [
+        {
+          "itemID": 5212,
+          "count": 30,
+          "name": "完美傷害強化材料"
+        }
+      ],
+      "rewards": [
+        {
+          "itemID": 5218,
+          "count": 1,
+          "name": "完美傷害強化零件"
+        }
+      ]
+    },
+	{
+      "itemID": 5213,
+      "name": "完美重量強化材料",
+      "titleKey": "REINFORCE_PERFECT_ITEM_GIVE_TITLE",
+      "msgKey": "REINFORCE_PERFECT_ITEM_GIVE_MSG",
+      "failMsgKey": "REINFORCE_PER_PART_ITEM_USE_FAIL",
+      "requireItems": [
+        {
+          "itemID": 5213,
+          "count": 30,
+          "name": "完美重量強化材料"
+        }
+      ],
+      "rewards": [
+        {
+          "itemID": 5219,
+          "count": 1,
+          "name": "完美重量強化零件"
+        }
+      ]
+    },
+	{
+      "itemID": 5214,
+      "name": "完美命中強化材料",
+      "titleKey": "REINFORCE_PERFECT_ITEM_GIVE_TITLE",
+      "msgKey": "REINFORCE_PERFECT_ITEM_GIVE_MSG",
+      "failMsgKey": "REINFORCE_PER_PART_ITEM_USE_FAIL",
+      "requireItems": [
+        {
+          "itemID": 5214,
+          "count": 30,
+          "name": "完美命中強化材料"
+        }
+      ],
+      "rewards": [
+        {
+          "itemID": 5220,
+          "count": 1,
+          "name": "完美命中強化零件"
+        }
+      ]
+    },
+	{
+      "itemID": 5215,
+      "name": "完美連發強化材料",
+      "titleKey": "REINFORCE_PERFECT_ITEM_GIVE_TITLE",
+      "msgKey": "REINFORCE_PERFECT_ITEM_GIVE_MSG",
+      "failMsgKey": "REINFORCE_PER_PART_ITEM_USE_FAIL",
+      "requireItems": [
+        {
+          "itemID": 5215,
+          "count": 30,
+          "name": "完美連發強化材料"
+        }
+      ],
+      "rewards": [
+        {
+          "itemID": 5221,
+          "count": 1,
+          "name": "完美連發強化零件"
+        }
+      ]
+    },
+	{
+      "itemID": 5216,
+      "name": "完美後座力強化材料",
+      "titleKey": "REINFORCE_PERFECT_ITEM_GIVE_TITLE",
+      "msgKey": "REINFORCE_PERFECT_ITEM_GIVE_MSG",
+      "failMsgKey": "REINFORCE_PER_PART_ITEM_USE_FAIL",
+      "requireItems": [
+        {
+          "itemID": 5216,
+          "count": 30,
+          "name": "完美後座力強化材料"
+        }
+      ],
+      "rewards": [
+        {
+          "itemID": 5222,
+          "count": 1,
+          "name": "完美後座力強化零件"
+        }
+      ]
+    },
+	{
+      "itemID": 5217,
+      "name": "完美彈匣強化材料",
+      "titleKey": "REINFORCE_PERFECT_ITEM_GIVE_TITLE",
+      "msgKey": "REINFORCE_PERFECT_ITEM_GIVE_MSG",
+      "failMsgKey": "REINFORCE_PER_PART_ITEM_USE_FAIL",
+      "requireItems": [
+        {
+          "itemID": 5217,
+          "count": 30,
+          "name": "完美彈匣強化材料"
+        }
+      ],
+      "rewards": [
+        {
+          "itemID": 5223,
+          "count": 1,
+          "name": "完美彈匣強化零件"
+        }
+      ]
+    }
+  ]
+}

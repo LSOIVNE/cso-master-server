@@ -10,6 +10,10 @@
 
 Packet_RoomManager packet_RoomManager;
 
+static unsigned char calculateModeSubFlag(User* hostUser, unsigned char gameModeID, bool bigheadDisabled = false) {
+	return CalculateRoomModeSubFlag(hostUser, gameModeID, bigheadDisabled);
+}
+
 void Packet_RoomManager::ParsePacket_Room(TCPConnection::Packet::pointer packet) {
 	if (packet == NULL) {
 		return;
@@ -450,7 +454,11 @@ void Packet_RoomManager::parsePacket_Room_CreateRoom(User* user, TCPConnection::
 	roomSettings.footSteps = true;
 	roomSettings.voiceChat = true;
 
-	serverConsole.Print(PrefixType::Info, format("[ Packet_RoomManager ] User ({}) has sent Packet_Room CreateRoom - roomName: {}, unk2: {}, maxPlayers: {}, gameModeID: {}, mapID: {}, winLimit: {}, killLimit: {}, timeLimit: {}, roundTime: {}, password: {}, unk11: {}, unk12: {}, fastStart: {}, unk14: {}, unk15: {}, unk16: {}\n", user->GetUserLogName(), roomSettings.roomName, unk2, roomSettings.maxPlayers, roomSettings.gameModeID, roomSettings.mapID, roomSettings.winLimit, roomSettings.killLimit, roomSettings.timeLimit, roomSettings.roundTime, roomSettings.password, unk11, unk12, fastStart, unk14, unk15, unk16));
+	serverConsole.Print(PrefixType::Info, format("[ Packet_RoomManager ] User ({}) has sent Packet_Room CreateRoom - roomName: {}, unk2: {}, maxPlayers: {}, gameModeID: {}, mapID: {}, winLimit: {}, killLimit: {}, timeLimit: {}, roundTime: {}, password: {}, unk11: {}, unk12: {}, fastStart: {}, unk14: {}, unk15: {}, unk16: {}\n", user->GetUserLogName(), Cp950ToUtf8(roomSettings.roomName), unk2, roomSettings.maxPlayers, roomSettings.gameModeID, roomSettings.mapID, roomSettings.winLimit, roomSettings.killLimit, roomSettings.timeLimit, roomSettings.roundTime, Cp950ToUtf8(roomSettings.password), unk11, unk12, fastStart, unk14, unk15, unk16));
+
+	unsigned char modeSubFlag = calculateModeSubFlag(user, roomSettings.gameModeID, false);
+	roomSettings.highFlag |= ROOMSETTINGS_HFLAG_UNK1000;
+	roomSettings.unkh1000 = modeSubFlag;
 
 	newRoom->SetRoomSettings(roomSettings);
 
@@ -657,6 +665,8 @@ void Packet_RoomManager::parsePacket_Room_UpdateRoomSettings(User* user, TCPConn
 	roomSettings.lowFlag = packet->ReadUInt32_LE();
 	roomSettings.highFlag = packet->ReadUInt32_LE();
 
+	serverConsole.Print(PrefixType::Info, format("[ Packet_RoomManager ] UpdateRoomSettings - lowFlag: 0x{:X}, highFlag: 0x{:X}\n", roomSettings.lowFlag, roomSettings.highFlag));
+
 	unsigned char roomListFlag = 0;
 
 	if (roomSettings.lowFlag & ROOMSETTINGS_LFLAG_ROOMNAME) {
@@ -827,6 +837,40 @@ void Packet_RoomManager::parsePacket_Room_UpdateRoomSettings(User* user, TCPConn
 	}
 	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK1000) {
 		roomSettings.unkh1000 = packet->ReadUInt8();
+	}
+
+	unsigned char currentMode = (roomSettings.lowFlag & ROOMSETTINGS_LFLAG_GAMEMODEID) ? roomSettings.gameModeID : room->GetRoomSettings().gameModeID;
+	if (currentMode != 15 && currentMode != 17) {
+		room->SetBigHeadDisabled(false);
+	}
+	unsigned char modeSubFlag = calculateModeSubFlag(user, currentMode, room->IsBigHeadDisabled());
+
+	// BigHead (item 439): keep the flag in sync for BigHead-compatible modes.
+	//
+	// Official SGP server (sub_591050, case `a3 & 0x1000`) computes
+	//   unkh1000 = (host has item 439) && (gameModeID == 15)
+	// and serialises it (sub_579990) only when highFlag & 0x1000 is present.
+	//
+	// Our client UI (GameUI) never sets 0x1000 on its own in the UpdateRoomSettings
+	// request, so gating on `clientSentBigHeadFlag` means the flag is (almost) never
+	// echoed back. The engine (hw.dll) needs it in order to call
+	// GameOptionManager::SetBigHead and scale the "Bip01 Head" bone in-game.
+	// Therefore we (re)assert it whenever the room mode is BigHead-compatible,
+	// in addition to honouring an explicit client request.
+	bool clientSentBigHeadFlag = (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK1000) != 0;
+	bool sendBigHeadFlag = clientSentBigHeadFlag || IsBigHeadCompatibleMode(currentMode);
+
+	if (sendBigHeadFlag) {
+		roomSettings.highFlag |= ROOMSETTINGS_HFLAG_UNK1000;
+		roomSettings.unkh1000 = modeSubFlag;
+		roomListFlag |= ROOMLIST_FLAG_UNK2000;
+		serverConsole.Print(PrefixType::Info, format("[ Packet_RoomManager ] BigHead flag INCLUDED in reply - modeSubFlag: {}, mode: {}\n", modeSubFlag, currentMode));
+	} else {
+		// Still update the room's internal BigHead state (without sending it in this delta reply)
+		RoomSettings internalUpdate;
+		internalUpdate.highFlag = ROOMSETTINGS_HFLAG_UNK1000;
+		internalUpdate.unkh1000 = modeSubFlag;
+		room->UpdateRoomSettings(internalUpdate);
 	}
 
 	room->UpdateRoomSettings(roomSettings);
@@ -1104,7 +1148,7 @@ void Packet_RoomManager::buildRoomInfo(TCPConnection::Packet::pointer packet, Ro
 		packet->WriteUInt8(0); // unk
 	}
 	if (flag & ROOMLIST_FLAG_UNK2000) {
-		packet->WriteUInt8(0); // unk
+		packet->WriteUInt8(roomSettings.unkh1000);
 	}
 	if (flag & ROOMLIST_FLAG_ROOMSTATE) {
 		packet->WriteUInt8((unsigned char)roomSettings.roomState);

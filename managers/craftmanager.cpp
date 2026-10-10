@@ -19,27 +19,10 @@ bool CraftManager::Init() {
 }
 
 bool CraftManager::Reload() {
-	const std::vector<std::string> searchPaths = {
-		"configs\\craft.json",
-		"configs/craft.json",
-		"craft.json",
-		"..\\configs\\craft.json",
-		"..\\..\\configs\\craft.json",
-		"bin\\configs\\craft.json"
-	};
-
-	std::ifstream file;
-	std::string resolvedPath;
-	for (const auto& p : searchPaths) {
-		file.open(p);
-		if (file.is_open()) {
-			resolvedPath = p;
-			break;
-		}
-	}
-
+	const std::string resolvedPath = "configs/craft.json";
+	std::ifstream file(resolvedPath);
 	if (!file.is_open()) {
-		serverConsole.Print(PrefixType::Error, "[ CraftManager ] Failed to locate craft.json in search paths!\n");
+		serverConsole.Print(PrefixType::Error, "[ CraftManager ] Failed to open configs/craft.json!\n");
 		return false;
 	}
 

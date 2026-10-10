@@ -29,31 +29,17 @@ static void ReplaceAll(std::string& str, const std::string& from, const std::str
 	}
 }
 
+
+
 bool ItemBoxManager::Init(const std::string& configPath) {
 	serverConsole.Print(PrefixType::Info, "[ ItemBoxManager ] Initializing decoder & itembox system...\n");
 	return LoadConfig(configPath);
 }
 
 bool ItemBoxManager::LoadConfig(const std::string& configPath) {
-	std::vector<std::string> searchPaths = {
-		configPath,
-		"configs/itembox.json",
-		"configs\\itembox.json",
-		"bin/configs/itembox.json",
-		"bin\\configs\\itembox.json",
-		"../configs/itembox.json"
-	};
-
-	std::string resolvedPath = "";
-	for (const auto& path : searchPaths) {
-		if (std::filesystem::exists(path)) {
-			resolvedPath = path;
-			break;
-		}
-	}
-
-	if (resolvedPath.empty()) {
-		serverConsole.Print(PrefixType::Error, format("[ ItemBoxManager ] Failed to locate itembox config file! (tried {})\n", configPath));
+	std::string resolvedPath = configPath.empty() ? "configs/itembox.json" : configPath;
+	if (!std::filesystem::exists(resolvedPath)) {
+		serverConsole.Print(PrefixType::Error, format("[ ItemBoxManager ] Config file not found: {}\n", resolvedPath));
 		return false;
 	}
 
@@ -120,6 +106,14 @@ bool ItemBoxManager::LoadConfig(const std::string& configPath) {
 							}
 							else if (itemVal["Broadcast"].is_number()) {
 								item.broadcast = (itemVal["Broadcast"].get<int>() != 0) ? 1 : 0;
+							}
+						}
+						if (itemVal.contains("BonusPoints") && itemVal["BonusPoints"].is_number()) {
+							item.bonusPoints = itemVal["BonusPoints"].get<unsigned long long>();
+						}
+						if (itemVal.contains("PackageItems") && itemVal["PackageItems"].is_array()) {
+							for (const auto& pkgId : itemVal["PackageItems"]) {
+								if (pkgId.is_number()) item.bundleItems.push_back(pkgId.get<unsigned short>());
 							}
 						}
 						cfg.items.push_back(item);
@@ -391,57 +385,139 @@ bool ItemBoxManager::OpenBox(User* user, unsigned short decoderSlotID, unsigned 
 		}
 	}
 
-	const auto* itemDef = itemDefinitionManager.GetItem(wonItem->itemID);
-	bool isPeriodItem = (wonItem->duration != 0) || (itemDef != nullptr && itemDef->isPeriod);
 	time_t now = time(nullptr);
 
-	if (!isPeriodItem && wonItem->duration == 0) {
-		// Count-based item
-		if (alreadyOwned) {
-			databaseManager.UpdateUserInventoryItemCount(userID, wonItem->itemID, wonItem->count);
+	// Check if this is a bundle / multi-item package
+	const std::vector<unsigned short>& subItems = wonItem->bundleItems;
+	unsigned long long bonusPts = wonItem->bonusPoints;
+
+	if (!subItems.empty() || bonusPts > 0) {
+		// Grant all sub-items in the bundle
+		for (unsigned short subID : subItems) {
+			const auto* sDef = itemDefinitionManager.GetItem(subID);
+			bool sIsCount = (sDef != nullptr && !sDef->isPeriod);
+			bool sIsPeriod = !sIsCount && ((wonItem->duration != 0) || (sDef != nullptr && sDef->isPeriod));
+			bool sIsPerm = !sIsCount && (wonItem->duration == -1 || wonItem->duration == 0);
+
+			bool sAlreadyOwned = false;
+			InventoryItem sOwned;
+			for (const auto& it : inv) {
+				if (it.itemID == subID) {
+					sAlreadyOwned = true;
+					sOwned = it;
+					break;
+				}
+			}
+
+			if (sIsCount || (!sIsPeriod && wonItem->duration == 0)) {
+				if (sAlreadyOwned) {
+					databaseManager.UpdateUserInventoryItemCount(userID, subID, 1);
+				}
+				else {
+					InventoryItem newItem;
+					newItem.slotID = ++maxSlotID;
+					newItem.itemID = subID;
+					newItem.count = 1;
+					newItem.activeFlag = 1;
+					newItem.inUse = false;
+					newItem.obtainTime = (unsigned long)now;
+					newItem.expirationTime = 0;
+					newItem.enhanceBits = 0;
+					databaseManager.AddUserInventoryItems(userID, { newItem });
+				}
+			}
+			else {
+				if (sAlreadyOwned) {
+					if (sOwned.expirationTime == 0) {
+						// already perm
+					}
+					else if (sIsPerm) {
+						databaseManager.UpdateUserInventoryExpiration(userID, subID, 0);
+					}
+					else {
+						unsigned long baseTime = (sOwned.expirationTime > (unsigned long)now) ? sOwned.expirationTime : (unsigned long)now;
+						unsigned long newExp = baseTime + (unsigned long)wonItem->duration * 86400;
+						databaseManager.UpdateUserInventoryExpiration(userID, subID, newExp);
+					}
+				}
+				else {
+					InventoryItem newItem;
+					newItem.slotID = ++maxSlotID;
+					newItem.itemID = subID;
+					newItem.count = 1;
+					newItem.activeFlag = 1;
+					newItem.inUse = false;
+					newItem.obtainTime = (unsigned long)now;
+					newItem.expirationTime = sIsPerm ? 0 : (unsigned long)(now + (unsigned long)wonItem->duration * 86400);
+					newItem.enhanceBits = 0;
+					databaseManager.AddUserInventoryItems(userID, { newItem });
+				}
+			}
 		}
-		else {
-			InventoryItem newItem;
-			newItem.slotID = ++maxSlotID;
-			newItem.itemID = wonItem->itemID;
-			newItem.count = wonItem->count;
-			newItem.activeFlag = 1;
-			newItem.inUse = false;
-			newItem.obtainTime = (unsigned long)now;
-			newItem.expirationTime = 0;
-			newItem.enhanceBits = 0;
-			databaseManager.AddUserInventoryItems(userID, { newItem });
+
+		// Add bonus points if any (e.g. sozoPoint +55,000 Point)
+		if (bonusPts > 0) {
+			databaseManager.AddUserFunds(userID, true, bonusPts);
+			auto updatedChar = user->GetUserCharacter(USERCHARACTER_FLAG_POINTS);
+			if (updatedChar.result) {
+				packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, updatedChar.userCharacter });
+			}
 		}
 	}
 	else {
-		// Duration / permanent item
-		bool isPermItem = (wonItem->duration == -1 || wonItem->duration == 0);
-		if (alreadyOwned) {
-			if (ownedItem.expirationTime == 0) {
-				// Already permanent, keep permanent
-			}
-			else if (isPermItem) {
-				// Upgrade to permanent
-				databaseManager.UpdateUserInventoryExpiration(userID, wonItem->itemID, 0);
+		// Single-item grant
+		const auto* itemDef = itemDefinitionManager.GetItem(wonItem->itemID);
+		bool isCountItem = (itemDef != nullptr && !itemDef->isPeriod);
+		bool isPeriodItem = !isCountItem && ((wonItem->duration != 0) || (itemDef != nullptr && itemDef->isPeriod));
+
+		if (isCountItem || (!isPeriodItem && wonItem->duration == 0)) {
+			// Count-based item
+			if (alreadyOwned) {
+				databaseManager.UpdateUserInventoryItemCount(userID, wonItem->itemID, wonItem->count);
 			}
 			else {
-				// Extend expiration
-				unsigned long baseTime = (ownedItem.expirationTime > (unsigned long)now) ? ownedItem.expirationTime : (unsigned long)now;
-				unsigned long newExp = baseTime + (unsigned long)wonItem->duration * 86400;
-				databaseManager.UpdateUserInventoryExpiration(userID, wonItem->itemID, newExp);
+				InventoryItem newItem;
+				newItem.slotID = ++maxSlotID;
+				newItem.itemID = wonItem->itemID;
+				newItem.count = wonItem->count;
+				newItem.activeFlag = 1;
+				newItem.inUse = false;
+				newItem.obtainTime = (unsigned long)now;
+				newItem.expirationTime = 0;
+				newItem.enhanceBits = 0;
+				databaseManager.AddUserInventoryItems(userID, { newItem });
 			}
 		}
 		else {
-			InventoryItem newItem;
-			newItem.slotID = ++maxSlotID;
-			newItem.itemID = wonItem->itemID;
-			newItem.count = 1;
-			newItem.activeFlag = 1;
-			newItem.inUse = false;
-			newItem.obtainTime = (unsigned long)now;
-			newItem.expirationTime = isPermItem ? 0 : (unsigned long)(now + (unsigned long)wonItem->duration * 86400);
-			newItem.enhanceBits = 0;
-			databaseManager.AddUserInventoryItems(userID, { newItem });
+			// Duration / permanent item
+			bool isPermItem = (wonItem->duration == -1 || wonItem->duration == 0);
+			if (alreadyOwned) {
+				if (ownedItem.expirationTime == 0) {
+					// Already permanent, keep permanent
+				}
+				else if (isPermItem) {
+					// Upgrade to permanent
+					databaseManager.UpdateUserInventoryExpiration(userID, wonItem->itemID, 0);
+				}
+				else {
+					// Extend expiration
+					unsigned long baseTime = (ownedItem.expirationTime > (unsigned long)now) ? ownedItem.expirationTime : (unsigned long)now;
+					unsigned long newExp = baseTime + (unsigned long)wonItem->duration * 86400;
+					databaseManager.UpdateUserInventoryExpiration(userID, wonItem->itemID, newExp);
+				}
+			}
+			else {
+				InventoryItem newItem;
+				newItem.slotID = ++maxSlotID;
+				newItem.itemID = wonItem->itemID;
+				newItem.count = 1;
+				newItem.activeFlag = 1;
+				newItem.inUse = false;
+				newItem.obtainTime = (unsigned long)now;
+				newItem.expirationTime = isPermItem ? 0 : (unsigned long)(now + (unsigned long)wonItem->duration * 86400);
+				newItem.enhanceBits = 0;
+				databaseManager.AddUserInventoryItems(userID, { newItem });
+			}
 		}
 	}
 
@@ -465,7 +541,10 @@ bool ItemBoxManager::OpenBox(User* user, unsigned short decoderSlotID, unsigned 
 		user->GetUserLogName(), boxDef->name, wonItem->itemID, wonItem->name, wonItem->grade, wonItem->duration, canOpenAgain ? 1 : 0));
 
 	// 8. Send Packet 78 result to client (grade 1=Normal, 2=Bronze/Silver, 3=Silver, 4=Gold fireworks)
-	SendPacket_Item_OpenBoxResult(connection, 1, (unsigned char)wonItem->grade, wonItem->itemID, (short)wonItem->duration, wonItem->count);
+	const auto* wonDef = itemDefinitionManager.GetItem(wonItem->itemID);
+	bool wonIsCount = (wonDef != nullptr && !wonDef->isPeriod);
+	short displayDuration = wonIsCount ? 0 : (short)wonItem->duration;
+	SendPacket_Item_OpenBoxResult(connection, 1, (unsigned char)wonItem->grade, wonItem->itemID, displayDuration, wonItem->count);
 
 	// 9. Sync updated inventory (Packet 154 - SendPacket_Inventory automatically filters item 166 and syncs CBox count)
 	vector<unsigned short> deletedSlots;

@@ -128,7 +128,7 @@ void Packet_CharacterManager::ParsePacket_RecvCharacter(TCPConnection::Packet::p
 
 	const string& nickName = packet->ReadString();
 
-	serverConsole.Print(PrefixType::Info, format("[ Packet_CharacterManager ] User ({}) has sent Packet_RecvCharacter - nickName: {}\n", user->GetUserLogName(), nickName));
+	serverConsole.Print(PrefixType::Info, format("[ Packet_CharacterManager ] User ({}) has sent Packet_RecvCharacter - nickName: {}\n", user->GetUserLogName(), Cp950ToUtf8(nickName)));
 
 	char userCharacterExistsResult = user->IsUserCharacterExists();
 	if (userCharacterExistsResult < 0) {
@@ -175,6 +175,17 @@ void Packet_CharacterManager::ParsePacket_RecvCharacter(TCPConnection::Packet::p
 	char createUserInventoryResult = user->CreateUserInventory();
 	if (!createUserInventoryResult) {
 		if (createUserInventoryResult < 0) {
+			packetManager.SendPacket_Reply(connection, Packet_ReplyType::SysError);
+			return;
+		}
+
+		packetManager.SendPacket_Reply(connection, Packet_ReplyType::ALREADY_EXIST);
+		return;
+	}
+
+	char createUserItemsetsResult = user->CreateUserItemsets();
+	if (!createUserItemsetsResult) {
+		if (createUserItemsetsResult < 0) {
 			packetManager.SendPacket_Reply(connection, Packet_ReplyType::SysError);
 			return;
 		}

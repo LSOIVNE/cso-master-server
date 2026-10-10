@@ -34,28 +34,12 @@ map<unsigned char, string> QuestManager::_modeTable;
 map<string, unsigned char> QuestManager::_modeNameToID;
 
 bool QuestManager::loadGameModeList() {
-	const vector<string> searchPaths = {
-		"configs/gamemodelist.csv",
-		"../configs/gamemodelist.csv",
-		"bin/configs/gamemodelist.csv",
-		"D:/agy/CounterStrike/CSOTW/cso-master-server/configs/gamemodelist.csv"
-	};
-
-	string validPath = "";
-	for (const auto& path : searchPaths) {
-		if (fs::exists(path)) {
-			validPath = path;
-			break;
-		}
-	}
-
-	if (validPath.empty()) {
+	const string validPath = "configs/gamemodelist.csv";
+	ifstream file(validPath);
+	if (!file.is_open()) {
 		serverConsole.Print(PrefixType::Warn, "[ QuestManager ] gamemodelist.csv not found in configs, using defaults.\n");
 		return false;
 	}
-
-	ifstream file(validPath);
-	if (!file.is_open()) return false;
 
 	_modeTable.clear();
 	_modeNameToID.clear();
@@ -103,28 +87,12 @@ bool QuestManager::loadGameModeList() {
 }
 
 bool QuestManager::loadMapList() {
-	const vector<string> searchPaths = {
-		"configs/maplist.csv",
-		"../configs/maplist.csv",
-		"bin/configs/maplist.csv",
-		"D:/agy/CounterStrike/CSOTW/cso-master-server/configs/maplist.csv"
-	};
-
-	string validPath = "";
-	for (const auto& path : searchPaths) {
-		if (fs::exists(path)) {
-			validPath = path;
-			break;
-		}
-	}
-
-	if (validPath.empty()) {
+	const string validPath = "configs/maplist.csv";
+	ifstream file(validPath);
+	if (!file.is_open()) {
 		serverConsole.Print(PrefixType::Warn, "[ QuestManager ] maplist.csv not found in configs, using defaults.\n");
 		return false;
 	}
-
-	ifstream file(validPath);
-	if (!file.is_open()) return false;
 
 	_mapTable.clear();
 	_mapNameToID.clear();
@@ -294,30 +262,11 @@ bool QuestManager::loadConfigs() {
 	lock_guard<mutex> lock(_mutex);
 	_quests.clear();
 
-	const vector<string> searchPaths = {
-		"configs/quest.json",
-		"../configs/quest.json",
-		"bin/configs/quest.json",
-		"D:/agy/CounterStrike/CSOTW/cso-master-server/configs/quest.json"
-	};
-
-	string validPath = "";
-	for (const auto& path : searchPaths) {
-		if (fs::exists(path)) {
-			validPath = path;
-			break;
-		}
-	}
-
-	if (validPath.empty()) {
-		serverConsole.Print(PrefixType::Error, "[ QuestManager ] Cannot open quest.json from any search path!\n");
-		return false;
-	}
-
+	const string validPath = "configs/quest.json";
 	try {
 		ifstream f(validPath);
 		if (!f.is_open()) {
-			serverConsole.Print(PrefixType::Error, format("[ QuestManager ] Failed to open {}\n", validPath));
+			serverConsole.Print(PrefixType::Error, "[ QuestManager ] Cannot open configs/quest.json!\n");
 			return false;
 		}
 

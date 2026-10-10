@@ -89,12 +89,26 @@ void Packet_HostManager::ParsePacket_Host(TCPConnection::Packet::pointer packet)
 			packet->ReadBytes<float>();
 			packet->ReadBytes<float>();
 			packet->ReadBytes<float>();
+			if (packet->GetBuffer().size() >= (size_t)packet->GetReadOffset() + 4) {
+				packet->ReadBytes<float>();
+			}
 			break;
 		}
 		case Packet_HostType::PlayerBuyItem: {
-			packet->ReadUInt32_LE();
-			packet->ReadUInt16_LE();
-			packet->ReadUInt8();
+			unsigned long userID = packet->ReadUInt32_LE();
+			unsigned short itemID = packet->ReadUInt16_LE();
+			unsigned char count = packet->ReadUInt8();
+			serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] User ({}) PlayerBuyItem - userID: {}, itemID: {}, count: {}\n", user->GetUserLogName(), userID, itemID, (int)count));
+			break;
+		}
+		case Packet_HostType::FlyerFlock: {
+			string name = packet->ReadString();
+			serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] User ({}) requested FlyerFlock - name: {}\n", user->GetUserLogName(), name));
+			SendPacket_Host_FlyerFlock(connection, name);
+			break;
+		}
+		case Packet_HostType::GameEvent: {
+			// Telemetry / event telemetry sent from client (e.g. eventID: 33, userID), consume silently
 			break;
 		}
 		default: {
@@ -188,6 +202,23 @@ void Packet_HostManager::SendPacket_Host_ResultClose(TCPConnection::pointer conn
 	packet->Send();
 }
 
+void Packet_HostManager::SendPacket_Host_FlyerFlock(TCPConnection::pointer connection, const string& name) {
+	if (connection == NULL) {
+		return;
+	}
+
+	auto packet = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::Host });
+	if (packet == NULL) {
+		return;
+	}
+
+	packet->WriteUInt8(Packet_HostType::FlyerFlock);
+	packet->WriteString(name);
+	packet->WriteUInt8(1);
+
+	packet->Send();
+}
+
 void Packet_HostManager::parsePacket_Host_ServerIsActivated(User* user) {
 	if (user == NULL) {
 		return;
@@ -218,11 +249,37 @@ void Packet_HostManager::parsePacket_Host_ServerIsActivated(User* user) {
 			return;
 		}
 
+		for (auto& u : room->GetRoomUsers()) {
+			if (u == NULL) continue;
+			GameMatchUser* gmu = new GameMatchUser(u);
+			RoomUser* ru = room->GetRoomUser(u);
+			if (ru) {
+				gmu->SetTeam((Team)ru->team);
+			}
+			newGameMatch->AddGameMatchUser(gmu);
+		}
+
 		room->SetGameMatch(newGameMatch);
 
 		RoomSettings roomSettings;
 		roomSettings.lowFlag = ROOMSETTINGS_LFLAG_ROOMSTATE;
 		roomSettings.roomState = RoomState::Playing;
+		roomSettings.highFlag = ROOMSETTINGS_HFLAG_UNK80;
+		roomSettings.unkh80 = 3;
+
+		// BigHead (item 439) re-assert at match start.
+		// The engine (hw.dll) only learns the BigHead state from a room-settings
+		// packet that carries highFlag & 0x1000 (GameOptionManager::SetBigHead via
+		// sub_372A7C30). The lobby-side reply is sent while the client is still in
+		// the room, so we must repeat the flag together with the "room state = Playing"
+		// delta, otherwise the in-game engine session keeps BigHead = 0 and the
+		// "Bip01 Head" bone is never scaled (zs_trap etc.).
+		const RoomSettings& currentRoomSettings = room->GetRoomSettings();
+		if (IsBigHeadCompatibleMode(currentRoomSettings.gameModeID)) {
+			roomSettings.highFlag |= ROOMSETTINGS_HFLAG_UNK1000;
+			roomSettings.unkh1000 = CalculateRoomModeSubFlag(room->GetRoomHostUser(), currentRoomSettings.gameModeID, room->IsBigHeadDisabled());
+		}
+
 		room->UpdateRoomSettings(roomSettings);
 
 		roomManager.SendUpdateRoomPacketToAll(room, ROOMLIST_FLAG_ROOMSTATE);
@@ -235,11 +292,9 @@ void Packet_HostManager::parsePacket_Host_ServerIsActivated(User* user) {
 
 		for (auto& u : roomUsers) {
 			packet_RoomManager.SendPacket_Room_ReplyUpdateRoomSettings(u->GetConnection(), roomSettings);
-			roomManager.SendUpdateRoomPacket(u->GetConnection(), room, ROOMLIST_FLAG_ROOMSTATE);
 			if (u != user) {
 				SendPacket_Host_HostJoin(u->GetConnection(), user->GetUserID());
 			}
-			SendPacket_Host_UserWeapons(user->GetConnection(), u->GetUserID());
 		}
 	}
 }
@@ -336,20 +391,18 @@ void Packet_HostManager::parsePacket_Host_SendUserStatus(User* user, TCPConnecti
 		return;
 	}
 
-	if (gameMatch->GetGameMatchUserByUser(targetUser)) {
-		serverConsole.Print(PrefixType::Warn, format("[ Packet_HostManager ] User ({}) has sent Packet_Host SendUserStatus, but targetUser already exists in gameMatch!\n", user->GetUserLogName(), status));
-		return;
-	}
-
 	serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] User ({}) has sent Packet_Host SendUserStatus - userID: {}, status: {}\n", user->GetUserLogName(), userID, status));
 
-	GameMatchUser* gameMatchUser = new GameMatchUser(targetUser);
-	RoomUser* ru = room->GetRoomUser(targetUser);
-	if (ru) {
-		gameMatchUser->SetTeam((Team)ru->team);
-	}
-	if (!gameMatch->AddGameMatchUser(gameMatchUser)) {
-		return;
+	GameMatchUser* gameMatchUser = gameMatch->GetGameMatchUserByUser(targetUser);
+	if (!gameMatchUser) {
+		gameMatchUser = new GameMatchUser(targetUser);
+		RoomUser* ru = room->GetRoomUser(targetUser);
+		if (ru) {
+			gameMatchUser->SetTeam((Team)ru->team);
+		}
+		if (!gameMatch->AddGameMatchUser(gameMatchUser)) {
+			return;
+		}
 	}
 
 	targetUser->SetUserStatus(UserStatus::InGame);
@@ -584,7 +637,6 @@ void Packet_HostManager::parsePacket_Host_EndGame(User* user, TCPConnection::Pac
 
 	for (auto& u : roomUsers) {
 		packet_RoomManager.SendPacket_Room_ReplyUpdateRoomSettings(u->GetConnection(), roomSettings);
-		roomManager.SendUpdateRoomPacket(u->GetConnection(), room, ROOMLIST_FLAG_ROOMSTATE);
 
 		if (u != room->GetRoomHostUser()) {
 			room->SetUserReady(u, 0);
@@ -815,8 +867,8 @@ void Packet_HostManager::parsePacket_Host_SelectTeam(User* user, TCPConnection::
 
 	GameMatchUser* gameMatchUser = gameMatch->GetGameMatchUserByUser(targetUser);
 	if (gameMatchUser == NULL) {
-		serverConsole.Print(PrefixType::Warn, format("[ Packet_HostManager ] User ({}) has sent Packet_Host SelectTeam, but gameMatchUser is NULL!\n", user->GetUserLogName()));
-		return;
+		gameMatchUser = new GameMatchUser(targetUser);
+		gameMatch->AddGameMatchUser(gameMatchUser);
 	}
 
 	unsigned char team = packet->ReadUInt8();
@@ -829,6 +881,10 @@ void Packet_HostManager::parsePacket_Host_SelectTeam(User* user, TCPConnection::
 	serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] User ({}) has sent Packet_Host SelectTeam - userID: {}, team: {}\n", user->GetUserLogName(), userID, team));
 
 	gameMatchUser->SetTeam((Team)team);
+	RoomUser* ru = room->GetRoomUser(targetUser);
+	if (ru) {
+		ru->team = team;
+	}
 }
 
 void Packet_HostManager::SendPacket_Host_HostEndSession(TCPConnection::pointer connection) {
@@ -952,6 +1008,9 @@ void Packet_HostManager::SendPacket_Host_UserWeapons(TCPConnection::pointer conn
 
 	packet->Send();
 
+	if (allowedWeapons.find(439) != allowedWeapons.end()) {
+		serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] UserWeapons contains BigHeadEvent (item 439) for userID {}\n", targetUserID));
+	}
 	serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] Sent Packet_Host UserWeapons for userID {} ({} weapons)\n", targetUserID, allowedWeapons.size()));
 }
 

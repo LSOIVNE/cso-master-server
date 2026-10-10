@@ -156,6 +156,7 @@ public:
 	char CreateUserBuymenus() const noexcept;
 	char CreateUserBookmarks() const noexcept;
 	char CreateUserInventory() const noexcept;
+	char CreateUserItemsets() const noexcept;
 	char AddUserSession() const noexcept;
 	void RemoveUserSession() const noexcept;
 	char AddUserTransfer(const string& authToken, unsigned char serverID, unsigned char channelID) const noexcept;
@@ -170,7 +171,9 @@ public:
 	bool SaveUserBookMark(const BookMark& userBookMark) const noexcept;
 	const vector<BookMark> GetUserBookMarks() const noexcept;
 	const vector<InventoryItem> GetUserInventory() const noexcept;
+	bool HasItem(unsigned short itemID) const noexcept;
 	static unsigned char CalculateLevel(unsigned long long exp);
+	static unsigned long long GetExpForLevel(unsigned char level);
 
 private:
 	TCPConnection::pointer _connection;

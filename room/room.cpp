@@ -166,11 +166,25 @@ void Room::UpdateRoomHostUser(User* user) {
 
 	_roomHostUser = user;
 
+	unsigned char modeSubFlag = CalculateRoomModeSubFlag(user, _roomSettings.gameModeID, _bigheadDisabled);
+
 	vector<User*> roomUsers = GetRoomUsers();
 
 	roomUsers.erase(remove_if(roomUsers.begin(), roomUsers.end(), [](User* u) {
 		return (u == NULL || u->GetConnection() == NULL);
 	}), roomUsers.end());
+
+	if (_roomSettings.unkh1000 != modeSubFlag) {
+		_roomSettings.unkh1000 = modeSubFlag;
+		_roomSettings.highFlag |= ROOMSETTINGS_HFLAG_UNK1000;
+		RoomSettings delta;
+		delta.highFlag = ROOMSETTINGS_HFLAG_UNK1000;
+		delta.unkh1000 = modeSubFlag;
+		for (auto& u : roomUsers) {
+			packet_RoomManager.SendPacket_Room_ReplyUpdateRoomSettings(u->GetConnection(), delta);
+		}
+		roomManager.SendUpdateRoomPacketToAll(this, ROOMLIST_FLAG_UNK2000);
+	}
 
 	for (auto& u : roomUsers) {
 		roomManager.SendUpdateRoomPacket(u->GetConnection(), this, ROOMLIST_FLAG_ROOMHOST);

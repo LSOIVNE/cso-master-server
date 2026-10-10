@@ -68,14 +68,19 @@ public:
 	bool Init(const string& server, const string& user, const string& password, const string& database);
 	void Shutdown();
 	const LoginResult Login(const string& userName, const string& password);
+	int RegisterUser(const string& userName, const string& password, string& outErrorMsg);
 	bool IsNickNameExists(const string& nickName);
 	bool UpdateUserNickName(unsigned long userID, const string& nickName);
 	bool UpdateUserCamoNickName(unsigned long userID, const string& camoNickName);
+	bool UpdateUserLocation(unsigned long userID, unsigned short city, unsigned short county, unsigned short neighborhood);
+	bool ResetUserWinLose(unsigned long userID);
+	bool ResetUserKillDeath(unsigned long userID);
 	char CreateUserCharacter(unsigned long userID, const string& nickName);
 	const UserCharacterResult GetUserCharacter(unsigned long userID, unsigned long flag);
 	bool CreateUserBuymenus(unsigned long userID);
 	bool CreateUserBookmarks(unsigned long userID);
 	bool CreateUserInventory(unsigned long userID);
+	bool CreateUserItemsets(unsigned long userID);
 	char AddUserSession(unsigned long userID);
 	void RemoveUserSession(unsigned long userID);
 	char IsUserSessionAdded(unsigned long userID);
@@ -103,6 +108,7 @@ public:
 	bool UpdateUserInventoryExpiration(unsigned long userID, unsigned short itemID, unsigned long newExpirationTime);
 	bool UpdateUserInventoryItemEnhance(unsigned long userID, unsigned short slotID, unsigned long enhanceBits);
 	bool ResetUserInventory(unsigned long userID);
+	bool DeleteUserInventoryItem(unsigned long userID, unsigned short itemID, unsigned short count, vector<unsigned short>& outDeletedSlots, unsigned short& outActualDeletedCount);
 	bool SaveUserBattleResult(unsigned long userID, unsigned long long addedExp, unsigned long long addedPoints, unsigned short addedFrags, unsigned short addedDeaths, bool isWin, unsigned char newLevel, bool recordStats = true);
 	bool AddUserExp(unsigned long userID, unsigned long long addedExp, unsigned char* outNewLevel = nullptr);
 	bool SetUserLevel(unsigned long userID, unsigned char newLevel);

@@ -120,7 +120,11 @@ struct BuyMenu {
 struct ItemSet {
 	unsigned short characterItemID = 0;
 	unsigned char activeTab = 0;
-	unsigned short weapons[3][4] = {};
+	unsigned short weapons[3][4] = {
+		{ 12, 6, 161, 31 },
+		{ 12, 6, 161, 31 },
+		{ 12, 6, 161, 31 }
+	};
 };
 
 struct BookMark {

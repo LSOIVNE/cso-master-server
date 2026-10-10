@@ -1,11 +1,13 @@
 {
 	"IP": "127.0.0.1",
 	"Port": 8001,
+	"RegistrationPort": 8002,
 	"SSL": false,
 	"DecryptCipherMethod": 1,
 	"EncryptCipherMethod": 1,
 	"UDPAuthKey": "",
 	"MaxPlayers": 600,
+	"LobbyChatQuota": 255,
 	"QuestMinPlayers": 4,
 	"ServerID": 1,
 	"ChannelID": 1,
@@ -172,8 +174,31 @@
 		51,
 		52,
 		53,
-		158,
-		388
+		161,
+		388,
+		1001,
+		166,
+		173
+	],
+	"DefaultItemSets": [
+		{
+			"Primary": 12,
+			"Secondary": 6,
+			"Melee": 161,
+			"HEGrenade": 31
+		},
+		{
+			"Primary": 12,
+			"Secondary": 6,
+			"Melee": 161,
+			"HEGrenade": 31
+		},
+		{
+			"Primary": 12,
+			"Secondary": 6,
+			"Melee": 161,
+			"HEGrenade": 31
+		}
 	],
 	"ItemCommands": {
 		"VerifyItemCSVHash": true,

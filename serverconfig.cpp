@@ -26,6 +26,8 @@ ServerConfig::ServerConfig() {
 	sqlPassword = "";
 	sqlDatabase = "";
 	questMinPlayers = 4;
+	lobbyChatQuota = 255;
+	defaultItemSets = { { 12, 6, 161, 31 }, { 12, 6, 161, 31 }, { 12, 6, 161, 31 } };
 }
 
 string defaultServerConfig = R"({
@@ -36,6 +38,7 @@ string defaultServerConfig = R"({
 	"EncryptCipherMethod": 1,
 	"UDPAuthKey": "",
 	"MaxPlayers": 600,
+	"LobbyChatQuota": 255,
 	"ServerID": 1,
 	"ChannelID": 1,
 	"LauncherVersion": 67,
@@ -82,7 +85,27 @@ string defaultServerConfig = R"({
 			"Knife": [ 161 ]
 		}
 	},
-	"DefaultInventory": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57 ]
+	"DefaultInventory": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57 ],
+	"DefaultItemSets": [
+		{
+			"Primary": 12,
+			"Secondary": 6,
+			"Melee": 161,
+			"HEGrenade": 31
+		},
+		{
+			"Primary": 12,
+			"Secondary": 6,
+			"Melee": 161,
+			"HEGrenade": 31
+		},
+		{
+			"Primary": 12,
+			"Secondary": 6,
+			"Melee": 161,
+			"HEGrenade": 31
+		}
+	]
 })";
 
 const char* buyMenuCategories[] = {
@@ -125,6 +148,7 @@ bool ServerConfig::Load() {
 		if (config.contains("Port")) {
 			port = config.value("Port", 8001);
 		}
+		registrationPort = config.value("RegistrationPort", (unsigned short)(port + 1));
 		if (config.contains("SSL")) {
 			ssl = config.value("SSL", true);
 		}
@@ -153,6 +177,12 @@ bool ServerConfig::Load() {
 		}
 		if (config.contains("MaxPlayers")) {
 			maxPlayers = config.value("MaxPlayers", 600);
+		}
+		if (config.contains("LobbyChatQuota")) {
+			lobbyChatQuota = config.value("LobbyChatQuota", (unsigned char)255);
+		}
+		else if (config.contains("ChatQuota")) {
+			lobbyChatQuota = config.value("ChatQuota", (unsigned char)255);
 		}
 		if (config.contains("ServerID")) {
 			serverID = config.value("ServerID", 1);
@@ -287,6 +317,41 @@ bool ServerConfig::Load() {
 		}
 		if (config.contains("DefaultInventory")) {
 			defaultInventory = config["DefaultInventory"].get<vector<unsigned short>>();
+		}
+		this->defaultItemSets = { { 12, 6, 161, 31 }, { 12, 6, 161, 31 }, { 12, 6, 161, 31 } };
+		if (config.contains("DefaultItemSets")) {
+			const auto& dis = config["DefaultItemSets"];
+			if (dis.is_array()) {
+				int idx = 0;
+				for (const auto& item : dis) {
+					if (idx >= 3) break;
+					if (item.is_object()) {
+						defaultItemSets[idx].primary = item.value("Primary", (unsigned short)12);
+						defaultItemSets[idx].secondary = item.value("Secondary", (unsigned short)6);
+						defaultItemSets[idx].melee = item.value("Melee", (unsigned short)161);
+						defaultItemSets[idx].hegrenade = item.value("HEGrenade", item.value("Grenade", (unsigned short)31));
+					}
+					else if (item.is_array()) {
+						if (item.size() > 0) defaultItemSets[idx].primary = item[0].get<unsigned short>();
+						if (item.size() > 1) defaultItemSets[idx].secondary = item[1].get<unsigned short>();
+						if (item.size() > 2) defaultItemSets[idx].melee = item[2].get<unsigned short>();
+						if (item.size() > 3) defaultItemSets[idx].hegrenade = item[3].get<unsigned short>();
+					}
+					idx++;
+				}
+			}
+			else if (dis.is_object()) {
+				const char* setKeys[] = { "Set1", "Set2", "Set3" };
+				for (int idx = 0; idx < 3; idx++) {
+					if (dis.contains(setKeys[idx]) && dis[setKeys[idx]].is_object()) {
+						const auto& item = dis[setKeys[idx]];
+						defaultItemSets[idx].primary = item.value("Primary", (unsigned short)12);
+						defaultItemSets[idx].secondary = item.value("Secondary", (unsigned short)6);
+						defaultItemSets[idx].melee = item.value("Melee", (unsigned short)161);
+						defaultItemSets[idx].hegrenade = item.value("HEGrenade", item.value("Grenade", (unsigned short)31));
+					}
+				}
+			}
 		}
 		if (config.contains("ItemCommands")) {
 			const auto& ic = config["ItemCommands"];

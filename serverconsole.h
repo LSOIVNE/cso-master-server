@@ -57,4 +57,7 @@ private:
 	string _logFile;
 };
 
+std::string Cp950ToUtf8(const std::string& cp950Str);
+std::string Utf8ToCp950(const std::string& utf8Str);
+
 extern ServerConsole serverConsole;

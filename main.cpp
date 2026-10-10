@@ -10,12 +10,14 @@
 #include "noticemanager.h"
 #include "packet_shopmanager.h"
 #include "itemboxmanager.h"
+#include "rewarditemmanager.h"
 #include "bingomanager.h"
 #include "attendancemanager.h"
 #include "craftmanager.h"
 #include "enhancemanager.h"
 #include "titlemanager.h"
 #include "questmanager.h"
+#include "registration_server.h"
 
 HANDLE hMutex;
 
@@ -29,6 +31,7 @@ static BOOL WINAPI ConsoleCtrlHandler(DWORD CtrlType) {
 			userManager.RemoveAllUsers();
 			packetManager.Stop();
 			databaseManager.Shutdown();
+			registrationServer.Stop();
 			tcpServer.Stop();
 			udpServer.Stop();
 			ReleaseMutex(hMutex);
@@ -67,6 +70,7 @@ int main() {
 	noticeManager.Init();
 	packet_ShopManager.Init();
 	itemBoxManager.Init();
+	rewardItemManager.Init();
 	bingoManager.Init();
 	attendanceManager.Init();
 	craftManager.Init();
@@ -102,6 +106,13 @@ int main() {
 	}
 
 	tcpServer.Start();
+
+	if (!registrationServer.Init(serverConfig.registrationPort)) {
+		serverConsole.Print(PrefixType::Fatal, "[ RegistrationServer ] Failed to initialize Registration server!\n");
+		return -1;
+	}
+
+	registrationServer.Start();
 
 	if (!udpServer.Init(serverConfig.port)) {
 		serverConsole.Print(PrefixType::Fatal, "[ UDPServer ] Failed to initialize UDP server!\n");

@@ -20,10 +20,12 @@ enum Packet_HostType {
 	AddDeath = 8,
 	RoundResult = 9,
 	SelectTeam = 10,
+	GameEvent = 11,
 	PlayerBuyItem = 14,
 	PlayerPosition = 16,
 	ItemConsumed = 100,
-	UserWeapons = 101
+	UserWeapons = 101,
+	FlyerFlock = 102
 };
 
 class Packet_HostManager {
@@ -35,6 +37,7 @@ public:
 	void SendPacket_Host_ResultClose(TCPConnection::pointer connection);
 	void SendPacket_Host_ItemConsumed(TCPConnection::pointer connection, unsigned long targetUserID, unsigned short itemID, unsigned char result);
 	void SendPacket_Host_UserWeapons(TCPConnection::pointer connection, unsigned long targetUserID);
+	void SendPacket_Host_FlyerFlock(TCPConnection::pointer connection, const string& name);
 	void SendPacket_Host_HostEndSession(TCPConnection::pointer connection);
 
 private:

@@ -73,6 +73,10 @@ char User::CreateUserInventory() const noexcept {
 	return databaseManager.CreateUserInventory(_userID);
 }
 
+char User::CreateUserItemsets() const noexcept {
+	return databaseManager.CreateUserItemsets(_userID);
+}
+
 char User::AddUserSession() const noexcept {
 	return databaseManager.AddUserSession(_userID);
 }
@@ -131,6 +135,20 @@ const vector<InventoryItem> User::GetUserInventory() const noexcept {
 	return databaseManager.GetUserInventory(_userID);
 }
 
+bool User::HasItem(unsigned short itemID) const noexcept {
+	const auto inv = databaseManager.GetUserInventory(_userID);
+	const auto now = (unsigned long)time(nullptr);
+	for (const auto& item : inv) {
+		if (item.itemID == itemID) {
+			if (item.expirationTime != 0 && item.expirationTime < now) {
+				continue;
+			}
+			return true;
+		}
+	}
+	return false;
+}
+
 static const unsigned long long LEVEL_EXP_TABLE[] = {
 	605ULL, 1260ULL, 1964ULL, 2725ULL, 3543ULL, 4418ULL, 5359ULL, 6374ULL, 7462ULL, 8632ULL,
 	9892ULL, 11250ULL, 12715ULL, 14286ULL, 15971ULL, 17779ULL, 19726ULL, 21821ULL, 24071ULL, 26493ULL,
@@ -154,4 +172,10 @@ unsigned char User::CalculateLevel(unsigned long long exp) {
 	}
 	if (level > 72) level = 72;
 	return level;
+}
+
+unsigned long long User::GetExpForLevel(unsigned char level) {
+	if (level <= 1) return 0ULL;
+	if (level > 72) level = 72;
+	return LEVEL_EXP_TABLE[level - 2];
 }

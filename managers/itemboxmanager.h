@@ -11,6 +11,8 @@ struct ItemBoxReward {
 	unsigned short count = 1;
 	int grade = 1; // 1 = Normal, 2 = Silver, 3 = Gold, 4 = Top Gold
 	int broadcast = -1; // -1 = default by grade (grade >= broadcastMinGrade), 0 = suppress, 1 = force broadcast
+	unsigned long long bonusPoints = 0;
+	std::vector<unsigned short> bundleItems;
 };
 
 struct ItemBoxRates {

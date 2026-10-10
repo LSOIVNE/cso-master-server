@@ -15,7 +15,25 @@
           "Count": 1,
           "Price": 400,
           "AdType": 6,
-          "IsCount": 0
+          "IsCount": 1
+        }
+      ]
+    },
+	{
+      "ProductID": 20041,
+      "Name": "愛莉絲激戰包",
+      "IsPoints": 0,
+      "PackageItems": [
+        { "ItemID": 360, "Duration": 0, "Count": 1 },
+        { "ItemID": 173, "Duration": 0, "Count": 50 }
+      ],
+      "Offers": [
+        {
+          "Duration": 0,
+          "Count": 1,
+          "Price": 1299,
+          "AdType": 4,
+          "IsCount": 1
         }
       ]
     },
@@ -523,6 +541,48 @@
           "Duration": 0,
           "Count": 1,
           "Price": 299,
+          "AdType": 6,
+		  "IsCount": 0
+        }
+      ]
+    },
+	{
+      "ProductID": 394,
+      "Name": "聖水手榴彈",
+      "IsPoints": 1,
+      "Offers": [
+        {
+          "Duration": 30,
+          "Count": 1,
+          "Price": 3000,
+          "AdType": 6,
+		  "IsCount": 0
+        }
+      ]
+    },
+	{
+      "ProductID": 251,
+      "Name": "南瓜手榴彈",
+      "IsPoints": 1,
+      "Offers": [
+        {
+          "Duration": 30,
+          "Count": 1,
+          "Price": 1500,
+          "AdType": 6,
+		  "IsCount": 0
+        }
+      ]
+    },
+	{
+      "ProductID": 247,
+      "Name": "月餅手榴彈",
+      "IsPoints": 1,
+      "Offers": [
+        {
+          "Duration": 30,
+          "Count": 1,
+          "Price": 1500,
           "AdType": 6,
 		  "IsCount": 0
         }

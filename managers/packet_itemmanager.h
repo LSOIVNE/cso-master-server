@@ -1,6 +1,8 @@
 #pragma once
 #include "user.h"
 
+struct ItemDefinition;
+
 enum Packet_ItemType {
 	EquipItem = 0,
 	SelectClass = 1,
@@ -22,6 +24,7 @@ public:
 
 private:
 	void parsePacket_Item_EquipItem(User* user, TCPConnection::Packet::pointer packet);
+	void parsePacket_Item_UseRewardItem(User* user, const InventoryItem& item, const ItemDefinition& itemDef);
 	void parsePacket_Item_SelectClass(User* user, TCPConnection::Packet::pointer packet);
 	void parsePacket_Item_BuyWeapon(User* user, TCPConnection::Packet::pointer packet);
 	void parsePacket_Item_OpenBox(User* user, TCPConnection::Packet::pointer packet);

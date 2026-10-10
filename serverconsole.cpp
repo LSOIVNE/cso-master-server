@@ -289,3 +289,29 @@ void ServerConsole::log(const string& text) {
 	fwrite(text.c_str(), text.size(), 1, file);
 	fclose(file);
 }
+
+std::string Utf8ToCp950(const std::string& utf8Str) {
+	if (utf8Str.empty()) return "";
+	int wlen = MultiByteToWideChar(CP_UTF8, 0, utf8Str.data(), (int)utf8Str.size(), NULL, 0);
+	if (wlen <= 0) return utf8Str;
+	std::wstring wstr(wlen, 0);
+	MultiByteToWideChar(CP_UTF8, 0, utf8Str.data(), (int)utf8Str.size(), &wstr[0], wlen);
+	int mblen = WideCharToMultiByte(950, 0, wstr.data(), (int)wstr.size(), NULL, 0, NULL, NULL);
+	if (mblen <= 0) return utf8Str;
+	std::string result(mblen, 0);
+	WideCharToMultiByte(950, 0, wstr.data(), (int)wstr.size(), &result[0], mblen, NULL, NULL);
+	return result;
+}
+
+std::string Cp950ToUtf8(const std::string& cp950Str) {
+	if (cp950Str.empty()) return "";
+	int wlen = MultiByteToWideChar(950, 0, cp950Str.data(), (int)cp950Str.size(), NULL, 0);
+	if (wlen <= 0) return cp950Str;
+	std::wstring wstr(wlen, 0);
+	MultiByteToWideChar(950, 0, cp950Str.data(), (int)cp950Str.size(), &wstr[0], wlen);
+	int u8len = WideCharToMultiByte(CP_UTF8, 0, wstr.data(), (int)wstr.size(), NULL, 0, NULL, NULL);
+	if (u8len <= 0) return cp950Str;
+	std::string result(u8len, 0);
+	WideCharToMultiByte(CP_UTF8, 0, wstr.data(), (int)wstr.size(), &result[0], u8len, NULL, NULL);
+	return result;
+}

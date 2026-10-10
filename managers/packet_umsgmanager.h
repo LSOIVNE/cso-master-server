@@ -23,6 +23,8 @@ enum Packet_UMsgType {
 	GMWhisper = 41,
 	DisconnectWarning = 50,
 	ItemAwardNotice = 60,
+	ItemAwardNoticeRaw = 61,
+	ItemExpireNotice = 62,
 	BulletinNotice = 65
 };
 
@@ -41,6 +43,7 @@ public:
 	void ParsePacket_UMsg(TCPConnection::Packet::pointer packet);
 
 	void SendPacket_UMsg_PublicNotice(TCPConnection::pointer connection, const string& text);
+	void SendPacket_UMsg_DialogBox(TCPConnection::pointer connection, const string& text);
 	void SendPacket_UMsg_ServerMessageText(TCPConnection::pointer connection, const string& text);
 	void SendPacket_UMsg_RollingBanner(TCPConnection::pointer connection, const string& text);
 	void SendPacket_UMsg_ServerYell(TCPConnection::pointer connection, const string& senderNickName, const string& text);
@@ -48,6 +51,7 @@ public:
 	void SendPacket_UMsg_ItemAwardNotice(TCPConnection::pointer connection, const vector<AwardItem>& items, unsigned int points, unsigned int exp, unsigned int honor, const string& titleKey, const string& msgKey, const vector<string>& args = {});
 	void SendPacket_UMsg_ItemAwardNotice(TCPConnection::pointer connection, const vector<AwardItem>& items, unsigned int points, const string& titleKey, const string& msgKey, const vector<string>& args = {});
 	void SendPacket_UMsg_ItemAwardNotice(TCPConnection::pointer connection, const vector<AwardItem>& items, const string& titleKey, const string& msgKey, const vector<string>& args = {});
+	void SendPacket_UMsg_ItemExpireNotice(TCPConnection::pointer connection, const vector<unsigned short>& itemIDs);
 	void SendPacket_UMsg_NoticeMessage(TCPConnection::pointer connection, const string& text);
 	void SendPacket_UMsg_ServerMessage(TCPConnection::pointer connection, Packet_UMsgType type, const string& text, const vector<string>& additionalText = {});
 	void SendPacket_UMsg_SystemReply(TCPConnection::pointer connection, Packet_UMsgType type, const string& replyKey, const vector<string>& args);

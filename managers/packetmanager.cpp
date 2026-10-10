@@ -141,11 +141,32 @@ void PacketManager::SendPacket_Inventory(TCPConnection::pointer connection, cons
 			packet->WriteUInt16_LE(item.itemID);
 			packet->WriteUInt16_LE(item.count);
 			const auto* itemDef = itemDefinitionManager.GetItem(item.itemID);
+			bool isExpired = (item.expirationTime > 0 && item.expirationTime <= (unsigned long)time(NULL));
+			bool itemInUse = item.inUse && !isExpired;
 			bool isEquip = (itemDef != nullptr) ? itemDef->IsEquipment() : (item.activeFlag != 0);
+			if (item.itemID == 68) {
+				isEquip = itemInUse;
+			}
 			packet->WriteUInt8(isEquip ? 1 : 0);
-			packet->WriteUInt8(item.inUse ? 1 : 0);
+			packet->WriteUInt8(itemInUse ? 1 : 0);
 			packet->WriteUInt32_LE(item.obtainTime);
-			packet->WriteUInt32_LE(item.expirationTime); // 0 = permanent
+
+			unsigned long expField = item.expirationTime;
+			if (!isEquip && itemDef != nullptr && itemDef->isPeriod) {
+				if (item.expirationTime > 0) {
+					time_t now = time(NULL);
+					if (item.expirationTime > (unsigned long)now) {
+						expField = (unsigned long)((item.expirationTime - (unsigned long)now + 86399) / 86400);
+					}
+					else {
+						expField = 0;
+					}
+				}
+			}
+			else if (isExpired) {
+				expField = 0;
+			}
+			packet->WriteUInt32_LE(expField);
 			packet->WriteUInt32_LE(item.enhanceBits);
 		}
 
@@ -222,11 +243,32 @@ void PacketManager::SendPacket_InventoryDelta(TCPConnection::pointer connection,
 				packet->WriteUInt16_LE(item.itemID);
 				packet->WriteUInt16_LE(item.count);
 				const auto* itemDef = itemDefinitionManager.GetItem(item.itemID);
+				bool isExpired = (item.expirationTime > 0 && item.expirationTime <= (unsigned long)time(NULL));
+				bool itemInUse = item.inUse && !isExpired;
 				bool isEquip = (itemDef != nullptr) ? itemDef->IsEquipment() : (item.activeFlag != 0);
+				if (item.itemID == 68) {
+					isEquip = itemInUse;
+				}
 				packet->WriteUInt8(isEquip ? 1 : 0);
-				packet->WriteUInt8(item.inUse ? 1 : 0);
+				packet->WriteUInt8(itemInUse ? 1 : 0);
 				packet->WriteUInt32_LE(item.obtainTime);
-				packet->WriteUInt32_LE(item.expirationTime); // 0 = permanent
+
+				unsigned long expField = item.expirationTime;
+				if (!isEquip && itemDef != nullptr && itemDef->isPeriod) {
+					if (item.expirationTime > 0) {
+						time_t now = time(NULL);
+						if (item.expirationTime > (unsigned long)now) {
+							expField = (unsigned long)((item.expirationTime - (unsigned long)now + 86399) / 86400);
+						}
+						else {
+							expField = 0;
+						}
+					}
+				}
+				else if (isExpired) {
+					expField = 0;
+				}
+				packet->WriteUInt32_LE(expField);
 				packet->WriteUInt32_LE(item.enhanceBits);
 			}
 
@@ -276,7 +318,11 @@ void PacketManager::BuildUserCharacter(TCPConnection::Packet::pointer packet, co
 		packet->WriteString(userCharacter.nickName);
 	}
 	if (userCharacter.flag & USERCHARACTER_FLAG_UNK4) {
-		packet->WriteString(userCharacter.unk4_1);
+		string camo = userCharacter.unk4_1;
+		if (camo.empty() && !userCharacter.nickName.empty()) {
+			camo = userCharacter.nickName;
+		}
+		packet->WriteString(camo);
 		packet->WriteUInt8(userCharacter.unk4_2);
 		packet->WriteUInt8(userCharacter.unk4_3);
 		packet->WriteUInt8(userCharacter.unk4_4);

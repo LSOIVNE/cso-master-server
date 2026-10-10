@@ -11,12 +11,6 @@ using json = nlohmann::json;
 NoticeManager noticeManager;
 
 static string GetNoticeConfigPath() {
-	if (std::filesystem::exists("configs/notice.json")) {
-		return "configs/notice.json";
-	}
-	if (std::filesystem::exists("bin/configs/notice.json")) {
-		return "bin/configs/notice.json";
-	}
 	return "configs/notice.json";
 }
 
@@ -88,17 +82,6 @@ bool NoticeManager::SaveConfig(const string& path) {
 	}
 	else {
 		serverConsole.Print(PrefixType::Error, format("[ NoticeManager ] Failed to save config file: {}\n", targetPath));
-	}
-
-	// Also sync to alternate path if directory exists
-	if (path.empty()) {
-		string altPath = (targetPath == "configs/notice.json") ? "bin/configs/notice.json" : "configs/notice.json";
-		if (std::filesystem::exists(std::filesystem::path(altPath).parent_path())) {
-			ofstream altFile(altPath);
-			if (altFile.is_open()) {
-				altFile << j.dump(4);
-			}
-		}
 	}
 
 	return success;

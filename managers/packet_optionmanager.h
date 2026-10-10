@@ -5,7 +5,8 @@ constexpr auto OPTION_MAX_SIZE = 5120;
 
 enum Packet_OptionType {
 	UserOption = 0,
-	Unk1 = 1
+	Unk1 = 1,
+	Unk2 = 2
 };
 
 class Packet_OptionManager {
@@ -16,6 +17,7 @@ public:
 private:
 	void parsePacket_Option_UserOption(User* user, TCPConnection::Packet::pointer packet);
 	void parsePacket_Option_Unk1(User* user, TCPConnection::Packet::pointer packet);
+	void parsePacket_Option_Unk2(User* user, TCPConnection::Packet::pointer packet);
 };
 
 extern Packet_OptionManager packet_OptionManager;

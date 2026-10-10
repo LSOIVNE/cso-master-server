@@ -17,27 +17,10 @@ bool EnhanceManager::Init() {
 }
 
 bool EnhanceManager::Reload() {
-	const std::vector<std::string> searchPaths = {
-		"configs\\enhance.json",
-		"configs/enhance.json",
-		"enhance.json",
-		"..\\configs\\enhance.json",
-		"..\\..\\configs\\enhance.json",
-		"bin\\configs\\enhance.json"
-	};
-
-	std::ifstream file;
-	std::string resolvedPath;
-	for (const auto& p : searchPaths) {
-		file.open(p);
-		if (file.is_open()) {
-			resolvedPath = p;
-			break;
-		}
-	}
-
+	const std::string resolvedPath = "configs/enhance.json";
+	std::ifstream file(resolvedPath);
 	if (!file.is_open()) {
-		serverConsole.Print(PrefixType::Error, "[ EnhanceManager ] Failed to locate enhance.json in search paths!\n");
+		serverConsole.Print(PrefixType::Error, "[ EnhanceManager ] Failed to open configs/enhance.json!\n");
 		return false;
 	}
 

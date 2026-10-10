@@ -6,21 +6,21 @@
       90,
       80,
       70,
-      50,
-      30
+      60,
+      50
     ],
     "AdvancedPartSuccessRates": [
       95,
       85,
       75,
-      60,
-      45,
-      30,
-      20,
-      10
+      70,
+      70,
+      65,
+      65,
+      65
     ],
-    "NormalPartLevelDownChance": 0,
-    "AdvancedPartLevelDownChance": 0,
+    "NormalPartLevelDownChance": 15,
+    "AdvancedPartLevelDownChance": 10,
     "BroadcastMaxEnhance": true,
     "FailureRefundPerPart": {
       "Enabled": true,

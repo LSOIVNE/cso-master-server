@@ -55,25 +55,9 @@ bool AttendanceManager::Init(const std::string& configPath) {
 }
 
 bool AttendanceManager::LoadConfig(const std::string& configPath) {
-	std::vector<std::string> searchPaths = {
-		configPath,
-		"configs/attendance.json",
-		"configs\\attendance.json",
-		"bin/configs/attendance.json",
-		"bin\\configs\\attendance.json",
-		"../configs/attendance.json"
-	};
-
-	std::string resolvedPath = "";
-	for (const auto& path : searchPaths) {
-		if (std::filesystem::exists(path)) {
-			resolvedPath = path;
-			break;
-		}
-	}
-
-	if (resolvedPath.empty()) {
-		serverConsole.Print(PrefixType::Warn, format("[ AttendanceManager ] Failed to locate attendance config file! (tried {})\n", configPath));
+	std::string resolvedPath = configPath.empty() ? "configs/attendance.json" : configPath;
+	if (!std::filesystem::exists(resolvedPath)) {
+		serverConsole.Print(PrefixType::Warn, format("[ AttendanceManager ] Config file not found: {}\n", resolvedPath));
 		return false;
 	}
 

@@ -58,6 +58,13 @@ struct PermissionConfig {
 	bool allowPlayerReloadQuest = false;
 };
 
+struct DefaultLoadout {
+	unsigned short primary = 12;
+	unsigned short secondary = 6;
+	unsigned short melee = 161;
+	unsigned short hegrenade = 31;
+};
+
 struct ShopConfig {
 	bool broadcastOnReload = false;
 };
@@ -70,6 +77,7 @@ public:
 
 	unsigned long ip;
 	unsigned short port;
+	unsigned short registrationPort = 8002;
 	bool ssl;
 	CipherMethod decryptCipherMethod;
 	CipherMethod encryptCipherMethod;
@@ -89,10 +97,12 @@ public:
 	vector<string> prohibitedNames;
 	vector<BuyMenu> defaultBuyMenus;
 	vector<unsigned short> defaultInventory;
+	vector<DefaultLoadout> defaultItemSets;
 	ItemCommandConfig itemCommands;
 	PermissionConfig permissions;
 	ShopConfig shop;
 	unsigned char questMinPlayers = 4;
+	unsigned char lobbyChatQuota = 255;
 };
 
 extern ServerConfig serverConfig;

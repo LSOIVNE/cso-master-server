@@ -18,6 +18,7 @@ struct ItemDefinition {
 	std::string name;
 	std::string className;
 	unsigned char category = 0;
+	unsigned char level = 0;
 	bool isPeriod = false; // true: duration-based (Period=1), false: count-based (Period=0)
 	unsigned short disReward1 = 0;
 	unsigned short disReward2 = 0;

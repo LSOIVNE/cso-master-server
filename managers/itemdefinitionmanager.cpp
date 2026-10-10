@@ -40,28 +40,10 @@ bool ItemDefinitionManager::Init() {
 	_items.clear();
 	_itemOrder.clear();
 
-	const std::vector<std::string> searchPaths = {
-		"configs\\item.csv",
-		"configs/item.csv",
-		"item.csv",
-		"..\\item.csv",
-		"..\\..\\item.csv",
-		"D:\\agy\\CounterStrike\\CSOTW\\item.csv"
-	};
-
-	std::ifstream file;
-	std::string loadedPath;
-
-	for (const auto& path : searchPaths) {
-		file.open(path);
-		if (file.is_open()) {
-			loadedPath = path;
-			break;
-		}
-	}
-
+	const std::string loadedPath = "configs/item.csv";
+	std::ifstream file(loadedPath);
 	if (!file.is_open()) {
-		serverConsole.Print(PrefixType::Error, "[ ItemDefinitionManager ] Failed to locate item.csv in any search path!\n");
+		serverConsole.Print(PrefixType::Error, "[ ItemDefinitionManager ] Failed to open configs/item.csv!\n");
 		return false;
 	}
 
@@ -124,6 +106,9 @@ bool ItemDefinitionManager::Init() {
 			itemDef.className = className;
 			itemDef.category = category;
 			itemDef.isPeriod = isPeriod;
+			if (fields.size() > 8 && !fields[8].empty()) {
+				try { itemDef.level = (unsigned char)std::stoul(fields[8]); } catch (...) {}
+			}
 
 			if (fields.size() > 38 && !fields[38].empty()) {
 				try { itemDef.disReward1 = (unsigned short)std::stoul(fields[38]); } catch (...) {}
@@ -147,32 +132,24 @@ bool ItemDefinitionManager::Init() {
 	serverConsole.Print(PrefixType::Info, format("[ ItemDefinitionManager ] Successfully loaded {} item definitions from item.csv.\n", _items.size()));
 
 	// Load authentic Traditional Chinese item names mapping if available
-	const std::vector<std::string> namePaths = {
-		"configs\\item_names_tw.json",
-		"configs/item_names_tw.json",
-		"item_names_tw.json",
-		"..\\configs\\item_names_tw.json"
-	};
-	for (const auto& np : namePaths) {
-		std::ifstream nFile(np);
-		if (nFile.is_open()) {
-			try {
-				nlohmann::json j;
-				nFile >> j;
-				size_t twCount = 0;
-				for (auto& [key, val] : j.items()) {
-					unsigned short id = (unsigned short)std::stoul(key);
-					if (_items.find(id) != _items.end() && val.is_string()) {
-						_items[id].name = val.get<std::string>();
-						twCount++;
-					}
+	const std::string np = "configs/item_names_tw.json";
+	std::ifstream nFile(np);
+	if (nFile.is_open()) {
+		try {
+			nlohmann::json j;
+			nFile >> j;
+			size_t twCount = 0;
+			for (auto& [key, val] : j.items()) {
+				unsigned short id = (unsigned short)std::stoul(key);
+				if (_items.find(id) != _items.end() && val.is_string()) {
+					_items[id].name = val.get<std::string>();
+					twCount++;
 				}
-				serverConsole.Print(PrefixType::Info, format("[ ItemDefinitionManager ] Loaded {} authentic Chinese item names from {}\n", twCount, np));
-				break;
 			}
-			catch (const std::exception& e) {
-				serverConsole.Print(PrefixType::Warn, format("[ ItemDefinitionManager ] Failed to parse {}: {}\n", np, e.what()));
-			}
+			serverConsole.Print(PrefixType::Info, format("[ ItemDefinitionManager ] Loaded {} authentic Chinese item names from {}\n", twCount, np));
+		}
+		catch (const std::exception& e) {
+			serverConsole.Print(PrefixType::Warn, format("[ ItemDefinitionManager ] Failed to parse {}: {}\n", np, e.what()));
 		}
 	}
 
