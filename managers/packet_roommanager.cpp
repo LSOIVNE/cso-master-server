@@ -221,7 +221,12 @@ void Packet_RoomManager::SendPacket_Room_GameResult(TCPConnection::pointer conne
 
 	unsigned char playerCount = (unsigned char)players.size();
 
-	packet->WriteUInt8(winTeam);    // 1 - tr, 2 - ct, 0 - draw/none
+	unsigned char outWinTeam = winTeam;
+	if (IsScenarioMode(gameModeID)) {
+		outWinTeam = 0;
+	}
+
+	packet->WriteUInt8(outWinTeam); // 1 - tr, 2 - ct, 0 - draw/none (0 for Scenario)
 	packet->WriteUInt8(terWins);    // TER score
 	packet->WriteUInt8(ctWins);     // CT score
 	packet->WriteUInt8(playerCount);// num of players
@@ -241,11 +246,20 @@ void Packet_RoomManager::SendPacket_Room_GameResult(TCPConnection::pointer conne
 		unsigned short kills = gmu->GetKills();
 		unsigned short deaths = gmu->GetDeaths();
 		unsigned char rank = gmu->GetRank();
-		unsigned char isWin = (winTeam != 0 && team == winTeam) ? 1 : 0;
-		unsigned char isLoss = (winTeam != 0 && team != winTeam) ? 1 : 0;
+		unsigned char isWin = 0;
+		unsigned char isLoss = 0;
 		if (gameModeID == 1 || gameModeID == 22) {
 			isWin = (rank == 1) ? 1 : 0;
 			isLoss = (rank != 1) ? 1 : 0;
+		}
+		else if (IsScenarioMode(gameModeID)) {
+			bool isClear = (terWins > ctWins);
+			isWin = isClear ? 1 : 0;
+			isLoss = isClear ? 0 : 1;
+		}
+		else {
+			isWin = (winTeam != 0 && team == winTeam) ? 1 : 0;
+			isLoss = (winTeam != 0 && team != winTeam) ? 1 : 0;
 		}
 
 		unsigned short earnedExp = gmu->GetExp();

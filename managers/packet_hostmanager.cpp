@@ -523,16 +523,23 @@ void Packet_HostManager::parsePacket_Host_EndGame(User* user, TCPConnection::Pac
 	unsigned char ctWins = packet->ReadUInt8();
 	unsigned long matchDuration = packet->ReadUInt32_LE();
 
-	if (winTeam == 0 && gameMatch->GetWinTeam() != 0) {
-		winTeam = gameMatch->GetWinTeam();
+	unsigned char gameModeID = room ? room->GetRoomSettings().gameModeID : 0;
+
+	if (IsScenarioMode(gameModeID)) {
+		winTeam = 0;
 	}
-	if (terWins == 0 && ctWins == 0) {
-		terWins = gameMatch->GetTerWins();
-		ctWins = gameMatch->GetCtWins();
-	}
-	if (winTeam == 0) {
-		if (terWins > ctWins) winTeam = 1;
-		else if (ctWins > terWins) winTeam = 2;
+	else {
+		if (winTeam == 0 && gameMatch->GetWinTeam() != 0) {
+			winTeam = gameMatch->GetWinTeam();
+		}
+		if (terWins == 0 && ctWins == 0) {
+			terWins = gameMatch->GetTerWins();
+			ctWins = gameMatch->GetCtWins();
+		}
+		if (winTeam == 0) {
+			if (terWins > ctWins) winTeam = 1;
+			else if (ctWins > terWins) winTeam = 2;
+		}
 	}
 
 	serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] User ({}) has sent Packet_Host EndGame - winTeam: {}, terWins: {}, ctWins: {}, matchDuration: {}\n",
@@ -552,7 +559,6 @@ void Packet_HostManager::parsePacket_Host_EndGame(User* user, TCPConnection::Pac
 		return a->GetDeaths() < b->GetDeaths();
 	});
 
-	unsigned char gameModeID = room ? room->GetRoomSettings().gameModeID : 0;
 	// Only competitive PVP modes record battles/wins/frags/deaths to user personal stats:
 	// 0: Original, 1: DeathMatch, 2: TeamDeathMatch, 6: Official, 7: Official_TieBreak, 22: GunDeath, 23: LightOri
 	bool recordStats = (gameModeID == 0 || gameModeID == 1 || gameModeID == 2 || 
@@ -575,6 +581,9 @@ void Packet_HostManager::parsePacket_Host_EndGame(User* user, TCPConnection::Pac
 		bool isWin = false;
 		if (gameModeID == 1 || gameModeID == 22) {
 			isWin = (gmu->GetRank() == 1);
+		}
+		else if (IsScenarioMode(gameModeID)) {
+			isWin = (terWins > ctWins);
 		}
 		else {
 			isWin = (winTeam != 0 && team == winTeam);
@@ -817,6 +826,10 @@ void Packet_HostManager::parsePacket_Host_RoundResult(User* user, TCPConnection:
 	unsigned char winTeam = packet->ReadUInt8();
 	unsigned char terWins = packet->ReadUInt8();
 	unsigned char ctWins = packet->ReadUInt8();
+
+	if (room && IsScenarioMode(room->GetRoomSettings().gameModeID)) {
+		winTeam = 0;
+	}
 
 	gameMatch->SetWinTeam(winTeam);
 	gameMatch->SetTerWins(terWins);

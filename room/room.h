@@ -61,6 +61,10 @@ inline bool IsBigHeadCompatibleMode(unsigned char gameModeID) noexcept {
 	return (gameModeID == 15 || gameModeID == 17);
 }
 
+inline bool IsScenarioMode(unsigned char gameModeID) noexcept {
+	return (gameModeID == 15 || gameModeID == 17);
+}
+
 inline unsigned char CalculateRoomModeSubFlag(const User* hostUser, unsigned char gameModeID, bool bigheadDisabled = false) noexcept {
 	if (!hostUser) return 0;
 	if (IsBigHeadCompatibleMode(gameModeID)) {
