@@ -1,0 +1,598 @@
+{
+  "settings": {
+    "enabled": true,
+    "default_title_key": "HSCENARIO_MONSTER_DROP_ITEM_TITLE",
+    "default_msg_key": "HSCENARIO_MONSTER_DROP_ITEM_GIVE"
+  },
+  "default_reward": {
+    "description": "未單獨配置地圖之預設通關獎勵 (災厄之章 & 戰神之章)",
+    "game_mode": 0,
+    "title_key": "HSCENARIO_MONSTER_DROP_ITEM_TITLE",
+    "msg_key": "HSCENARIO_MONSTER_DROP_ITEM_GIVE",
+    "enabled": false,
+    "rewards": [
+      {
+        "itemID": 166,
+        "name": "C-Box",
+        "count": 1,
+        "duration": 0
+      }
+    ]
+  },
+  "rewards": [
+    {
+      "map_id": 74,
+      "map_name": "zs_lostcity",
+      "description": "生存: 失落的城市",
+      "game_mode": 15,
+      "title_key": "LOSTCITY_Clear_TITLE",
+      "msg_key": "LOSTCITY_Clear_MSG",
+      "enabled": true,
+      "rewards": [
+        {
+          "itemID": 275,
+          "name": "特種部隊的作戰地圖",
+          "count": 1,
+          "duration": 0
+        }
+      ]
+    },
+    {
+      "map_id": 75,
+      "map_name": "zs_2gate",
+      "description": "生存: 命運的關卡",
+      "game_mode": 15,
+      "title_key": "2GATE_Clear_TITLE",
+      "msg_key": "2GATE_Clear_MSG",
+      "enabled": true,
+      "rewards": [
+        {
+          "itemID": 276,
+          "name": "被破壞的電磁裝置",
+          "count": 1,
+          "duration": 0
+        }
+      ]
+    },
+    {
+      "map_id": 76,
+      "map_name": "zs_trap",
+      "description": "生存: 沈默的陷阱",
+      "game_mode": 15,
+      "title_key": "TRAP_Clear_TITLE",
+      "msg_key": "TRAP_Clear_MSG",
+      "enabled": true,
+      "rewards": [
+        {
+          "itemID": 277,
+          "name": "安德烈的記事本",
+          "count": 1,
+          "duration": 0
+        }
+      ]
+    },
+    {
+      "map_id": 77,
+      "map_name": "zs_lastclue",
+      "description": "追蹤: 最終的線索",
+      "game_mode": 15,
+      "title_key": "LASTCLUE_Clear_TITLE",
+      "msg_key": "LASTCLUE_Clear_MSG",
+      "enabled": true,
+      "rewards": [
+        {
+          "itemID": 278,
+          "name": "巨獸雷比亞的採樣",
+          "count": 1,
+          "duration": 0
+        }
+      ]
+    },
+    {
+      "map_id": 79,
+      "map_name": "zs_lostcityHard",
+      "description": "生存: 失落的城市(困難)",
+      "game_mode": 15,
+      "title_key": "LOSTCITY_Clear_TITLE",
+      "msg_key": "LOSTCITY_Clear_MSG",
+      "enabled": true,
+      "rewards": [
+        {
+          "itemID": 275,
+          "name": "特種部隊的作戰地圖",
+          "count": 1,
+          "duration": 0
+        }
+      ]
+    },
+    {
+      "map_id": 80,
+      "map_name": "zs_2gateHard",
+      "description": "生存: 命運的關卡(困難)",
+      "game_mode": 15,
+      "title_key": "2GATE_Clear_TITLE",
+      "msg_key": "2GATE_Clear_MSG",
+      "enabled": true,
+      "rewards": [
+        {
+          "itemID": 276,
+          "name": "被破壞的電磁裝置",
+          "count": 1,
+          "duration": 0
+        }
+      ]
+    },
+    {
+      "map_id": 85,
+      "map_name": "zs_chaos",
+      "description": "追蹤: 命運之門",
+      "game_mode": 15,
+      "title_key": "CHAOS_Clear_TITLE",
+      "msg_key": "CHAOS_Clear_MSG",
+      "enabled": true,
+      "rewards": [
+        {
+          "itemID": 326,
+          "name": "雷比亞的體液",
+          "count": 1,
+          "duration": 0
+        }
+      ]
+    },
+    {
+      "map_id": 86,
+      "map_name": "zs_lostcityEasy",
+      "description": "生存: 失落的城市(簡單)",
+      "game_mode": 15,
+      "title_key": "HSCENARIO_MONSTER_DROP_ITEM_TITLE",
+      "msg_key": "HSCENARIO_MONSTER_DROP_ITEM_GIVE",
+      "enabled": true,
+      "rewards": [
+        {
+          "itemID": 166,
+          "name": "C-Box",
+          "count": 1,
+          "duration": 0
+        },
+        {
+          "randomItems": [
+            {
+              "itemID": 166,
+              "name": "C-Box",
+              "count": 1,
+              "duration": 0,
+              "weight": 60
+            },
+            {
+              "itemID": 5101,
+              "name": "1日耐久材料",
+              "count": 1,
+              "duration": 0,
+              "weight": 40
+            }
+          ],
+          "pickCount": 1
+        }
+      ]
+    },
+    {
+      "map_id": 87,
+      "map_name": "zs_2gateEasy",
+      "description": "生存: 命運的關卡(簡單)",
+      "game_mode": 15,
+      "title_key": "HSCENARIO_MONSTER_DROP_ITEM_TITLE",
+      "msg_key": "HSCENARIO_MONSTER_DROP_ITEM_GIVE",
+      "enabled": false,
+      "rewards": [
+        {
+          "itemID": 166,
+          "name": "C-Box",
+          "count": 1,
+          "duration": 0
+        },
+        {
+          "randomItems": [
+            {
+              "itemID": 166,
+              "name": "C-Box",
+              "count": 1,
+              "duration": 0,
+              "weight": 60
+            },
+            {
+              "itemID": 5101,
+              "name": "1日耐久材料",
+              "count": 1,
+              "duration": 0,
+              "weight": 40
+            }
+          ],
+          "pickCount": 1
+        }
+      ]
+    },
+    {
+      "map_id": 92,
+      "map_name": "zs_cube",
+      "description": "競爭: 殺戮禁區",
+      "game_mode": 15,
+      "title_key": "HSCENARIO_MONSTER_DROP_ITEM_TITLE",
+      "msg_key": "HSCENARIO_MONSTER_DROP_ITEM_GIVE",
+      "enabled": false,
+      "rewards": [
+        {
+          "itemID": 166,
+          "name": "C-Box",
+          "count": 1,
+          "duration": 0
+        },
+        {
+          "randomItems": [
+            {
+              "itemID": 166,
+              "name": "C-Box",
+              "count": 1,
+              "duration": 0,
+              "weight": 50
+            },
+            {
+              "itemID": 5101,
+              "name": "1日耐久材料",
+              "count": 1,
+              "duration": 0,
+              "weight": 35
+            },
+            {
+              "itemID": 5102,
+              "name": "3日耐久材料",
+              "count": 1,
+              "duration": 0,
+              "weight": 15
+            }
+          ],
+          "pickCount": 1
+        }
+      ]
+    },
+    {
+      "map_id": 98,
+      "map_name": "zs_deadend",
+      "description": "追蹤: 最終的絕望",
+      "game_mode": 15,
+      "title_key": "DEADEND_Clear_TITLE",
+      "msg_key": "DEADEND_Clear_MSG",
+      "enabled": true,
+      "rewards": [
+        {
+          "randomItems": [
+            {
+              "itemID": 368,
+              "name": "阿比隆的骨頭",
+              "count": 1,
+              "duration": 0,
+              "weight": 50
+            },
+            {
+              "itemID": 369,
+              "name": "阿比隆的基因",
+              "count": 1,
+              "duration": 0,
+              "weight": 50
+            }
+          ],
+          "pickCount": 1
+        }
+      ]
+    },
+    {
+      "map_id": 106,
+      "map_name": "zs_trace",
+      "description": "追蹤: 劇毒的傷處",
+      "game_mode": 15,
+      "title_key": "Trace_Clear_TITLE",
+      "msg_key": "Trace_Clear_MSG",
+      "enabled": true,
+      "rewards": [
+        {
+          "itemID": 409,
+          "name": "<麥瑪西>研究報告1",
+          "count": 1,
+          "duration": 0
+        }
+      ]
+    },
+    {
+      "map_id": 112,
+      "map_name": "zs_culvert",
+      "description": "生存: 地下水道",
+      "game_mode": 15,
+      "title_key": "CULVERT_Clear_TITLE",
+      "msg_key": "CULVERT_Clear_MSG",
+      "enabled": true,
+      "rewards": [
+        {
+          "itemID": 410,
+          "name": "<麥瑪西>研究報告2",
+          "count": 1,
+          "duration": 0
+        }
+      ]
+    },
+    {
+      "map_id": 113,
+      "map_name": "zs_decoy",
+      "description": "追蹤: 迷惑深丘",
+      "game_mode": 15,
+      "title_key": "DECOY_Clear_TITLE",
+      "msg_key": "DECOY_Clear_MSG",
+      "enabled": true,
+      "rewards": [
+        {
+          "itemID": 411,
+          "name": "<麥瑪西>研究報告3",
+          "count": 1,
+          "duration": 0
+        }
+      ]
+    },
+    {
+      "map_id": 117,
+      "map_name": "zs_angra",
+      "description": "追蹤:惡夢工廠",
+      "game_mode": 15,
+      "title_key": "ANGRA_Clear_TITLE",
+      "msg_key": "ANGRA_Clear_MSG",
+      "enabled": true,
+      "rewards": [
+        {
+          "itemID": 412,
+          "name": "<麥瑪西>研究報告4",
+          "count": 1,
+          "duration": 0
+        }
+      ]
+    },
+    {
+      "map_id": 119,
+      "map_name": "zs_nightmare2",
+      "description": "殲滅:終極生死戰",
+      "game_mode": 15,
+      "title_key": "HSCENARIO_MONSTER_DROP_ITEM_TITLE",
+      "msg_key": "HSCENARIO_MONSTER_DROP_ITEM_GIVE",
+      "enabled": false,
+      "rewards": [
+        {
+          "itemID": 166,
+          "name": "C-Box",
+          "count": 1,
+          "duration": 0
+        },
+        {
+          "randomItems": [
+            {
+              "itemID": 166,
+              "name": "C-Box",
+              "count": 2,
+              "duration": 0,
+              "weight": 50
+            },
+            {
+              "itemID": 5101,
+              "name": "1日耐久材料",
+              "count": 1,
+              "duration": 0,
+              "weight": 30
+            },
+            {
+              "itemID": 5102,
+              "name": "3日耐久材料",
+              "count": 1,
+              "duration": 0,
+              "weight": 20
+            }
+          ],
+          "pickCount": 2
+        }
+      ]
+    },
+    {
+      "map_id": 121,
+      "map_name": "zs_contact",
+      "description": "追蹤:致命交會",
+      "game_mode": 15,
+      "title_key": "Contact_Clear_TITLE",
+      "msg_key": "Contact_Clear_MSG",
+      "enabled": true,
+      "rewards": [
+        {
+          "itemID": 485,
+          "name": "<秘密兵器>研究報告1",
+          "count": 1,
+          "duration": 0
+        }
+      ]
+    },
+    {
+      "map_id": 123,
+      "map_name": "zs_behind",
+      "description": "追蹤:潛藏殺機",
+      "game_mode": 15,
+      "title_key": "Behind_Clear_TITLE",
+      "msg_key": "Behind_Clear_MSG",
+      "enabled": true,
+      "rewards": [
+        {
+          "itemID": 507,
+          "name": "<秘密兵器>研究報告2",
+          "count": 1,
+          "duration": 0
+        }
+      ]
+    },
+    {
+      "map_id": 126,
+      "map_name": "zs_defense",
+      "description": "防禦：絕對防線",
+      "game_mode": 15,
+      "title_key": "defense_Clear_TITLE",
+      "msg_key": "defense_Clear_MSG",
+      "enabled": true,
+      "rewards": [
+        {
+          "itemID": 514,
+          "name": "<秘密兵器>研究報告 No.3",
+          "count": 1,
+          "duration": 0
+        }
+      ]
+    },
+    {
+      "map_id": 128,
+      "map_name": "zs_panic",
+      "description": "追蹤：恐懼之間",
+      "game_mode": 15,
+      "title_key": "panic_Clear_TITLE",
+      "msg_key": "panic_Clear_MSG",
+      "enabled": true,
+      "rewards": [
+        {
+          "itemID": 546,
+          "name": "<秘密兵器>研究報告4",
+          "count": 1,
+          "duration": 0
+        }
+      ]
+    },
+    {
+      "map_id": 88,
+      "map_name": "hs_desertstorm",
+      "description": "殲滅: 沙漠強襲 (戰神之章)",
+      "game_mode": 17,
+      "title_key": "DESERTSTORM_Clear_TITLE",
+      "msg_key": "DESERTSTORM_Clear_MSG",
+      "enabled": true,
+      "rewards": [
+        {
+          "itemID": 338,
+          "name": "卡曼契的黑盒子",
+          "count": 1,
+          "duration": 0
+        }
+      ]
+    },
+    {
+      "map_id": 90,
+      "map_name": "hs_hellfire",
+      "description": "追蹤: 地獄之火 (戰神之章)",
+      "game_mode": 17,
+      "title_key": "HELLFIRE_Clear_TITLE",
+      "msg_key": "HELLFIRE_Clear_MSG",
+      "enabled": true,
+      "rewards": [
+        {
+          "itemID": 340,
+          "name": "駕駛軍官的軍牌",
+          "count": 1,
+          "duration": 0
+        }
+      ]
+    },
+    {
+      "map_id": 91,
+      "map_name": "hs_mosque",
+      "description": "狙擊: 沉默古堡 (戰神之章)",
+      "game_mode": 17,
+      "title_key": "HSCENARIO_MONSTER_DROP_ITEM_TITLE",
+      "msg_key": "HSCENARIO_MONSTER_DROP_ITEM_GIVE",
+      "enabled": false,
+      "rewards": [
+        {
+          "itemID": 166,
+          "name": "C-Box",
+          "count": 1,
+          "duration": 0
+        },
+        {
+          "randomItems": [
+            {
+              "itemID": 166,
+              "name": "C-Box",
+              "count": 1,
+              "duration": 0,
+              "weight": 50
+            },
+            {
+              "itemID": 5101,
+              "name": "1日耐久材料",
+              "count": 1,
+              "duration": 0,
+              "weight": 35
+            },
+            {
+              "itemID": 5102,
+              "name": "3日耐久材料",
+              "count": 1,
+              "duration": 0,
+              "weight": 15
+            }
+          ],
+          "pickCount": 1
+        }
+      ]
+    },
+    {
+      "map_id": 93,
+      "map_name": "hs_blaze",
+      "description": "追蹤: 火線殺機 (戰神之章)",
+      "game_mode": 17,
+      "title_key": "BLAZE_Clear_TITLE",
+      "msg_key": "BLAZE_Clear_MSG",
+      "enabled": true,
+      "rewards": [
+        {
+          "itemID": 349,
+          "name": "雷霆之眼控制器",
+          "count": 1,
+          "duration": 0
+        }
+      ]
+    },
+    {
+      "map_id": 108,
+      "map_name": "hs_sidewinder",
+      "description": "殲滅: 響尾蛇行動 (戰神之章)",
+      "game_mode": 17,
+      "title_key": "XT-300_Clear_TITLE",
+      "msg_key": "XT-300_Clear_MSG",
+      "enabled": true,
+      "rewards": [
+        {
+          "randomItems": [
+            {
+              "itemID": 338,
+              "name": "卡曼契的黑盒子",
+              "count": 1,
+              "duration": 0,
+              "weight": 50
+            },
+            {
+              "itemID": 340,
+              "name": "駕駛軍官的軍牌",
+              "count": 1,
+              "duration": 0,
+              "weight": 50
+            },
+            {
+              "itemID": 349,
+              "name": "雷霆之眼控制器",
+              "count": 1,
+              "duration": 0,
+              "weight": 50
+            }
+          ],
+          "pickCount": 1
+        }
+      ]
+    }
+  ]
+}

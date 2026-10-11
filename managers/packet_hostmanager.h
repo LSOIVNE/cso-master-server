@@ -2,6 +2,8 @@
 #include "user.h"
 #include "gamematchuser.h"
 
+class Room;
+
 constexpr auto SAVEDATA_MAX_SIZE = 51200;
 
 enum Packet_HostType {
@@ -39,6 +41,7 @@ public:
 	void SendPacket_Host_UserWeapons(TCPConnection::pointer connection, unsigned long targetUserID);
 	void SendPacket_Host_FlyerFlock(TCPConnection::pointer connection, const string& name);
 	void SendPacket_Host_HostEndSession(TCPConnection::pointer connection);
+	void ProcessEndGame(Room* room, unsigned char winTeam, unsigned short terWins, unsigned char ctWins, unsigned long matchDuration);
 
 private:
 	void parsePacket_Host_ServerIsActivated(User* user);

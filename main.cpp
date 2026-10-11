@@ -17,6 +17,7 @@
 #include "enhancemanager.h"
 #include "titlemanager.h"
 #include "questmanager.h"
+#include "scenariorewardmanager.h"
 #include "registration_server.h"
 
 HANDLE hMutex;
@@ -77,6 +78,7 @@ int main() {
 	enhanceManager.Init();
 	titleManager.Init();
 	questManager.Init();
+	scenarioRewardManager.Init();
 
 	hMutex = CreateMutexA(NULL, FALSE, format("cso-master-server-{}-{}", serverConfig.serverID, serverConfig.channelID).c_str());
 	if (hMutex) {

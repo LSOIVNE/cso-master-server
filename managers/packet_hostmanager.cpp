@@ -9,6 +9,7 @@
 #include "packet_updateinfomanager.h"
 #include "packet_itemmanager.h"
 #include "questmanager.h"
+#include "scenariorewardmanager.h"
 #include <set>
 #include <map>
 #include <algorithm>
@@ -507,8 +508,7 @@ void Packet_HostManager::parsePacket_Host_EndGame(User* user, TCPConnection::Pac
 		return;
 	}
 
-	GameMatch* gameMatch = room->GetGameMatch();
-	if (gameMatch == NULL) {
+	if (room->GetGameMatch() == NULL) {
 		serverConsole.Print(PrefixType::Warn, format("[ Packet_HostManager ] User ({}) has sent Packet_Host EndGame, but its room doesn't have a gameMatch!\n", user->GetUserLogName()));
 		return;
 	}
@@ -522,6 +522,14 @@ void Packet_HostManager::parsePacket_Host_EndGame(User* user, TCPConnection::Pac
 	unsigned short terWins = packet->ReadUInt16_LE();
 	unsigned char ctWins = packet->ReadUInt8();
 	unsigned long matchDuration = packet->ReadUInt32_LE();
+
+	ProcessEndGame(room, winTeam, terWins, ctWins, matchDuration);
+}
+
+void Packet_HostManager::ProcessEndGame(Room* room, unsigned char winTeam, unsigned short terWins, unsigned char ctWins, unsigned long matchDuration) {
+	if (room == NULL) return;
+	GameMatch* gameMatch = room->GetGameMatch();
+	if (gameMatch == NULL) return;
 
 	unsigned char gameModeID = room ? room->GetRoomSettings().gameModeID : 0;
 
@@ -542,8 +550,9 @@ void Packet_HostManager::parsePacket_Host_EndGame(User* user, TCPConnection::Pac
 		}
 	}
 
-	serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] User ({}) has sent Packet_Host EndGame - winTeam: {}, terWins: {}, ctWins: {}, matchDuration: {}\n",
-		user->GetUserLogName(), winTeam, terWins, ctWins, matchDuration));
+	string hostName = room->GetRoomHostUser() ? room->GetRoomHostUser()->GetUserLogName() : "Unknown";
+	serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] ProcessEndGame in room (Host: {}) - winTeam: {}, terWins: {}, ctWins: {}, matchDuration: {}\n",
+		hostName, winTeam, terWins, ctWins, matchDuration));
 
 	vector<GameMatchUser*> gameMatchUsers = gameMatch->GetGameMatchUsers();
 
@@ -592,6 +601,17 @@ void Packet_HostManager::parsePacket_Host_EndGame(User* user, TCPConnection::Pac
 		unsigned short earnedExp = 100 + kills * 10 + (isWin ? 50 : 0);
 		unsigned short earnedPoints = 200 + kills * 15 + (isWin ? 100 : 0);
 
+		// Check scenario custom clear rewards (Gamemode 15 & 17)
+		const ScenarioMapReward* scenReward = nullptr;
+		if (IsScenarioMode(gameModeID) && isWin) {
+			unsigned char mapID = room ? room->GetRoomSettings().mapID : 0;
+			scenReward = scenarioRewardManager.GetRewardForMap(mapID, gameModeID);
+			if (scenReward) {
+				earnedExp += scenReward->bonusExp;
+				earnedPoints += scenReward->bonusPoints;
+			}
+		}
+
 		gmu->SetExp(earnedExp);
 		gmu->SetPoints(earnedPoints);
 		gmu->SetRank((unsigned char)(i + 1));
@@ -626,6 +646,16 @@ void Packet_HostManager::parsePacket_Host_EndGame(User* user, TCPConnection::Pac
 		u->SetUserStatus(UserStatus::InRoom);
 		SendPacket_Host_HostEndSession(u->GetConnection());
 		packet_RoomManager.SendPacket_Room_GameResult(u->GetConnection(), room, gameMatch, winTeam, (unsigned char)terWins, ctWins);
+
+		// Scenario custom clear rewards (grant items, sync inventory, and send ItemAwardNotice dialog)
+		if (IsScenarioMode(gameModeID) && (terWins > ctWins)) {
+			unsigned char mapID = room ? room->GetRoomSettings().mapID : 0;
+			const ScenarioMapReward* scenReward = scenarioRewardManager.GetRewardForMap(mapID, gameModeID);
+			if (scenReward) {
+				string mapNameForLog = questManager.GetMapFileName(mapID);
+				scenarioRewardManager.GrantScenarioReward(u, scenReward, mapNameForLog);
+			}
+		}
 
 		// Scenario 3: Pop up expired items notice on the settlement screen
 		userManager.CheckAndProcessUserExpiredItems(u, true);
