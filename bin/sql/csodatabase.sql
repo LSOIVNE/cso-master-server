@@ -107,6 +107,7 @@ CREATE TABLE IF NOT EXISTS user_inventory (
 	enhanceBits INT UNSIGNED NOT NULL DEFAULT 0,
 	PRIMARY KEY (userInventoryID),
 	KEY idx_userID (userID),
+	KEY idx_user_expire (userID, expirationTime),
 	FOREIGN KEY (userID) REFERENCES users(userID) ON DELETE CASCADE
 );
 

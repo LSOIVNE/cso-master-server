@@ -617,6 +617,9 @@ void Packet_HostManager::parsePacket_Host_EndGame(User* user, TCPConnection::Pac
 		u->SetUserStatus(UserStatus::InRoom);
 		SendPacket_Host_HostEndSession(u->GetConnection());
 		packet_RoomManager.SendPacket_Room_GameResult(u->GetConnection(), room, gameMatch, winTeam, (unsigned char)terWins, ctWins);
+
+		// Scenario 3: Pop up expired items notice on the settlement screen
+		userManager.CheckAndProcessUserExpiredItems(u, true);
 	}
 
 	delete gameMatch;

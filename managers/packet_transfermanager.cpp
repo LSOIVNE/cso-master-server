@@ -147,6 +147,7 @@ void Packet_TransferManager::ParsePacket_RequestTransfer(TCPConnection::Packet::
 
 			noticeManager.SendChannelLoginNotice(user, channelLoginMsg);
 			noticeManager.SendChannelChatNotice(user, channelLoginMsg);
+			userManager.OnUserEnterLobby(user);
 		}
 	}
 	else {

@@ -244,18 +244,23 @@ void Packet_UMsgManager::SendPacket_UMsg_ItemExpireNotice(TCPConnection::pointer
 		return;
 	}
 
-	auto packet = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::UMsg });
-	if (packet == NULL) {
-		return;
-	}
+	size_t offset = 0;
+	while (offset < itemIDs.size()) {
+		size_t chunkSize = min(itemIDs.size() - offset, (size_t)255);
+		auto packet = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::UMsg });
+		if (packet == NULL) {
+			return;
+		}
 
-	packet->WriteUInt8(Packet_UMsgType::ItemExpireNotice);
-	packet->WriteUInt8((unsigned char)min(itemIDs.size(), (size_t)255));
-	for (size_t i = 0; i < min(itemIDs.size(), (size_t)255); ++i) {
-		packet->WriteUInt16_LE(itemIDs[i]);
-	}
+		packet->WriteUInt8(Packet_UMsgType::ItemExpireNotice);
+		packet->WriteUInt8((unsigned char)chunkSize);
+		for (size_t i = 0; i < chunkSize; ++i) {
+			packet->WriteUInt16_LE(itemIDs[offset + i]);
+		}
 
-	packet->Send();
+		packet->Send();
+		offset += chunkSize;
+	}
 }
 
 void Packet_UMsgManager::SendPacket_UMsg_ServerYell(TCPConnection::pointer connection, const string& senderNickName, const string& text) {
@@ -624,7 +629,9 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		cmdLower != "/qmp" &&
 		cmdLower != "/questminplayers" &&
 		cmdLower != "/qe" &&
-		cmdLower != "/questevent") {
+		cmdLower != "/questevent" &&
+		cmdLower != "/setexpire" &&
+		cmdLower != "/additemsec") {
 		return false;
 	}
 
@@ -641,7 +648,8 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 	};
 
 	if (cmdLower == "/additem" || cmdLower == "/addallitem" || cmdLower == "/deleteitem" || cmdLower == "/delitem" || cmdLower == "/resetinv" || cmdLower == "/resetitem" ||
-		cmdLower == "/addpoints" || cmdLower == "/addgash" || cmdLower == "/setlevel" || cmdLower == "/level" || cmdLower == "/addexp") {
+		cmdLower == "/addpoints" || cmdLower == "/addgash" || cmdLower == "/setlevel" || cmdLower == "/level" || cmdLower == "/addexp" ||
+		cmdLower == "/setexpire" || cmdLower == "/additemsec") {
 		if (!serverConfig.permissions.allowPlayerItemCommands && !isGM) {
 			SendNotice("權限不足：測試指令已被管理員停用！");
 			return true;
@@ -1211,6 +1219,96 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		}
 		else {
 			SendNotice("[系統] 刪除物品失敗，數據庫操作錯誤！");
+		}
+
+		return true;
+	}
+	else if (cmdLower == "/setexpire") {
+		string itemIDStr, secStr;
+		if (!(ss >> itemIDStr) || !(ss >> secStr)) {
+			SendNotice("用法：/setexpire <物品ID> <秒數> (將背包中指定物品的到期時間設定為 N 秒後)");
+			return true;
+		}
+
+		unsigned short itemID = 0;
+		unsigned int seconds = 0;
+		try {
+			itemID = (unsigned short)stoul(itemIDStr);
+			seconds = (unsigned int)stoul(secStr);
+		}
+		catch (...) {
+			SendNotice("[系統] 格式錯誤，物品 ID 與秒數必須為數字。");
+			return true;
+		}
+
+		if (databaseManager.SetUserInventoryItemExpirationSeconds(userID, itemID, seconds)) {
+			packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
+			const ItemDefinition* itemDef = itemDefinitionManager.GetItem(itemID);
+			string itemName = (itemDef != NULL) ? itemDef->name : format("物品 (ID: {})", itemID);
+			SendNotice(format("[系統] 成功將「{}」(ID: {}) 的有效期限設定為 {} 秒後到期！", itemName, itemID, seconds));
+		}
+		else {
+			SendNotice("[系統] 設定失敗，您的背包中找不到該物品！");
+		}
+
+		return true;
+	}
+	else if (cmdLower == "/additemsec") {
+		string itemIDStr, secStr;
+		if (!(ss >> itemIDStr) || !(ss >> secStr)) {
+			SendNotice("用法：/additemsec <物品ID> <秒數> (添加一個在 N 秒後到期的指定道具)");
+			return true;
+		}
+
+		unsigned short itemID = 0;
+		unsigned int seconds = 0;
+		try {
+			itemID = (unsigned short)stoul(itemIDStr);
+			seconds = (unsigned int)stoul(secStr);
+		}
+		catch (...) {
+			SendNotice("[系統] 格式錯誤，物品 ID 與秒數必須為數字。");
+			return true;
+		}
+
+		const ItemDefinition* itemDef = itemDefinitionManager.GetItem(itemID);
+		if (itemDef == NULL) {
+			SendNotice(format("[系統] 找不到 ID 為 {} 的物品！", itemID));
+			return true;
+		}
+
+		auto inventory = user->GetUserInventory();
+		unsigned short maxSlotID = 0;
+		for (const auto& item : inventory) {
+			if (item.slotID > maxSlotID) {
+				maxSlotID = item.slotID;
+			}
+		}
+
+		time_t now = time(nullptr);
+		unsigned long expTime = (unsigned long)now + seconds;
+		InventoryItem newItem;
+		newItem.slotID = maxSlotID + 1;
+		newItem.itemID = itemID;
+		newItem.count = 1;
+		newItem.activeFlag = 1;
+		newItem.inUse = false;
+		newItem.obtainTime = (unsigned long)now;
+		newItem.expirationTime = expTime;
+		newItem.enhanceBits = 0;
+
+		if (databaseManager.AddUserInventoryItems(userID, { newItem })) {
+			packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
+			AwardItem award;
+			award.itemID = itemID;
+			award.count = 1;
+			award.duration = 1;
+			award.flags = 0;
+			SendPacket_UMsg_ItemAwardNotice(connection, { award }, "CSO_Warning_HSCENARIO_MONSTER_DROP_ITEM_TITLE", "CSO_Warning_HSCENARIO_MONSTER_DROP_ITEM_GIVE");
+			SendNotice(format("[系統] 成功添加「{}」(ID: {})，將在 {} 秒後到期！", itemDef->name, itemID, seconds));
+		}
+		else {
+			SendNotice("[系統] 添加物品失敗，數據庫操作錯誤！");
 		}
 
 		return true;

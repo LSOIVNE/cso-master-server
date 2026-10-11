@@ -599,6 +599,7 @@ void Packet_RoomManager::parsePacket_Room_LeaveRoom(User* user, TCPConnection::P
 		packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, ucr.userCharacter });
 	}
 
+	userManager.CheckAndProcessUserExpiredItems(user, false);
 	packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
 }
 
@@ -631,6 +632,9 @@ void Packet_RoomManager::parsePacket_Room_StartGame(User* user) {
 	serverConsole.Print(PrefixType::Info, format("[ Packet_RoomManager ] User ({}) has sent Packet_Room StartGame\n", user->GetUserLogName()));
 
 	if (roomHostUser == user) {
+		RoomSettings roomSettings = room->GetRoomSettings();
+		roomSettings.roomState = RoomState::Playing;
+		room->SetRoomSettings(roomSettings);
 		packet_HostManager.SendPacket_Host_HostStart(user);
 	}
 	else {

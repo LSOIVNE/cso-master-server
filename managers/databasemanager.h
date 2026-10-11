@@ -109,6 +109,12 @@ public:
 	bool UpdateUserInventoryItemEnhance(unsigned long userID, unsigned short slotID, unsigned long enhanceBits);
 	bool ResetUserInventory(unsigned long userID);
 	bool DeleteUserInventoryItem(unsigned long userID, unsigned short itemID, unsigned short count, vector<unsigned short>& outDeletedSlots, unsigned short& outActualDeletedCount);
+	struct ExpiredItemRecord {
+		unsigned short slotID = 0;
+		unsigned short itemID = 0;
+	};
+	bool RemoveExpiredInventoryItems(unsigned long userID, vector<ExpiredItemRecord>& outExpiredItems);
+	bool SetUserInventoryItemExpirationSeconds(unsigned long userID, unsigned short itemID, unsigned int seconds);
 	bool SaveUserBattleResult(unsigned long userID, unsigned long long addedExp, unsigned long long addedPoints, unsigned short addedFrags, unsigned short addedDeaths, bool isWin, unsigned char newLevel, bool recordStats = true);
 	bool AddUserExp(unsigned long userID, unsigned long long addedExp, unsigned char* outNewLevel = nullptr);
 	bool SetUserLevel(unsigned long userID, unsigned char newLevel);

@@ -175,6 +175,18 @@ public:
 	static unsigned char CalculateLevel(unsigned long long exp);
 	static unsigned long long GetExpForLevel(unsigned char level);
 
+	void AddPendingExpireNoticeItemID(unsigned short itemID) noexcept {
+		_pendingExpireNoticeItemIDs.push_back(itemID);
+	}
+	vector<unsigned short> GetAndClearPendingExpireNoticeItemIDs() noexcept {
+		vector<unsigned short> ids = std::move(_pendingExpireNoticeItemIDs);
+		_pendingExpireNoticeItemIDs.clear();
+		return ids;
+	}
+	bool HasPendingExpireNotices() const noexcept {
+		return !_pendingExpireNoticeItemIDs.empty();
+	}
+
 private:
 	TCPConnection::pointer _connection;
 	unsigned long _userID;
@@ -182,6 +194,7 @@ private:
 	UserNetwork _userNetwork;
 	UserStatus _userStatus;
 	unsigned short _currentRoomID;
+	vector<unsigned short> _pendingExpireNoticeItemIDs;
 };
 
 struct GameUser {

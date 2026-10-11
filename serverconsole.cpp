@@ -264,6 +264,7 @@ void ServerConsole::onSecondTick() {
 
 	udpServer.OnSecondTick();
 	noticeManager.OnSecondTick();
+	userManager.OnSecondTick();
 
 	_secondCount++;
 

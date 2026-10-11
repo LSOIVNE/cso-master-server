@@ -22,7 +22,10 @@ public:
 	void SendAddUserPacketToAll(User* user) const noexcept;
 	void SendRemoveUserPacketToAll(User* user) const noexcept;
 	void UpdateChannelNumPlayers();
+	void OnSecondTick();
 	void OnMinuteTick();
+	void OnUserEnterLobby(User* user);
+	bool CheckAndProcessUserExpiredItems(User* user, bool isGameResult = false);
 	bool IsUserGM(User* user) const noexcept;
 
 private:

@@ -1531,6 +1531,100 @@ bool DatabaseManager::DeleteUserInventoryItem(unsigned long userID, unsigned sho
     return true;
 }
 
+bool DatabaseManager::RemoveExpiredInventoryItems(unsigned long userID, vector<ExpiredItemRecord>& outExpiredItems) {
+    outExpiredItems.clear();
+    if (_connection == NULL) {
+        return false;
+    }
+
+    unsigned long now = (unsigned long)time(nullptr);
+    string query = format("SELECT slotID, itemID FROM user_inventory WHERE userID = {} AND expirationTime > 0 AND expirationTime <= {};", userID, now);
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on RemoveExpiredInventoryItems SELECT: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    MYSQL_RES* res = mysql_store_result(_connection);
+    if (res == NULL) {
+        return false;
+    }
+
+    MYSQL_ROW row;
+    bool hadCamo = false;
+    vector<unsigned short> slotsToDelete;
+    vector<unsigned short> itemIDsToDelete;
+    while ((row = mysql_fetch_row(res)) != NULL) {
+        ExpiredItemRecord rec;
+        rec.slotID = (unsigned short)atoi(row[0]);
+        rec.itemID = (unsigned short)atoi(row[1]);
+        outExpiredItems.push_back(rec);
+        slotsToDelete.push_back(rec.slotID);
+        itemIDsToDelete.push_back(rec.itemID);
+        if (rec.itemID == 68) {
+            hadCamo = true;
+        }
+    }
+    mysql_free_result(res);
+
+    if (outExpiredItems.empty()) {
+        return false;
+    }
+
+    string slotListStr = "";
+    for (size_t i = 0; i < slotsToDelete.size(); ++i) {
+        slotListStr += to_string(slotsToDelete[i]);
+        if (i + 1 < slotsToDelete.size()) {
+            slotListStr += ",";
+        }
+    }
+
+    string delQuery = format("DELETE FROM user_inventory WHERE userID = {} AND slotID IN ({});", userID, slotListStr);
+    if (mysql_query(_connection, delQuery.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on RemoveExpiredInventoryItems DELETE: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    // Clean up camouflage nickname in user_characters if Item 68 expired
+    if (hadCamo) {
+        string updateQuery = format("UPDATE user_characters SET unk4_1 = nickName WHERE userID = {};", userID);
+        mysql_query(_connection, updateQuery.c_str());
+    }
+
+    // Clean up user_itemsets if any equipped weapon expired
+    string itemListStr = "";
+    for (size_t i = 0; i < itemIDsToDelete.size(); ++i) {
+        itemListStr += to_string(itemIDsToDelete[i]);
+        if (i + 1 < itemIDsToDelete.size()) {
+            itemListStr += ",";
+        }
+    }
+    string resetItemsetsQuery = format("UPDATE user_itemsets SET itemID = 0 WHERE userID = {} AND itemID IN ({});", userID, itemListStr);
+    mysql_query(_connection, resetItemsetsQuery.c_str());
+
+    serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Removed {} expired inventory item(s) for userID {}\n", outExpiredItems.size(), userID));
+    return true;
+}
+
+bool DatabaseManager::SetUserInventoryItemExpirationSeconds(unsigned long userID, unsigned short itemID, unsigned int seconds) {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    unsigned long newExp = (unsigned long)time(nullptr) + seconds;
+    string query = format("UPDATE user_inventory SET expirationTime = {} WHERE userID = {} AND itemID = {} LIMIT 1;", newExp, userID, itemID);
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on SetUserInventoryItemExpirationSeconds: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    if (mysql_affected_rows(_connection) == 0) {
+        return false;
+    }
+
+    serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Set itemID {} expiration to {}s from now (timestamp: {}) for userID {}\n", itemID, seconds, newExp, userID));
+    return true;
+}
+
 bool DatabaseManager::SaveUserBattleResult(unsigned long userID, unsigned long long addedExp, unsigned long long addedPoints, unsigned short addedFrags, unsigned short addedDeaths, bool isWin, unsigned char newLevel, bool recordStats) {
     if (_connection == NULL) {
         return false;

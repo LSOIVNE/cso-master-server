@@ -17,6 +17,8 @@
 #include "bingomanager.h"
 #include "attendancemanager.h"
 #include "packet_questmanager.h"
+#include "packet_umsgmanager.h"
+#include "serverconsole.h"
 
 UserManager userManager;
 
@@ -175,6 +177,16 @@ bool UserManager::SendLoginPackets(User* user, Packet_ReplyType reply) {
 	packet_UserStartManager.SendPacket_UserStart({ user, userCharacterResult.userCharacter });
 	packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, userCharacterResult.userCharacter });
 
+	// Check and recycle items that expired before login (Scenario 1)
+	vector<DatabaseManager::ExpiredItemRecord> loginExpired;
+	if (databaseManager.RemoveExpiredInventoryItems(user->GetUserID(), loginExpired)) {
+		for (const auto& item : loginExpired) {
+			user->AddPendingExpireNoticeItemID(item.itemID);
+		}
+		serverConsole.Print(PrefixType::Info, format("[ UserManager ] User ({}) has {} expired item(s) before login, queued for lobby entry notice.\n",
+			user->GetUserLogName(), loginExpired.size()));
+	}
+
 	const vector<InventoryItem>& userInventory = user->GetUserInventory();
 	if (!userInventory.empty()) {
 		packetManager.SendPacket_Inventory(connection, userInventory);
@@ -241,6 +253,21 @@ bool UserManager::SendLoginPackets(User* user, Packet_ReplyType reply) {
 		noticeManager.SendChannelLoginNotice(user, channelLoginMsg);
 		noticeManager.SendChannelChatNotice(user, channelLoginMsg);
 		attendanceManager.OnUserEnterLobby(user);
+		OnUserEnterLobby(user);
+	}
+
+	// Dispatch expired item notices immediately upon login (synchronized with login bulletin/welcome dialog)
+	if (user->HasPendingExpireNotices()) {
+		vector<unsigned short> pendingIDs = user->GetAndClearPendingExpireNoticeItemIDs();
+		vector<unsigned short> uniquePendingIDs;
+		for (auto id : pendingIDs) {
+			if (std::find(uniquePendingIDs.begin(), uniquePendingIDs.end(), id) == uniquePendingIDs.end()) {
+				uniquePendingIDs.push_back(id);
+			}
+		}
+		packet_UMsgManager.SendPacket_UMsg_ItemExpireNotice(connection, uniquePendingIDs);
+		serverConsole.Print(PrefixType::Info, format("[ UserManager ] User ({}) logged in, dispatched {} expired item notice(s).\n",
+			user->GetUserLogName(), uniquePendingIDs.size()));
 	}
 
 	return true;
@@ -335,4 +362,131 @@ bool UserManager::IsUserGM(User* user) const noexcept {
 	}
 
 	return false;
+}
+
+void UserManager::OnSecondTick() {
+	static unsigned int tickCounter = 0;
+	// Periodic check every 60 seconds (1 minute), matching 2014 server background expiration worker
+	if (++tickCounter % 60 != 0) {
+		return;
+	}
+
+	for (auto* user : _users) {
+		if (user == nullptr || user->GetConnection() == nullptr || !IsUserLoggedIn(user)) {
+			continue;
+		}
+
+		// Scenario 3: Never interrupt or check mid-match or during game loading
+		if (user->GetUserStatus() == UserStatus::InGame) {
+			continue;
+		}
+
+		if (user->GetUserStatus() == UserStatus::InRoom) {
+			Room* room = roomManager.GetRoomByRoomID(user->GetCurrentRoomID());
+			if (room != nullptr && (room->GetGameMatch() != nullptr || room->GetRoomSettings().roomState == RoomState::Playing)) {
+				continue;
+			}
+		}
+
+		// Scenario 2: User is InServerList, InLobby or waiting InRoom - check and pop up expiration notice
+		CheckAndProcessUserExpiredItems(user, false);
+	}
+}
+
+void UserManager::OnUserEnterLobby(User* user) {
+	if (user == NULL) return;
+	auto& connection = user->GetConnection();
+	if (connection == NULL || !IsUserLoggedIn(user)) return;
+
+	// 1. Check if any items expired while sitting in server list
+	vector<DatabaseManager::ExpiredItemRecord> moreExpired;
+	if (databaseManager.RemoveExpiredInventoryItems(user->GetUserID(), moreExpired)) {
+		vector<unsigned short> deletedSlots;
+		for (const auto& it : moreExpired) {
+			user->AddPendingExpireNoticeItemID(it.itemID);
+			deletedSlots.push_back(it.slotID);
+		}
+		if (!deletedSlots.empty()) {
+			packetManager.SendPacket_InventoryDelta(connection, {}, deletedSlots);
+		}
+	}
+
+	// 2. Dispatch all pending expired item notifications (Scenario 1)
+	if (user->HasPendingExpireNotices()) {
+		vector<unsigned short> pendingIDs = user->GetAndClearPendingExpireNoticeItemIDs();
+		// Deduplicate IDs for display
+		vector<unsigned short> uniquePendingIDs;
+		for (auto id : pendingIDs) {
+			if (find(uniquePendingIDs.begin(), uniquePendingIDs.end(), id) == uniquePendingIDs.end()) {
+				uniquePendingIDs.push_back(id);
+			}
+		}
+		packet_UMsgManager.SendPacket_UMsg_ItemExpireNotice(connection, uniquePendingIDs);
+		serverConsole.Print(PrefixType::Info, format("[ UserManager ] User ({}) entered lobby, dispatched {} expired item notice(s).\n",
+			user->GetUserLogName(), uniquePendingIDs.size()));
+	}
+}
+
+bool UserManager::CheckAndProcessUserExpiredItems(User* user, bool isGameResult) {
+	if (user == NULL) return false;
+	auto& connection = user->GetConnection();
+	if (connection == NULL || !IsUserLoggedIn(user)) return false;
+
+	// Scenario 3: Never check/interrupt mid-match or during game loading, unless this is post-match settlement (isGameResult)
+	if (!isGameResult) {
+		if (user->GetUserStatus() == UserStatus::InGame) {
+			return false;
+		}
+
+		if (user->GetUserStatus() == UserStatus::InRoom) {
+			Room* room = roomManager.GetRoomByRoomID(user->GetCurrentRoomID());
+			if (room != nullptr && (room->GetGameMatch() != nullptr || room->GetRoomSettings().roomState == RoomState::Playing)) {
+				return false;
+			}
+		}
+	}
+
+	vector<DatabaseManager::ExpiredItemRecord> expiredItems;
+	if (!databaseManager.RemoveExpiredInventoryItems(user->GetUserID(), expiredItems)) {
+		return false;
+	}
+
+	vector<unsigned short> expiredItemIDs;
+	vector<unsigned short> deletedSlots;
+	bool hadCamo = false;
+	for (const auto& item : expiredItems) {
+		expiredItemIDs.push_back(item.itemID);
+		deletedSlots.push_back(item.slotID);
+		if (item.itemID == 68) {
+			hadCamo = true;
+		}
+	}
+
+
+	// Deduplicate itemIDs for UI popup display
+	vector<unsigned short> uniqueItemIDs;
+	for (auto id : expiredItemIDs) {
+		if (find(uniqueItemIDs.begin(), uniqueItemIDs.end(), id) == uniqueItemIDs.end()) {
+			uniqueItemIDs.push_back(id);
+		}
+	}
+
+	// Realtime sync inventory removal to client
+	packetManager.SendPacket_InventoryDelta(connection, {}, deletedSlots);
+
+	// Send native ItemExpireNotice dialog (Packet 67 Type 62: CSO_ItemExpireTitle / CSO_ItemExpireMsg with item icons)
+	packet_UMsgManager.SendPacket_UMsg_ItemExpireNotice(connection, uniqueItemIDs);
+
+	// If camouflage nickname expired, realtime sync restored nickname to client UI
+	if (hadCamo) {
+		auto charResult = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
+		if (charResult.result) {
+			packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, charResult.userCharacter });
+		}
+	}
+
+	serverConsole.Print(PrefixType::Info, format("[ UserManager ] User ({}) has {} expired item(s) recycled, sent ItemExpireNotice dialog.\n",
+		user->GetUserLogName(), uniqueItemIDs.size()));
+
+	return true;
 }
