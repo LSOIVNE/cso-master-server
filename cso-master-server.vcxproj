@@ -182,6 +182,7 @@ copy /Y "$(TargetDir)$(ProjectName).pdb" "$(SolutionDir)bin\$(ProjectName).pdb"<
     <ClCompile Include="managers\itemboxmanager.cpp" />
     <ClCompile Include="managers\rewarditemmanager.cpp" />
     <ClCompile Include="managers\scenariorewardmanager.cpp" />
+    <ClCompile Include="managers\killdropmanager.cpp" />
     <ClCompile Include="managers\craftmanager.cpp" />
     <ClCompile Include="managers\enhancemanager.cpp" />
     <ClCompile Include="managers\titlemanager.cpp" />
@@ -234,6 +235,7 @@ copy /Y "$(TargetDir)$(ProjectName).pdb" "$(SolutionDir)bin\$(ProjectName).pdb"<
     <ClInclude Include="managers\itemboxmanager.h" />
     <ClInclude Include="managers\rewarditemmanager.h" />
     <ClInclude Include="managers\scenariorewardmanager.h" />
+    <ClInclude Include="managers\killdropmanager.h" />
     <ClInclude Include="managers\craftmanager.h" />
     <ClInclude Include="managers\enhancemanager.h" />
     <ClInclude Include="managers\titlemanager.h" />

@@ -67,6 +67,9 @@
     <ClCompile Include="managers\scenariorewardmanager.cpp">
       <Filter>managers</Filter>
     </ClCompile>
+    <ClCompile Include="managers\killdropmanager.cpp">
+      <Filter>managers</Filter>
+    </ClCompile>
     <ClCompile Include="managers\craftmanager.cpp">
       <Filter>managers</Filter>
     </ClCompile>
@@ -210,6 +213,9 @@
       <Filter>managers</Filter>
     </ClInclude>
     <ClInclude Include="managers\scenariorewardmanager.h">
+      <Filter>managers</Filter>
+    </ClInclude>
+    <ClInclude Include="managers\killdropmanager.h">
       <Filter>managers</Filter>
     </ClInclude>
     <ClInclude Include="managers\craftmanager.h">

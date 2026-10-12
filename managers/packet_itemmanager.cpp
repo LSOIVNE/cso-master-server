@@ -914,4 +914,18 @@ void Packet_ItemManager::parsePacket_Item_Enhance(User* user, TCPConnection::Pac
 	enhanceManager.HandleEnhance(user, weaponSlotID, materialSlotID);
 }
 
+void Packet_ItemManager::SendPacket_Item_Notice(TCPConnection::pointer connection, unsigned char noticeType) {
+	if (connection == NULL) {
+		return;
+	}
+
+	auto packet = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::Item });
+	if (packet == NULL) {
+		return;
+	}
+
+	packet->WriteUInt8(noticeType);
+	packet->Send();
+}
+
 

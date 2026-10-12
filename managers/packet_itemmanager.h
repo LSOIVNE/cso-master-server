@@ -13,6 +13,9 @@ enum Packet_ItemType {
 	Disassemble = 7,
 	Roulette = 8,
 	Tattoo = 9,
+	GachaponNotice = 10,
+	GiftboxNotice = 11,
+	FabEnduNotice = 12,
 	Enhance = 14
 };
 
@@ -21,6 +24,7 @@ bool IsTattooItem(unsigned short itemID);
 class Packet_ItemManager {
 public:
 	void ParsePacket_Item(TCPConnection::Packet::pointer packet);
+	void SendPacket_Item_Notice(TCPConnection::pointer connection, unsigned char noticeType);
 
 private:
 	void parsePacket_Item_EquipItem(User* user, TCPConnection::Packet::pointer packet);

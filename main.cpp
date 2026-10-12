@@ -18,6 +18,7 @@
 #include "titlemanager.h"
 #include "questmanager.h"
 #include "scenariorewardmanager.h"
+#include "killdropmanager.h"
 #include "registration_server.h"
 
 HANDLE hMutex;
@@ -79,6 +80,7 @@ int main() {
 	titleManager.Init();
 	questManager.Init();
 	scenarioRewardManager.Init();
+	killDropManager.Init();
 
 	hMutex = CreateMutexA(NULL, FALSE, format("cso-master-server-{}-{}", serverConfig.serverID, serverConfig.channelID).c_str());
 	if (hMutex) {

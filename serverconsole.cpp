@@ -4,6 +4,7 @@
 #include "udp_server.h"
 #include "noticemanager.h"
 #include "packet_umsgmanager.h"
+#include "killdropmanager.h"
 #include <iostream>
 #include <sstream>
 #include <mutex>
@@ -208,8 +209,13 @@ void ServerConsole::StartRead() {
 			Print(PrefixType::Info, "[ ServerConsole ] Reloaded notice configuration.\n");
 			continue;
 		}
+		else if (command == "reloadkilldrop") {
+			killDropManager.Reload();
+			Print(PrefixType::Info, "[ ServerConsole ] Reloaded kill drop configuration.\n");
+			continue;
+		}
 		else {
-			Print(PrefixType::Info, "[ ServerConsole ] Available commands: stop, status, users, notice <text>, yell <text>, msg <text>, banner <text>, reloadnotice\n");
+			Print(PrefixType::Info, "[ ServerConsole ] Available commands: stop, status, users, notice <text>, yell <text>, msg <text>, banner <text>, reloadnotice, reloadkilldrop\n");
 			continue;
 		}
 	}

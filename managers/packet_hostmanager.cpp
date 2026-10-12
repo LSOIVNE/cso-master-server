@@ -10,6 +10,7 @@
 #include "packet_itemmanager.h"
 #include "questmanager.h"
 #include "scenariorewardmanager.h"
+#include "killdropmanager.h"
 #include <set>
 #include <map>
 #include <algorithm>
@@ -758,8 +759,9 @@ void Packet_HostManager::parsePacket_Host_AddKill(User* user, TCPConnection::Pac
 	unsigned long userID = packet->ReadUInt32_LE();
 
 	GameMatchUser* gameMatchUser = NULL;
+	User* targetUser = NULL;
 	if (userID) {
-		User* targetUser = userManager.GetUserByUserID(userID);
+		targetUser = userManager.GetUserByUserID(userID);
 		if (targetUser) {
 			gameMatchUser = gameMatch->GetGameMatchUserByUser(targetUser);
 		}
@@ -769,7 +771,12 @@ void Packet_HostManager::parsePacket_Host_AddKill(User* user, TCPConnection::Pac
 	signed short frags = packet->ReadUInt16_LE();
 
 	if (gameMatchUser && frags >= 0) {
+		unsigned short oldKills = gameMatchUser->GetKills();
 		gameMatchUser->SetKills((unsigned short)frags);
+		if ((unsigned short)frags > oldKills && targetUser != NULL) {
+			unsigned short killCount = (unsigned short)frags - oldKills;
+			killDropManager.OnPlayerKill(targetUser, room, killCount);
+		}
 	}
 
 	serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] User ({}) has sent Packet_Host AddKill - userID: {}, point: {}, frags: {}\n", user->GetUserLogName(), userID, point, frags));
