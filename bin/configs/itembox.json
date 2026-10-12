@@ -323,46 +323,60 @@
                     "Name": "崔智云",
                     "Duration": -1,
                     "Count": 1,
-                    "Grade": 4
+                    "Grade": 3
                 },
                 {
                     "ItemID": 155,
                     "Name": "安娜",
                     "Duration": -1,
                     "Count": 1,
-                    "Grade": 4
+                    "Grade": 3
                 },
                 {
                     "ItemID": 329,
                     "Name": "麻生亞子",
                     "Duration": -1,
                     "Count": 1,
-                    "Grade": 4
+                    "Grade": 3
                 },
                 {
                     "ItemID": 392,
                     "Name": "費南多",
-                    "Duration": -1,
+                    "Duration": 30,
                     "Count": 1,
-                    "Grade": 4
+                    "Grade": 2
                 },
                 {
                     "ItemID": 393,
                     "Name": "布萊兒",
-                    "Duration": -1,
+                    "Duration": 30,
                     "Count": 1,
-                    "Grade": 4
+                    "Grade": 2
                 },
                 {
                     "ItemID": 150,
                     "Name": "葛蕾",
                     "Duration": -1,
                     "Count": 1,
-                    "Grade": 4
+                    "Grade": 3
                 },
                 {
                     "ItemID": 151,
                     "Name": "娜塔莎",
+                    "Duration": -1,
+                    "Count": 1,
+                    "Grade": 3
+                },
+				{
+                    "ItemID": 253,
+                    "Name": "柯林",
+                    "Duration": -1,
+                    "Count": 1,
+                    "Grade": 4
+                },
+				{
+                    "ItemID": 254,
+                    "Name": "卡爾",
                     "Duration": -1,
                     "Count": 1,
                     "Grade": 4
@@ -826,18 +840,32 @@
                     "Name": "麻生亞子",
                     "Duration": -1,
                     "Count": 1,
-                    "Grade": 4
+                    "Grade": 3
                 },
                 {
                     "ItemID": 152,
                     "Name": "崔智云",
                     "Duration": -1,
                     "Count": 1,
-                    "Grade": 4
+                    "Grade": 3
                 },
                 {
                     "ItemID": 155,
                     "Name": "安娜",
+                    "Duration": -1,
+                    "Count": 1,
+                    "Grade": 3
+                },
+				{
+                    "ItemID": 253,
+                    "Name": "柯林",
+                    "Duration": -1,
+                    "Count": 1,
+                    "Grade": 4
+                },
+				{
+                    "ItemID": 254,
+                    "Name": "卡爾",
                     "Duration": -1,
                     "Count": 1,
                     "Grade": 4
@@ -1161,19 +1189,33 @@
                     "Count": 1,
                     "Grade": 4
                 },
+				{
+                    "ItemID": 253,
+                    "Name": "柯林",
+                    "Duration": -1,
+                    "Count": 1,
+                    "Grade": 4
+                },
+				{
+                    "ItemID": 254,
+                    "Name": "卡爾",
+                    "Duration": -1,
+                    "Count": 1,
+                    "Grade": 4
+                },
                 {
                     "ItemID": 329,
                     "Name": "麻生亞子",
                     "Duration": -1,
                     "Count": 1,
-                    "Grade": 4
+                    "Grade": 3
                 },
                 {
                     "ItemID": 152,
                     "Name": "崔智云",
                     "Duration": -1,
                     "Count": 1,
-                    "Grade": 4
+                    "Grade": 3
                 },
                 {
                     "ItemID": 344,
@@ -1506,21 +1548,21 @@
                     "Name": "麻生亞子",
                     "Duration": -1,
                     "Count": 1,
-                    "Grade": 4
+                    "Grade": 3
                 },
                 {
                     "ItemID": 152,
                     "Name": "崔智云",
                     "Duration": -1,
                     "Count": 1,
-                    "Grade": 4
+                    "Grade": 3
                 },
                 {
                     "ItemID": 155,
                     "Name": "安娜",
                     "Duration": -1,
                     "Count": 1,
-                    "Grade": 4
+                    "Grade": 3
                 },
                 {
                     "ItemID": 515,

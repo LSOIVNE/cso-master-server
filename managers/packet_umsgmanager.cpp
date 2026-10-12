@@ -17,6 +17,7 @@
 #include "rewarditemmanager.h"
 #include "packet_messengermanager.h"
 #include "serverconfig.h"
+#include "scenariorewardmanager.h"
 #include <sstream>
 #include <unordered_set>
 #include <algorithm>
@@ -156,7 +157,7 @@ void Packet_UMsgManager::SendPacket_UMsg_BulletinNotice(TCPConnection::pointer c
 	packet->Send();
 }
 
-void Packet_UMsgManager::SendPacket_UMsg_ItemAwardNotice(TCPConnection::pointer connection, const vector<AwardItem>& items, unsigned int points, unsigned int exp, unsigned int honor, const string& titleKey, const string& msgKey, const vector<string>& args) {
+void Packet_UMsgManager::SendPacket_UMsg_ItemAwardNotice(TCPConnection::pointer connection, const vector<AwardItem>& items, unsigned int points, unsigned int exp, unsigned int honor, const string& titleKey, const string& msgKey, const vector<string>& args, Packet_UMsgType type) {
 	if (connection == NULL) {
 		return;
 	}
@@ -166,7 +167,7 @@ void Packet_UMsgManager::SendPacket_UMsg_ItemAwardNotice(TCPConnection::pointer 
 		return;
 	}
 
-	packet->WriteUInt8(Packet_UMsgType::ItemAwardNotice);
+	packet->WriteUInt8((unsigned char)type);
 
 	// 1. List 1: Award Items (type 1 in client: 10 bytes each)
 	packet->WriteUInt8((unsigned char)items.size());
@@ -231,12 +232,12 @@ void Packet_UMsgManager::SendPacket_UMsg_ItemAwardNotice(TCPConnection::pointer 
 	packet->Send();
 }
 
-void Packet_UMsgManager::SendPacket_UMsg_ItemAwardNotice(TCPConnection::pointer connection, const vector<AwardItem>& items, unsigned int points, const string& titleKey, const string& msgKey, const vector<string>& args) {
-	SendPacket_UMsg_ItemAwardNotice(connection, items, points, 0, 0, titleKey, msgKey, args);
+void Packet_UMsgManager::SendPacket_UMsg_ItemAwardNotice(TCPConnection::pointer connection, const vector<AwardItem>& items, unsigned int points, const string& titleKey, const string& msgKey, const vector<string>& args, Packet_UMsgType type) {
+	SendPacket_UMsg_ItemAwardNotice(connection, items, points, 0, 0, titleKey, msgKey, args, type);
 }
 
-void Packet_UMsgManager::SendPacket_UMsg_ItemAwardNotice(TCPConnection::pointer connection, const vector<AwardItem>& items, const string& titleKey, const string& msgKey, const vector<string>& args) {
-	SendPacket_UMsg_ItemAwardNotice(connection, items, 0, 0, 0, titleKey, msgKey, args);
+void Packet_UMsgManager::SendPacket_UMsg_ItemAwardNotice(TCPConnection::pointer connection, const vector<AwardItem>& items, const string& titleKey, const string& msgKey, const vector<string>& args, Packet_UMsgType type) {
+	SendPacket_UMsg_ItemAwardNotice(connection, items, 0, 0, 0, titleKey, msgKey, args, type);
 }
 
 void Packet_UMsgManager::SendPacket_UMsg_ItemExpireNotice(TCPConnection::pointer connection, const vector<unsigned short>& itemIDs) {
@@ -2092,6 +2093,33 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		}
 		else {
 			SendNotice("[系統] 未知事件！支援事件：c4_plant, c4_defuse, hostage, morale, supply, wall, boss, skill, capture");
+		}
+		return true;
+	}
+	else if (cmdLower == "/testbox") {
+		string boxIdStr;
+		unsigned int boxID = 3000;
+		if (ss >> boxIdStr) {
+			try {
+				boxID = (unsigned int)stoul(boxIdStr);
+			}
+			catch (...) {}
+		}
+		if (scenarioRewardManager.HandleBoxPickup(user, boxID)) {
+			SendNotice(format("[系統] 成功模擬拾取補給箱 ID: {}！", boxID));
+		}
+		else {
+			SendNotice(format("[系統] 模擬拾取補給箱 ID: {} 失敗（箱子未配置或功能未開啟）！", boxID));
+		}
+		return true;
+	}
+	else if (cmdLower == "/reloadscenario") {
+		if (scenarioRewardManager.Reload()) {
+			SendNotice(format("[系統] 災厄之章獎勵配置已成功重載！共載入 {} 個地圖獎勵、{} 個補給箱配置。(configs/scenario_reward.json)",
+				scenarioRewardManager.GetRewardCount(), scenarioRewardManager.GetBoxRewardCount()));
+		}
+		else {
+			SendNotice("[系統] 重載災厄之章獎勵配置失敗，請檢查 configs/scenario_reward.json 格式！");
 		}
 		return true;
 	}

@@ -594,5 +594,1153 @@
         }
       ]
     }
-  ]
+  ],
+  "box_rewards": {
+    "enabled": true,
+    "notice_key": "EVT_SCENARIO_ITEM_POINT_REWARD",
+    "default_box": {
+      "name": "預設戰利品箱",
+      "enabled": true,
+      "rewards": [
+        {
+          "pickCount": 1,
+          "randomItems": [
+            {
+              "points": 10,
+              "name": "10 Points",
+              "weight": 60
+            },
+            {
+              "points": 50,
+              "name": "50 Points",
+              "weight": 50
+            },
+            {
+              "points": 100,
+              "name": "100 Points",
+              "weight": 30
+            },
+            {
+              "itemID": 5101,
+              "name": "1日耐久材料",
+              "count": 1,
+              "duration": 0,
+              "weight": 20
+            },
+            {
+              "itemID": 5102,
+              "name": "3日耐久材料",
+              "count": 1,
+              "duration": 0,
+              "weight": 10
+            }
+          ]
+        }
+      ]
+    },
+    "boxes": {
+      "3000": {
+        "name": "一般殭屍戰利品箱",
+        "enabled": true,
+        "rewards": [
+          {
+            "pickCount": 1,
+            "randomItems": [
+              {
+                "points": 10,
+                "name": "10 Points",
+                "weight": 300
+              },
+              {
+                "points": 30,
+                "name": "30 Points",
+                "weight": 300
+              },
+              {
+                "points": 50,
+                "name": "50 Points",
+                "weight": 150
+              },
+              {
+                "points": 100,
+                "name": "100 Points",
+                "weight": 100
+              },
+              {
+                "itemID": 5101,
+                "name": "1日耐久材料",
+                "count": 1,
+                "duration": 0,
+                "weight": 70
+              },
+               {
+                "itemID": 5102,
+                "name": "3日耐久材料",
+                "count": 1,
+                "duration": 0,
+                "weight": 50
+              },
+              {
+                "itemID": 5103,
+                "name": "10日耐久材料",
+                "count": 1,
+                "duration": 0,
+                "weight": 50
+              },
+              {
+                "itemID": 258,
+                "name": "小型體力恢復劑",
+                "count": 3,
+                "duration": 0,
+                "weight": 30
+              }
+            ]
+          }
+        ]
+      },
+      "3001": {
+        "name": "精英殭屍戰利品箱",
+        "enabled": true,
+        "rewards": [
+          {
+            "pickCount": 1,
+            "randomItems": [
+              {
+                "points": 100,
+                "name": "100 Points",
+                "weight": 400
+              },
+              {
+                "points": 200,
+                "name": "200 Points",
+                "weight": 300
+              },
+              {
+                "points": 300,
+                "name": "300 Points",
+                "weight": 150
+              },
+              {
+                "itemID": 5101,
+                "name": "1日耐久材料",
+                "count": 1,
+                "duration": 0,
+                "weight": 100
+              },
+              {
+                "itemID": 258,
+                "name": "小型體力恢復劑",
+                "count": 5,
+                "duration": 0,
+                "weight": 50
+              }
+            ]
+          }
+        ]
+      },
+      "3002": {
+        "name": "首領殭屍戰利品箱",
+        "enabled": true,
+        "rewards": [
+          {
+            "pickCount": 1,
+            "randomItems": [
+              {
+                "points": 50,
+                "name": "50 Points",
+                "weight": 350
+              },
+              {
+                "points": 100,
+                "name": "100 Points",
+                "weight": 250
+              },
+              {
+                "points": 200,
+                "name": "200 Points",
+                "weight": 150
+              },
+              {
+                "itemID": 5101,
+                "name": "1日耐久材料",
+                "count": 1,
+                "duration": 0,
+                "weight": 100
+              },
+              {
+                "itemID": 5102,
+                "name": "3日耐久材料",
+                "count": 1,
+                "duration": 0,
+                "weight": 50
+              },
+              {
+                "itemID": 258,
+                "name": "小型體力恢復劑",
+                "count": 10,
+                "duration": 0,
+                "weight": 50
+              }
+            ]
+          }
+        ]
+      },
+      "3003": {
+        "name": "一般殭屍(困難)戰利品箱",
+        "enabled": true,
+        "rewards": [
+          {
+            "pickCount": 1,
+            "randomItems": [
+              {
+                "points": 200,
+                "name": "200 Points",
+                "weight": 450
+              },
+              {
+                "points": 500,
+                "name": "500 Points",
+                "weight": 300
+              },
+              {
+                "points": 800,
+                "name": "800 Points",
+                "weight": 150
+              },
+              {
+                "itemID": 5101,
+                "name": "1日耐久材料",
+                "count": 1,
+                "duration": 0,
+                "weight": 70
+              },
+              {
+                "itemID": 258,
+                "name": "小型體力恢復劑",
+                "count": 3,
+                "duration": 0,
+                "weight": 30
+              }
+            ]
+          }
+        ]
+      },
+      "3004": {
+        "name": "精英殭屍(困難)戰利品箱",
+        "enabled": true,
+        "rewards": [
+          {
+            "pickCount": 1,
+            "randomItems": [
+              {
+                "points": 200,
+                "name": "200 Points",
+                "weight": 400
+              },
+              {
+                "points": 300,
+                "name": "300 Points",
+                "weight": 300
+              },
+              {
+                "points": 500,
+                "name": "500 Points",
+                "weight": 150
+              },
+              {
+                "itemID": 5101,
+                "name": "1日耐久材料",
+                "count": 1,
+                "duration": 0,
+                "weight": 100
+              },
+              {
+                "itemID": 5102,
+                "name": "3日耐久材料",
+                "count": 1,
+                "duration": 0,
+                "weight": 50
+              }
+            ]
+          }
+        ]
+      },
+      "3005": {
+        "name": "首領殭屍(困難)戰利品箱",
+        "enabled": true,
+        "rewards": [
+          {
+            "pickCount": 1,
+            "randomItems": [
+              {
+                "points": 100,
+                "name": "100 Points",
+                "weight": 350
+              },
+              {
+                "points": 300,
+                "name": "300 Points",
+                "weight": 250
+              },
+              {
+                "points": 500,
+                "name": "500 Points",
+                "weight": 150
+              },
+              {
+                "itemID": 5101,
+                "name": "1日耐久材料",
+                "count": 1,
+                "duration": 0,
+                "weight": 100
+              },
+              {
+                "itemID": 5102,
+                "name": "3日耐久材料",
+                "count": 1,
+                "duration": 0,
+                "weight": 50
+              },
+              {
+                "itemID": 258,
+                "name": "小型體力恢復劑",
+                "count": 10,
+                "duration": 0,
+                "weight": 50
+              }
+            ]
+          }
+        ]
+      },
+      "3006": {
+        "name": "狂暴精英戰利品箱",
+        "enabled": true,
+        "rewards": [
+          {
+            "pickCount": 1,
+            "randomItems": [
+              {
+                "points": 50,
+                "name": "50 Points",
+                "weight": 400
+              },
+              {
+                "points": 100,
+                "name": "100 Points",
+                "weight": 300
+              },
+              {
+                "points": 500,
+                "name": "500 Points",
+                "weight": 150
+              },
+              {
+                "itemID": 5101,
+                "name": "1日耐久材料",
+                "count": 1,
+                "duration": 0,
+                "weight": 100
+              },
+              {
+                "itemID": 258,
+                "name": "小型體力恢復劑",
+                "count": 5,
+                "duration": 0,
+                "weight": 50
+              }
+            ]
+          }
+        ]
+      },
+      "3007": {
+        "name": "一般殭屍(簡單)戰利品箱",
+        "enabled": true,
+        "rewards": [
+          {
+            "pickCount": 1,
+            "randomItems": [
+              {
+                "points": 10,
+                "name": "10 Points",
+                "weight": 500
+              },
+              {
+                "points": 50,
+                "name": "50 Points",
+                "weight": 350
+              },
+              {
+                "points": 100,
+                "name": "100 Points",
+                "weight": 100
+              },
+              {
+                "itemID": 5101,
+                "name": "1日耐久材料",
+                "count": 1,
+                "duration": 0,
+                "weight": 50
+              }
+            ]
+          }
+        ]
+      },
+      "3008": {
+        "name": "中級殭屍(簡單)戰利品箱",
+        "enabled": true,
+        "rewards": [
+          {
+            "pickCount": 1,
+            "randomItems": [
+              {
+                "points": 50,
+                "name": "50 Points",
+                "weight": 450
+              },
+              {
+                "points": 100,
+                "name": "100 Points",
+                "weight": 350
+              },
+              {
+                "points": 200,
+                "name": "200 Points",
+                "weight": 150
+              },
+              {
+                "itemID": 5101,
+                "name": "1日耐久材料",
+                "count": 1,
+                "duration": 0,
+                "weight": 50
+              }
+            ]
+          }
+        ]
+      },
+      "3009": {
+        "name": "首領殭屍(簡單)戰利品箱",
+        "enabled": true,
+        "rewards": [
+          {
+            "pickCount": 1,
+            "randomItems": [
+              {
+                "points": 30,
+                "name": "30 Points",
+                "weight": 400
+              },
+              {
+                "points": 50,
+                "name": "50 Points",
+                "weight": 350
+              },
+              {
+                "points": 100,
+                "name": "100 Points",
+                "weight": 150
+              },
+              {
+                "itemID": 5101,
+                "name": "1日耐久材料",
+                "count": 1,
+                "duration": 0,
+                "weight": 50
+              },
+              {
+                "itemID": 258,
+                "name": "小型體力恢復劑",
+                "count": 5,
+                "duration": 0,
+                "weight": 50
+              }
+            ]
+          }
+        ]
+      },
+      "3010": {
+        "name": "先鋒步兵戰利品箱",
+        "enabled": true,
+        "rewards": [
+          {
+            "pickCount": 1,
+            "randomItems": [
+              {
+                "points": 50,
+                "name": "50 Points",
+                "weight": 450
+              },
+              {
+                "points": 100,
+                "name": "100 Points",
+                "weight": 350
+              },
+              {
+                "points": 200,
+                "name": "200 Points",
+                "weight": 150
+              },
+              {
+                "itemID": 5101,
+                "name": "1日耐久材料",
+                "count": 1,
+                "duration": 0,
+                "weight": 50
+              }
+            ]
+          }
+        ]
+      },
+      "3011": {
+        "name": "重裝步兵戰利品箱",
+        "enabled": true,
+        "rewards": [
+          {
+            "pickCount": 1,
+            "randomItems": [
+              {
+                "points": 50,
+                "name": "50 Points",
+                "weight": 400
+              },
+              {
+                "points": 100,
+                "name": "100 Points",
+                "weight": 350
+              },
+              {
+                "points": 200,
+                "name": "200 Points",
+                "weight": 150
+              },
+              {
+                "itemID": 5101,
+                "name": "1日耐久材料",
+                "count": 1,
+                "duration": 0,
+                "weight": 100
+              }
+            ]
+          }
+        ]
+      },
+      "3012": {
+        "name": "狙擊菁英戰利品箱",
+        "enabled": true,
+        "rewards": [
+          {
+            "pickCount": 1,
+            "randomItems": [
+              {
+                "points": 50,
+                "name": "50 Points",
+                "weight": 350
+              },
+              {
+                "points": 100,
+                "name": "100 Points",
+                "weight": 300
+              },
+              {
+                "points": 200,
+                "name": "200 Points",
+                "weight": 150
+              },
+              {
+                "itemID": 5101,
+                "name": "1日耐久材料",
+                "count": 1,
+                "duration": 0,
+                "weight": 100
+              },
+              {
+                "itemID": 5102,
+                "name": "3日耐久材料",
+                "count": 1,
+                "duration": 0,
+                "weight": 50
+              }
+            ]
+          }
+        ]
+      },
+      "3013": {
+        "name": "裝甲特工(Trooper)戰利品箱",
+        "enabled": true,
+        "rewards": [
+          {
+            "pickCount": 1,
+            "randomItems": [
+              {
+                "points": 50,
+                "name": "50 Points",
+                "weight": 450
+              },
+              {
+                "points": 100,
+                "name": "100 Points",
+                "weight": 350
+              },
+              {
+                "points": 200,
+                "name": "200 Points",
+                "weight": 150
+              },
+              {
+                "itemID": 5101,
+                "name": "1日耐久材料",
+                "count": 1,
+                "duration": 0,
+                "weight": 50
+              }
+            ]
+          }
+        ]
+      },
+      "3014": {
+        "name": "突擊小隊(Ghost)戰利品箱",
+        "enabled": true,
+        "rewards": [
+          {
+            "pickCount": 1,
+            "randomItems": [
+              {
+                "points": 10,
+                "name": "10 Points",
+                "weight": 450
+              },
+              {
+                "points": 50,
+                "name": "50 Points",
+                "weight": 350
+              },
+              {
+                "points": 100,
+                "name": "100 Points",
+                "weight": 150
+              },
+              {
+                "itemID": 5101,
+                "name": "1日耐久材料",
+                "count": 1,
+                "duration": 0,
+                "weight": 50
+              }
+            ]
+          }
+        ]
+      },
+      "3015": {
+        "name": "攻堅指揮官(Lancer)戰利品箱",
+        "enabled": true,
+        "rewards": [
+          {
+            "pickCount": 1,
+            "randomItems": [
+              {
+                "points": 50,
+                "name": "50 Points",
+                "weight": 400
+              },
+              {
+                "points": 100,
+                "name": "100 Points",
+                "weight": 350
+              },
+              {
+                "points": 200,
+                "name": "200 Points",
+                "weight": 150
+              },
+              {
+                "itemID": 5101,
+                "name": "1日耐久材料",
+                "count": 1,
+                "duration": 0,
+                "weight": 100
+              }
+            ]
+          }
+        ]
+      },
+      "3016": {
+        "name": "泰坦巨獸戰利品箱",
+        "enabled": true,
+        "rewards": [
+          {
+            "pickCount": 1,
+            "randomItems": [
+              {
+                "points": 100,
+                "name": "100 Points",
+                "weight": 300
+              },
+              {
+                "points": 200,
+                "name": "200 Points",
+                "weight": 200
+              },
+              {
+                "points": 500,
+                "name": "500 Points",
+                "weight": 100
+              },
+              {
+                "itemID": 5101,
+                "name": "1日耐久材料",
+                "count": 1,
+                "duration": 0,
+                "weight": 150
+              },
+              {
+                "itemID": 5102,
+                "name": "3日耐久材料",
+                "count": 1,
+                "duration": 0,
+                "weight": 100
+              },
+              {
+                "itemID": 5103,
+                "name": "10日耐久材料",
+                "count": 1,
+                "duration": 0,
+                "weight": 50
+              },
+              {
+                "itemID": 258,
+                "name": "小型體力恢復劑",
+                "count": 10,
+                "duration": 0,
+                "weight": 10
+              },
+              {
+                "itemID": 259,
+                "name": "大型體力恢復劑",
+                "count": 5,
+                "duration": 0,
+                "weight": 5
+              },
+              {
+                "itemID": 260,
+                "name": "戰鬥復活券",
+                "count": 5,
+                "duration": 0,
+                "weight": 5
+              }
+            ]
+          }
+        ]
+      },
+      "3017": {
+        "name": "雷比亞戰利品箱",
+        "enabled": true,
+        "rewards": [
+          {
+            "pickCount": 1,
+            "randomItems": [
+              {
+                "points": 200,
+                "name": "200 Points",
+                "weight": 300
+              },
+              {
+                "points": 500,
+                "name": "500 Points",
+                "weight": 200
+              },
+              {
+                "points": 1000,
+                "name": "1000 Points",
+                "weight": 100
+              },
+              {
+                "name": "法蘭克(1日)+疾跑(1日)",
+                "duration": 1,
+                "count": 1,
+                "weight": 50,
+                "PackageItems": [200, 201]
+              },
+              {
+                "name": "庫卡(1日)+燃燒彈(1日)",
+                "duration": 1,
+                "count": 1,
+                "weight": 50,
+                "PackageItems": [215, 216]
+              },
+              {
+                "name": "莎拉(1日)+鋒利銀刃(1日)",
+                "duration": 1,
+                "count": 1,
+                "weight": 50,
+                "PackageItems": [163, 164]
+              },
+              {
+                "name": "達叔(1日)+好威鐵鎚(1日)",
+                "duration": 1,
+                "count": 1,
+                "weight": 50,
+                "PackageItems": [175, 176]
+              },
+              {
+                "itemID": 258,
+                "name": "小型體力恢復劑",
+                "count": 10,
+                "duration": 0,
+                "weight": 20
+              },
+              {
+                "itemID": 259,
+                "name": "大型體力恢復劑",
+                "count": 5,
+                "duration": 0,
+                "weight": 20
+              },
+              {
+                "itemID": 260,
+                "name": "戰鬥復活券",
+                "count": 5,
+                "duration": 0,
+                "weight": 20
+              }
+            ]
+          }
+        ]
+      },
+      "3018": {
+        "name": "異形斗怪戰利品箱",
+        "enabled": true,
+        "rewards": [
+          {
+            "pickCount": 1,
+            "randomItems": [
+              {
+                "points": 200,
+                "name": "200 Points",
+                "weight": 300
+              },
+              {
+                "points": 500,
+                "name": "500 Points",
+                "weight": 200
+              },
+              {
+                "points": 1000,
+                "name": "1000 Points",
+                "weight": 100
+              },
+              {
+                "itemID": 5103,
+                "name": "10日耐久材料",
+                "count": 1,
+                "duration": 0,
+                "weight": 50
+              },
+              {
+                "itemID": 5001,
+                "name": "第1類武器設計圖[S]",
+                "count": 1,
+                "duration": 0,
+                "weight": 20
+              },
+              {
+                "itemID": 5003,
+                "name": "第3類武器設計圖[S]",
+                "count": 1,
+                "duration": 0,
+                "weight": 20
+              },
+              {
+                "itemID": 5005,
+                "name": "第5類武器設計圖[S]",
+                "count": 1,
+                "duration": 0,
+                "weight": 20
+              },
+              {
+                "itemID": 5007,
+                "name": "第7類武器設計圖[S]",
+                "count": 1,
+                "duration": 0,
+                "weight": 20
+              },
+              {
+                "itemID": 258,
+                "name": "小型體力恢復劑",
+                "count": 10,
+                "duration": 0,
+                "weight": 10
+              },
+              {
+                "itemID": 259,
+                "name": "大型體力恢復劑",
+                "count": 5,
+                "duration": 0,
+                "weight": 5
+              },
+              {
+                "itemID": 260,
+                "name": "戰鬥復活券",
+                "count": 5,
+                "duration": 0,
+                "weight": 5
+              }
+            ]
+          }
+        ]
+      },
+      "3019": {
+        "name": "狄索戰利品箱",
+        "enabled": true,
+        "rewards": [
+          {
+            "pickCount": 1,
+            "randomItems": [
+              {
+                "points": 200,
+                "name": "200 Points",
+                "weight": 300
+              },
+              {
+                "points": 500,
+                "name": "500 Points",
+                "weight": 200
+              },
+              {
+                "points": 1000,
+                "name": "1000 Points",
+                "weight": 100
+              },
+              {
+                "itemID": 5103,
+                "name": "10日耐久材料",
+                "count": 1,
+                "duration": 0,
+                "weight": 50
+              },
+              {
+                "itemID": 5002,
+                "name": "第2類武器設計圖[S]",
+                "count": 1,
+                "duration": 0,
+                "weight": 20
+              },
+              {
+                "itemID": 5004,
+                "name": "第4類武器設計圖[S]",
+                "count": 1,
+                "duration": 0,
+                "weight": 20
+              },
+              {
+                "itemID": 5006,
+                "name": "第6類武器設計圖[S]",
+                "count": 1,
+                "duration": 0,
+                "weight": 20
+              },
+              {
+                "itemID": 258,
+                "name": "小型體力恢復劑",
+                "count": 10,
+                "duration": 0,
+                "weight": 10
+              },
+              {
+                "itemID": 259,
+                "name": "大型體力恢復劑",
+                "count": 5,
+                "duration": 0,
+                "weight": 5
+              },
+              {
+                "itemID": 260,
+                "name": "戰鬥復活券",
+                "count": 5,
+                "duration": 0,
+                "weight": 5
+              }
+            ]
+          }
+        ]
+      },
+      "3020": {
+        "name": "奧伯恩戰利品箱",
+        "enabled": true,
+        "rewards": [
+          {
+            "pickCount": 1,
+            "randomItems": [
+              {
+                "points": 200,
+                "name": "200 Points",
+                "weight": 300
+              },
+              {
+                "points": 500,
+                "name": "500 Points",
+                "weight": 200
+              },
+              {
+                "points": 1000,
+                "name": "1000 Points",
+                "weight": 100
+              },
+              {
+                "name": "法蘭克(1日)+疾跑(1日)",
+                "duration": 1,
+                "count": 1,
+                "weight": 50,
+                "PackageItems": [200, 201]
+              },
+              {
+                "name": "庫卡(1日)+燃燒彈(1日)",
+                "duration": 1,
+                "count": 1,
+                "weight": 50,
+                "PackageItems": [215, 216]
+              },
+              {
+                "name": "莎拉(1日)+鋒利銀刃(1日)",
+                "duration": 1,
+                "count": 1,
+                "weight": 50,
+                "PackageItems": [163, 164]
+              },
+              {
+                "name": "達叔(1日)+好威鐵鎚(1日)",
+                "duration": 1,
+                "count": 1,
+                "weight": 50,
+                "PackageItems": [175, 176]
+              },
+              {
+                "itemID": 258,
+                "name": "小型體力恢復劑",
+                "count": 10,
+                "duration": 0,
+                "weight": 20
+              },
+              {
+                "itemID": 259,
+                "name": "大型體力恢復劑",
+                "count": 5,
+                "duration": 0,
+                "weight": 20
+              },
+              {
+                "itemID": 260,
+                "name": "戰鬥復活券",
+                "count": 5,
+                "duration": 0,
+                "weight": 20
+              }
+            ]
+          }
+        ]
+      },
+      "3021": {
+        "name": "炎魔戰利品箱",
+        "enabled": true,
+        "rewards": [
+          {
+            "pickCount": 1,
+            "randomItems": [
+              {
+                "points": 200,
+                "name": "200 Points",
+                "weight": 300
+              },
+              {
+                "points": 500,
+                "name": "500 Points",
+                "weight": 200
+              },
+              {
+                "points": 1000,
+                "name": "1000 Points",
+                "weight": 100
+              },
+              {
+                "itemID": 5103,
+                "name": "10日耐久材料",
+                "count": 1,
+                "duration": 0,
+                "weight": 50
+              },
+              {
+                "itemID": 5001,
+                "name": "第1類武器設計圖[S]",
+                "count": 1,
+                "duration": 0,
+                "weight": 15
+              },
+              {
+                "itemID": 5002,
+                "name": "第2類武器設計圖[S]",
+                "count": 1,
+                "duration": 0,
+                "weight": 15
+              },
+              {
+                "itemID": 5003,
+                "name": "第3類武器設計圖[S]",
+                "count": 1,
+                "duration": 0,
+                "weight": 15
+              },
+              {
+                "itemID": 5004,
+                "name": "第4類武器設計圖[S]",
+                "count": 1,
+                "duration": 0,
+                "weight": 15
+              },
+              {
+                "itemID": 5005,
+                "name": "第5類武器設計圖[S]",
+                "count": 1,
+                "duration": 0,
+                "weight": 15
+              },
+              {
+                "itemID": 5006,
+                "name": "第6類武器設計圖[S]",
+                "count": 1,
+                "duration": 0,
+                "weight": 15
+              },
+              {
+                "itemID": 5007,
+                "name": "第7類武器設計圖[S]",
+                "count": 1,
+                "duration": 0,
+                "weight": 15
+              },
+              {
+                "itemID": 258,
+                "name": "小型體力恢復劑",
+                "count": 10,
+                "duration": 0,
+                "weight": 10
+              },
+              {
+                "itemID": 259,
+                "name": "大型體力恢復劑",
+                "count": 5,
+                "duration": 0,
+                "weight": 5
+              },
+              {
+                "itemID": 260,
+                "name": "戰鬥復活券",
+                "count": 5,
+                "duration": 0,
+                "weight": 5
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
 }

@@ -9,10 +9,12 @@ class User;
 
 struct ScenarioRewardCandidate {
 	unsigned short itemID = 0;
+	unsigned int points = 0; // If > 0, grants fixed Points
 	std::string name = "";
 	unsigned short count = 1;
 	short duration = 0; // -1 = permanent, 0 = count item, > 0 = days
 	unsigned int weight = 10;
+	std::vector<unsigned short> packageItems; // 組合道具包 (like itembox.json PackageItems)
 };
 
 enum class ScenarioRewardEntryType {
@@ -40,6 +42,20 @@ struct ScenarioMapReward {
 	bool enabled = true;
 };
 
+struct ScenarioBoxReward {
+	unsigned int rewardID = 0;                  // e.g. 3000, 3001, 3002
+	std::string name = "";                      // e.g. "一般殭屍補給箱"
+	std::string titleKey = "";                  // Custom title key (or default)
+	std::string msgKey = "";                    // Custom msg key (or default)
+	std::vector<ScenarioRewardEntry> rewardEntries; // 隨機道具/Point池或固定獎勵
+	bool enabled = true;
+};
+
+struct ScenarioBoxRewardSettings {
+	bool enabled = true;
+	std::string noticeKey = "EVT_SCENARIO_ITEM_POINT_REWARD"; // Native SystemDialog key ("恭喜您獲得{}Point.")
+};
+
 struct ScenarioRewardSettings {
 	bool enabled = true;
 	std::string defaultTitleKey = "HSCENARIO_MONSTER_DROP_ITEM_TITLE";
@@ -58,13 +74,23 @@ public:
 	// Grant rewards to user (items + inventory sync + ItemAwardNotice dialog)
 	bool GrantScenarioReward(User* user, const ScenarioMapReward* reward, const std::string& mapNameForLog = "");
 
+	// Handle in-game box pickup (Packet_Host GameEvent subtype 34)
+	bool HandleBoxPickup(User* user, unsigned int rewardID);
+	const ScenarioBoxReward* GetBoxReward(unsigned int rewardID) const;
+
 	size_t GetRewardCount() const { return _rewards.size(); }
+	size_t GetBoxRewardCount() const { return _boxRewards.size(); }
 	bool IsEnabled() const { return _settings.enabled; }
+	bool IsBoxRewardEnabled() const { return _boxSettings.enabled; }
 
 private:
 	ScenarioRewardSettings _settings;
 	std::vector<ScenarioMapReward> _rewards;
 	std::unique_ptr<ScenarioMapReward> _defaultReward;
+
+	ScenarioBoxRewardSettings _boxSettings;
+	std::unordered_map<unsigned int, ScenarioBoxReward> _boxRewards;
+	std::unique_ptr<ScenarioBoxReward> _defaultBoxReward;
 };
 
 extern ScenarioRewardManager scenarioRewardManager;

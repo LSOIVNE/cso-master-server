@@ -24,7 +24,10 @@ char Room::AddRoomUser(User* user, unsigned char team) {
 		return 0;
 	}
 
-	if (team == 0) {
+	if (IsScenarioMode(_roomSettings.gameModeID)) {
+		team = RoomTeam::CounterTerrorist;
+	}
+	else if (team == 0) {
 		if (user == _roomHostUser) {
 			team = RoomTeam::Terrorist;
 		}
@@ -215,6 +218,11 @@ void Room::UpdateRoomSettings(const RoomSettings& roomSettings) {
 	}
 	if (roomSettings.lowFlag & ROOMSETTINGS_LFLAG_GAMEMODEID) {
 		_roomSettings.gameModeID = roomSettings.gameModeID;
+		if (IsScenarioMode(_roomSettings.gameModeID)) {
+			for (auto& ru : _roomUsers) {
+				ru.team = RoomTeam::CounterTerrorist;
+			}
+		}
 	}
 	if (roomSettings.lowFlag & ROOMSETTINGS_LFLAG_MAPID) {
 		_roomSettings.mapID = roomSettings.mapID;
@@ -369,6 +377,9 @@ RoomUser* Room::GetRoomUserByUserID(unsigned long userID) {
 bool Room::SetUserTeam(User* user, unsigned char team) {
 	RoomUser* ru = GetRoomUser(user);
 	if (!ru) return false;
+	if (IsScenarioMode(_roomSettings.gameModeID)) {
+		team = RoomTeam::CounterTerrorist;
+	}
 	ru->team = team;
 	return true;
 }

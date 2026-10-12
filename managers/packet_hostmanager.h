@@ -56,6 +56,7 @@ private:
 	void parsePacket_Host_SelectTeam(User* user, TCPConnection::Packet::pointer packet);
 	void parsePacket_Host_ItemConsumed(User* user, TCPConnection::Packet::pointer packet);
 	void parsePacket_Host_UserWeapons(User* user, TCPConnection::Packet::pointer packet);
+	void parsePacket_Host_GameEvent(User* user, TCPConnection::Packet::pointer packet);
 };
 
 extern Packet_HostManager packet_HostManager;

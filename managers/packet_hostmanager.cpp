@@ -109,7 +109,7 @@ void Packet_HostManager::ParsePacket_Host(TCPConnection::Packet::pointer packet)
 			break;
 		}
 		case Packet_HostType::GameEvent: {
-			// Telemetry / event telemetry sent from client (e.g. eventID: 33, userID), consume silently
+			parsePacket_Host_GameEvent(user, packet);
 			break;
 		}
 		default: {
@@ -919,7 +919,10 @@ void Packet_HostManager::parsePacket_Host_SelectTeam(User* user, TCPConnection::
 
 	unsigned char team = packet->ReadUInt8();
 
-	if (team != Team::Terrorist && team != Team::CounterTerrorist) {
+	if (IsScenarioMode(room->GetRoomSettings().gameModeID)) {
+		team = (unsigned char)Team::CounterTerrorist;
+	}
+	else if (team != Team::Terrorist && team != Team::CounterTerrorist) {
 		serverConsole.Print(PrefixType::Warn, format("[ Packet_HostManager ] User ({}) has sent Packet_Host SelectTeam, but team is invalid: {}!\n", user->GetUserLogName(), team));
 		return;
 	}
@@ -1125,3 +1128,34 @@ void Packet_HostManager::SendPacket_Host_ItemConsumed(TCPConnection::pointer con
 	serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] Sent Packet_Host ItemConsumed - targetUserID: {}, itemID: {}, result: {}\n",
 		targetUserID, itemID, (int)result));
 }
+
+void Packet_HostManager::parsePacket_Host_GameEvent(User* user, TCPConnection::Packet::pointer packet) {
+	if (user == NULL || packet == NULL) {
+		return;
+	}
+
+	if (packet->GetBuffer().size() < (size_t)packet->GetReadOffset() + 5) {
+		serverConsole.Print(PrefixType::Warn, format("[ Packet_HostManager ] User ({}) sent GameEvent with insufficient data!\n", user->GetUserLogName()));
+		return;
+	}
+
+	unsigned char eventType = packet->ReadUInt8();
+	unsigned long targetUserID = packet->ReadUInt32_LE();
+
+	unsigned long value = 0;
+	if (packet->GetBuffer().size() >= (size_t)packet->GetReadOffset() + 4) {
+		value = packet->ReadUInt32_LE();
+	}
+
+	User* targetUser = (targetUserID != 0) ? userManager.GetUserByUserID(targetUserID) : user;
+	if (!targetUser) {
+		targetUser = user;
+	}
+
+	serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] GameEvent: type {}, host: {}, targetUser: {} (ID: {}), value: {}\n",
+		(int)eventType, user->GetUserLogName(), targetUser->GetUserLogName(), targetUserID, value));
+
+	if (eventType == 34) { // 0x22: Scenario drop box / point pickup
+		scenarioRewardManager.HandleBoxPickup(targetUser, (unsigned int)value);
+	}
+}

@@ -1095,7 +1095,10 @@ void Packet_RoomManager::parsePacket_Room_ChangeTeam(User* user, TCPConnection::
 	unsigned char targetTeam = packet->ReadUInt8();
 	serverConsole.Print(PrefixType::Info, format("[ Packet_RoomManager ] User ({}) has sent Packet_Room ChangeTeam to {}\n", user->GetUserLogName(), targetTeam));
 
-	if (targetTeam != RoomTeam::Terrorist && targetTeam != RoomTeam::CounterTerrorist && targetTeam != RoomTeam::Spectator) {
+	if (IsScenarioMode(room->GetRoomSettings().gameModeID)) {
+		targetTeam = RoomTeam::CounterTerrorist;
+	}
+	else if (targetTeam != RoomTeam::Terrorist && targetTeam != RoomTeam::CounterTerrorist && targetTeam != RoomTeam::Spectator) {
 		targetTeam = RoomTeam::Terrorist;
 	}
 
