@@ -96,9 +96,9 @@
       "Name": "散彈槍組",
       "IsPoints": 1,
       "PackageItems": [
-        { "ItemID": 7 },
-        { "ItemID": 8 },
-        { "ItemID": 38 }
+        { "ItemID": 7, "Duration": 1, "Count": 1 },
+        { "ItemID": 8, "Duration": 1, "Count": 1 },
+        { "ItemID": 38, "Duration": 1, "Count": 1 }
       ],
       "Offers": [
         {

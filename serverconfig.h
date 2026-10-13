@@ -67,6 +67,7 @@ struct DefaultLoadout {
 
 struct ShopConfig {
 	bool broadcastOnReload = false;
+	unsigned char giftLevelLimit = 8;
 };
 
 class ServerConfig {

@@ -467,6 +467,9 @@ bool ServerConfig::Load() {
 			if (s.contains("BroadcastOnReload") && s["BroadcastOnReload"].is_boolean()) {
 				shop.broadcastOnReload = s["BroadcastOnReload"].get<bool>();
 			}
+			if (s.contains("GiftLevelLimit") && s["GiftLevelLimit"].is_number()) {
+				shop.giftLevelLimit = s["GiftLevelLimit"].get<unsigned char>();
+			}
 		}
 
 		if (config.contains("QuestMinPlayers")) {

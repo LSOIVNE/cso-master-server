@@ -60,6 +60,21 @@ struct AttendanceRecord {
 	int daysSinceLast = 999;
 };
 
+struct UserGift {
+	unsigned int giftID = 0;
+	unsigned long receiverUserID = 0;
+	unsigned long senderUserID = 0;
+	std::string senderNickName = "";
+	unsigned int productID = 0;
+	unsigned short itemID = 0;
+	unsigned short duration = 0;
+	unsigned char isCount = 0;
+	unsigned short count = 1;
+	std::string message = "";
+	unsigned int createTime = 0;
+	unsigned char claimed = 0;
+};
+
 class DatabaseManager {
 public:
 	DatabaseManager();
@@ -70,6 +85,7 @@ public:
 	const LoginResult Login(const string& userName, const string& password);
 	int RegisterUser(const string& userName, const string& password, string& outErrorMsg);
 	bool IsNickNameExists(const string& nickName);
+	bool GetUserByNickName(const string& nickName, unsigned long& outUserID, unsigned char& outLevel);
 	bool UpdateUserNickName(unsigned long userID, const string& nickName);
 	bool UpdateUserCamoNickName(unsigned long userID, const string& camoNickName);
 	bool UpdateUserLocation(unsigned long userID, unsigned short city, unsigned short county, unsigned short neighborhood);
@@ -155,6 +171,13 @@ public:
 	bool GetUserQuestStats(unsigned long userID, struct UserQuestStats& outStats);
 	bool RecordSpecialQuestCompleted(unsigned long userID);
 	bool RecordDailyQuestCompleted(unsigned long userID);
+
+	// Gifts
+	bool EnsureGiftTables();
+	bool AddUserGift(const UserGift& gift, unsigned int& outGiftID);
+	const std::vector<UserGift> GetUserGifts(unsigned long receiverUserID);
+	bool GetUserGiftByID(unsigned int giftID, unsigned long receiverUserID, UserGift& outGift);
+	bool ClaimUserGift(unsigned int giftID, unsigned long receiverUserID, unsigned short claimCount, unsigned short& outRemainingCount);
 
 private:
 	MYSQL* _connection;

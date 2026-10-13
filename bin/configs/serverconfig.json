@@ -230,6 +230,7 @@
 		"AllowPlayerReloadQuest": false
 	},
 	"Shop": {
-		"BroadcastOnReload": false
+		"BroadcastOnReload": false,
+		"GiftLevelLimit": 8
 	}
 }

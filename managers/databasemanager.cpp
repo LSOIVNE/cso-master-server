@@ -39,6 +39,7 @@ bool DatabaseManager::Init(const string& server, const string& user, const strin
         EnsureAttendanceTables();
         EnsureTitleTables();
         EnsureQuestTables();
+        EnsureGiftTables();
     }
 
     return success;
@@ -194,6 +195,37 @@ bool DatabaseManager::IsNickNameExists(const string& nickName) {
     bool exists = (mysql_num_rows(res) > 0);
     mysql_free_result(res);
     return exists;
+}
+
+bool DatabaseManager::GetUserByNickName(const string& nickName, unsigned long& outUserID, unsigned char& outLevel) {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    char escaped[64] = {};
+    mysql_real_escape_string(_connection, escaped, nickName.c_str(), (unsigned long)nickName.size());
+
+    string query = format("SELECT userID, level FROM user_characters WHERE nickName = '{}' LIMIT 1;", escaped);
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on GetUserByNickName: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    MYSQL_RES* res = mysql_store_result(_connection);
+    if (res == NULL) {
+        return false;
+    }
+
+    MYSQL_ROW row = mysql_fetch_row(res);
+    if (row == NULL) {
+        mysql_free_result(res);
+        return false;
+    }
+
+    outUserID = strtoul(row[0], nullptr, 10);
+    outLevel = (unsigned char)atoi(row[1]);
+    mysql_free_result(res);
+    return true;
 }
 
 bool DatabaseManager::UpdateUserNickName(unsigned long userID, const string& nickName) {
@@ -2682,6 +2714,197 @@ bool DatabaseManager::RecordDailyQuestCompleted(unsigned long userID) {
             "  maxDailyCompleted = GREATEST(maxDailyCompleted, {});",
             userID, maxCompleted, todayCount);
         mysql_query(_connection, qSave.c_str());
+    }
+
+    return true;
+}
+
+bool DatabaseManager::EnsureGiftTables() {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    const char* query =
+        "CREATE TABLE IF NOT EXISTS user_gifts ("
+        "    giftID INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,"
+        "    receiverUserID INT UNSIGNED NOT NULL,"
+        "    senderUserID INT UNSIGNED NOT NULL,"
+        "    senderNickName VARBINARY(64) NOT NULL,"
+        "    productID INT UNSIGNED NOT NULL,"
+        "    itemID INT UNSIGNED NOT NULL DEFAULT 0,"
+        "    duration SMALLINT UNSIGNED NOT NULL DEFAULT 0,"
+        "    isCount TINYINT UNSIGNED NOT NULL DEFAULT 0,"
+        "    count SMALLINT UNSIGNED NOT NULL DEFAULT 1,"
+        "    message VARBINARY(255) NOT NULL DEFAULT '',"
+        "    createTime INT UNSIGNED NOT NULL DEFAULT 0,"
+        "    claimed TINYINT UNSIGNED NOT NULL DEFAULT 0,"
+        "    INDEX idx_receiver (receiverUserID, claimed)"
+        ") ENGINE=InnoDB;";
+
+    if (mysql_query(_connection, query)) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on EnsureGiftTables: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    // Migrate existing table columns to VARBINARY to support Big5 characters seamlessly
+    mysql_query(_connection, "ALTER TABLE user_gifts MODIFY COLUMN senderNickName VARBINARY(64) NOT NULL;");
+    mysql_query(_connection, "ALTER TABLE user_gifts MODIFY COLUMN message VARBINARY(255) NOT NULL DEFAULT '';");
+
+    return true;
+}
+
+bool DatabaseManager::AddUserGift(const UserGift& gift, unsigned int& outGiftID) {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    char escapedSender[128] = {};
+    mysql_real_escape_string(_connection, escapedSender, gift.senderNickName.c_str(), (unsigned long)gift.senderNickName.size());
+
+    char escapedMsg[512] = {};
+    mysql_real_escape_string(_connection, escapedMsg, gift.message.c_str(), (unsigned long)gift.message.size());
+
+    string query = format(
+        "INSERT INTO user_gifts (receiverUserID, senderUserID, senderNickName, productID, itemID, duration, isCount, count, message, createTime, claimed) "
+        "VALUES ({}, {}, '{}', {}, {}, {}, {}, {}, '{}', {}, 0);",
+        gift.receiverUserID, gift.senderUserID, escapedSender,
+        gift.productID, gift.itemID, gift.duration, gift.isCount, gift.count,
+        escapedMsg, gift.createTime);
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on AddUserGift: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    outGiftID = (unsigned int)mysql_insert_id(_connection);
+    return true;
+}
+
+const std::vector<UserGift> DatabaseManager::GetUserGifts(unsigned long receiverUserID) {
+    if (_connection == NULL) {
+        return {};
+    }
+
+    string query = format(
+        "SELECT giftID, receiverUserID, senderUserID, senderNickName, productID, itemID, duration, isCount, count, message, createTime, claimed "
+        "FROM user_gifts WHERE receiverUserID = {} AND claimed = 0 ORDER BY giftID DESC;",
+        receiverUserID);
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on GetUserGifts: {}\n", mysql_error(_connection)));
+        return {};
+    }
+
+    MYSQL_RES* res = mysql_store_result(_connection);
+    if (res == NULL) {
+        return {};
+    }
+
+    std::vector<UserGift> gifts;
+    MYSQL_ROW row = NULL;
+    while ((row = mysql_fetch_row(res))) {
+        UserGift g;
+        g.giftID = (unsigned int)strtoul(row[0], nullptr, 10);
+        g.receiverUserID = strtoul(row[1], nullptr, 10);
+        g.senderUserID = strtoul(row[2], nullptr, 10);
+        g.senderNickName = row[3] ? row[3] : "";
+        g.productID = (unsigned int)strtoul(row[4], nullptr, 10);
+        g.itemID = (unsigned short)atoi(row[5]);
+        g.duration = (unsigned short)atoi(row[6]);
+        g.isCount = (unsigned char)atoi(row[7]);
+        g.count = (unsigned short)atoi(row[8]);
+        g.message = row[9] ? row[9] : "";
+        g.createTime = (unsigned int)strtoul(row[10], nullptr, 10);
+        g.claimed = (unsigned char)atoi(row[11]);
+        gifts.push_back(g);
+    }
+    mysql_free_result(res);
+    return gifts;
+}
+
+bool DatabaseManager::GetUserGiftByID(unsigned int giftID, unsigned long receiverUserID, UserGift& outGift) {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    string query = format(
+        "SELECT giftID, receiverUserID, senderUserID, senderNickName, productID, itemID, duration, isCount, count, message, createTime, claimed "
+        "FROM user_gifts WHERE giftID = {} AND receiverUserID = {} LIMIT 1;",
+        giftID, receiverUserID);
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on GetUserGiftByID: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    MYSQL_RES* res = mysql_store_result(_connection);
+    if (res == NULL) {
+        return false;
+    }
+
+    MYSQL_ROW row = NULL;
+    row = mysql_fetch_row(res);
+    if (row == NULL) {
+        mysql_free_result(res);
+        return false;
+    }
+
+    outGift.giftID = (unsigned int)strtoul(row[0], nullptr, 10);
+    outGift.receiverUserID = strtoul(row[1], nullptr, 10);
+    outGift.senderUserID = strtoul(row[2], nullptr, 10);
+    outGift.senderNickName = row[3] ? row[3] : "";
+    outGift.productID = (unsigned int)strtoul(row[4], nullptr, 10);
+    outGift.itemID = (unsigned short)atoi(row[5]);
+    outGift.duration = (unsigned short)atoi(row[6]);
+    outGift.isCount = (unsigned char)atoi(row[7]);
+    outGift.count = (unsigned short)atoi(row[8]);
+    outGift.message = row[9] ? row[9] : "";
+    outGift.createTime = (unsigned int)strtoul(row[10], nullptr, 10);
+    outGift.claimed = (unsigned char)atoi(row[11]);
+    mysql_free_result(res);
+    return true;
+}
+
+bool DatabaseManager::ClaimUserGift(unsigned int giftID, unsigned long receiverUserID, unsigned short claimCount, unsigned short& outRemainingCount) {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    string q = format("SELECT count FROM user_gifts WHERE giftID = {} AND receiverUserID = {} AND claimed = 0 LIMIT 1;", giftID, receiverUserID);
+    if (mysql_query(_connection, q.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on ClaimUserGift check: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    MYSQL_RES* res = mysql_store_result(_connection);
+    if (res == NULL) {
+        return false;
+    }
+
+    MYSQL_ROW row = mysql_fetch_row(res);
+    if (row == NULL) {
+        mysql_free_result(res);
+        return false;
+    }
+
+    unsigned short currentCount = (unsigned short)atoi(row[0]);
+    mysql_free_result(res);
+
+    if (claimCount >= currentCount || currentCount == 0) {
+        outRemainingCount = 0;
+        string uq = format("UPDATE user_gifts SET count = 0, claimed = 1 WHERE giftID = {} AND receiverUserID = {};", giftID, receiverUserID);
+        if (mysql_query(_connection, uq.c_str())) {
+            serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on ClaimUserGift update: {}\n", mysql_error(_connection)));
+            return false;
+        }
+    }
+    else {
+        outRemainingCount = currentCount - claimCount;
+        string uq = format("UPDATE user_gifts SET count = {} WHERE giftID = {} AND receiverUserID = {};", outRemainingCount, giftID, receiverUserID);
+        if (mysql_query(_connection, uq.c_str())) {
+            serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on ClaimUserGift update: {}\n", mysql_error(_connection)));
+            return false;
+        }
     }
 
     return true;
