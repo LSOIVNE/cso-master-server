@@ -160,27 +160,17 @@ void Packet_FavoriteManager::parsePacket_Favorite_UserBookMark(User* user, TCPCo
 		name.resize(BOOKMARK_NAME_MAX_SIZE);
 	}
 
-	unsigned char primaryItemID = packet->ReadUInt8();
-	bool primaryAmmo = packet->ReadBool();
-	unsigned char secondaryItemID = packet->ReadUInt8();
-	bool secondaryAmmo = packet->ReadBool();
-	unsigned char flashbang = packet->ReadUInt8();
-
-	if (flashbang > 2) {
-		flashbang = 2;
-	}
-
-	bool hegrenade = packet->ReadBool();
-	bool smokegrenade = packet->ReadBool();
-	bool defusekit = packet->ReadBool();
-	bool nightvision = packet->ReadBool();
-	unsigned char kevlar = packet->ReadUInt8();
-
-	if (kevlar > 2) {
-		kevlar = 2;
-	}
-
-	unsigned char unk1 = packet->ReadUInt8();
+	unsigned short primaryItemID = packet->ReadUInt16_LE();
+	unsigned short primaryAmmo = packet->ReadUInt16_LE();
+	unsigned short secondaryItemID = packet->ReadUInt16_LE();
+	unsigned short secondaryAmmo = packet->ReadUInt16_LE();
+	unsigned short flashbang = packet->ReadUInt16_LE();
+	unsigned short hegrenade = packet->ReadUInt16_LE();
+	unsigned short smokegrenade = packet->ReadUInt16_LE();
+	unsigned short defusekit = packet->ReadUInt16_LE();
+	unsigned short nightvision = packet->ReadUInt16_LE();
+	unsigned short kevlar = packet->ReadUInt16_LE();
+	unsigned short unk1 = packet->ReadUInt16_LE();
 
 	BookMark userBookMark{ slotID, name, primaryItemID, primaryAmmo, secondaryItemID, secondaryAmmo, flashbang, hegrenade, smokegrenade, defusekit, nightvision, kevlar, unk1 };
 

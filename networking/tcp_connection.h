@@ -130,17 +130,17 @@ struct ItemSet {
 struct BookMark {
 	unsigned char slotID = 0;
 	string name = "";
-	unsigned char primaryItemID = 0;
-	bool primaryAmmo = false;
-	unsigned char secondaryItemID = 0;
-	bool secondaryAmmo = false;
-	unsigned char flashbang = 0;
-	bool hegrenade = false;
-	bool smokegrenade = false;
-	bool defusekit = false;
-	bool nightvision = false;
-	unsigned char kevlar = 0;
-	unsigned char unk1 = 0;
+	unsigned short primaryItemID = 0;
+	unsigned short primaryAmmo = 0;
+	unsigned short secondaryItemID = 0;
+	unsigned short secondaryAmmo = 0;
+	unsigned short flashbang = 0;
+	unsigned short hegrenade = 0;
+	unsigned short smokegrenade = 0;
+	unsigned short defusekit = 0;
+	unsigned short nightvision = 0;
+	unsigned short kevlar = 0;
+	unsigned short unk1 = 0;
 };
 
 struct InventoryItem {

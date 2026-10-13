@@ -40,6 +40,7 @@ bool DatabaseManager::Init(const string& server, const string& user, const strin
         EnsureTitleTables();
         EnsureQuestTables();
         EnsureGiftTables();
+        EnsureBookmarkTables();
     }
 
     return success;
@@ -1156,12 +1157,26 @@ ItemSet DatabaseManager::GetUserItemSet(unsigned long userID) {
 }
 
 bool DatabaseManager::SaveUserBookMark(unsigned long userID, const BookMark& userBookMark) {
+    if (_connection == NULL) {
+        return false;
+    }
+
     char* bookMarkName = new char[userBookMark.name.size() * 2 + 1];
     mysql_real_escape_string(_connection, bookMarkName, userBookMark.name.c_str(), (unsigned long)userBookMark.name.size());
 
-    string query = format("UPDATE user_bookmarks SET name = '{}', primaryItemID = {}, primaryAmmo = {}, secondaryItemID = {}, secondaryAmmo = {}, flashbang = {}, hegrenade = {}, smokegrenade = {}, defusekit = {}, nightvision = {}, kevlar = {}, unk1 = {} WHERE userID = {} AND slotID = {};",
-        bookMarkName, userBookMark.primaryItemID, userBookMark.primaryAmmo, userBookMark.secondaryItemID, userBookMark.secondaryAmmo, userBookMark.flashbang,
-        userBookMark.hegrenade, userBookMark.smokegrenade, userBookMark.defusekit, userBookMark.nightvision, userBookMark.kevlar, userBookMark.unk1, userID, userBookMark.slotID);
+    string query = format(
+        "INSERT INTO user_bookmarks (userID, slotID, name, primaryItemID, primaryAmmo, secondaryItemID, secondaryAmmo, flashbang, hegrenade, smokegrenade, defusekit, nightvision, kevlar, unk1) "
+        "VALUES ({}, {}, '{}', {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}) "
+        "ON DUPLICATE KEY UPDATE name = VALUES(name), primaryItemID = VALUES(primaryItemID), primaryAmmo = VALUES(primaryAmmo), "
+        "secondaryItemID = VALUES(secondaryItemID), secondaryAmmo = VALUES(secondaryAmmo), flashbang = VALUES(flashbang), "
+        "hegrenade = VALUES(hegrenade), smokegrenade = VALUES(smokegrenade), defusekit = VALUES(defusekit), "
+        "nightvision = VALUES(nightvision), kevlar = VALUES(kevlar), unk1 = VALUES(unk1);",
+        userID, userBookMark.slotID, bookMarkName,
+        userBookMark.primaryItemID, userBookMark.primaryAmmo,
+        userBookMark.secondaryItemID, userBookMark.secondaryAmmo,
+        userBookMark.flashbang, userBookMark.hegrenade,
+        userBookMark.smokegrenade, userBookMark.defusekit,
+        userBookMark.nightvision, userBookMark.kevlar, userBookMark.unk1);
     delete[] bookMarkName;
 
     if (mysql_query(_connection, query.c_str())) {
@@ -1173,21 +1188,41 @@ bool DatabaseManager::SaveUserBookMark(unsigned long userID, const BookMark& use
 }
 
 const vector<BookMark> DatabaseManager::GetUserBookMarks(unsigned long userID) {
-    string query = format("SELECT slotID, name, primaryItemID, primaryAmmo, secondaryItemID, secondaryAmmo, flashbang, hegrenade, smokegrenade, defusekit, nightvision, kevlar, unk1 FROM user_bookmarks WHERE userID = {};", userID);
+    if (_connection == NULL) {
+        return {};
+    }
+
+    string query = format("SELECT slotID, name, primaryItemID, primaryAmmo, secondaryItemID, secondaryAmmo, flashbang, hegrenade, smokegrenade, defusekit, nightvision, kevlar, unk1 FROM user_bookmarks WHERE userID = {} ORDER BY slotID ASC;", userID);
 
     if (mysql_query(_connection, query.c_str())) {
         serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on GetUserBookMarks: {}\n", mysql_error(_connection)));
         return {};
     }
 
-    MYSQL_RES* res = mysql_use_result(_connection);
+    MYSQL_RES* res = mysql_store_result(_connection);
+    if (res == NULL) {
+        return {};
+    }
+
     MYSQL_ROW row = NULL;
     vector<BookMark> userBookMarks;
 
     while ((row = mysql_fetch_row(res)))
     {
-        BookMark bookMark { (unsigned char)atoi(row[0]), row[1], (unsigned char)atoi(row[2]), (bool)atoi(row[3]), (unsigned char)atoi(row[4]), (bool)atoi(row[5]), (unsigned char)atoi(row[6]), 
-                            (bool)atoi(row[7]), (bool)atoi(row[8]), (bool)atoi(row[9]), (bool)atoi(row[10]), (unsigned char)atoi(row[11]), (unsigned char)atoi(row[12]) };
+        BookMark bookMark;
+        bookMark.slotID = (unsigned char)atoi(row[0]);
+        bookMark.name = row[1] ? row[1] : "";
+        bookMark.primaryItemID = (unsigned short)atoi(row[2]);
+        bookMark.primaryAmmo = (unsigned short)atoi(row[3]);
+        bookMark.secondaryItemID = (unsigned short)atoi(row[4]);
+        bookMark.secondaryAmmo = (unsigned short)atoi(row[5]);
+        bookMark.flashbang = (unsigned short)atoi(row[6]);
+        bookMark.hegrenade = (unsigned short)atoi(row[7]);
+        bookMark.smokegrenade = (unsigned short)atoi(row[8]);
+        bookMark.defusekit = (unsigned short)atoi(row[9]);
+        bookMark.nightvision = (unsigned short)atoi(row[10]);
+        bookMark.kevlar = (unsigned short)atoi(row[11]);
+        bookMark.unk1 = (unsigned short)atoi(row[12]);
 
         userBookMarks.push_back(bookMark);
     }
@@ -2749,6 +2784,28 @@ bool DatabaseManager::EnsureGiftTables() {
     // Migrate existing table columns to VARBINARY to support Big5 characters seamlessly
     mysql_query(_connection, "ALTER TABLE user_gifts MODIFY COLUMN senderNickName VARBINARY(64) NOT NULL;");
     mysql_query(_connection, "ALTER TABLE user_gifts MODIFY COLUMN message VARBINARY(255) NOT NULL DEFAULT '';");
+
+    return true;
+}
+
+bool DatabaseManager::EnsureBookmarkTables() {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    mysql_query(_connection, "ALTER TABLE user_bookmarks MODIFY COLUMN name VARBINARY(32) NOT NULL DEFAULT '';");
+    mysql_query(_connection, "ALTER TABLE user_bookmarks MODIFY COLUMN primaryItemID SMALLINT UNSIGNED NOT NULL DEFAULT 0;");
+    mysql_query(_connection, "ALTER TABLE user_bookmarks MODIFY COLUMN primaryAmmo SMALLINT UNSIGNED NOT NULL DEFAULT 0;");
+    mysql_query(_connection, "ALTER TABLE user_bookmarks MODIFY COLUMN secondaryItemID SMALLINT UNSIGNED NOT NULL DEFAULT 0;");
+    mysql_query(_connection, "ALTER TABLE user_bookmarks MODIFY COLUMN secondaryAmmo SMALLINT UNSIGNED NOT NULL DEFAULT 0;");
+    mysql_query(_connection, "ALTER TABLE user_bookmarks MODIFY COLUMN flashbang SMALLINT UNSIGNED NOT NULL DEFAULT 0;");
+    mysql_query(_connection, "ALTER TABLE user_bookmarks MODIFY COLUMN hegrenade SMALLINT UNSIGNED NOT NULL DEFAULT 0;");
+    mysql_query(_connection, "ALTER TABLE user_bookmarks MODIFY COLUMN smokegrenade SMALLINT UNSIGNED NOT NULL DEFAULT 0;");
+    mysql_query(_connection, "ALTER TABLE user_bookmarks MODIFY COLUMN defusekit SMALLINT UNSIGNED NOT NULL DEFAULT 0;");
+    mysql_query(_connection, "ALTER TABLE user_bookmarks MODIFY COLUMN nightvision SMALLINT UNSIGNED NOT NULL DEFAULT 0;");
+    mysql_query(_connection, "ALTER TABLE user_bookmarks MODIFY COLUMN kevlar SMALLINT UNSIGNED NOT NULL DEFAULT 0;");
+    mysql_query(_connection, "ALTER TABLE user_bookmarks MODIFY COLUMN unk1 SMALLINT UNSIGNED NOT NULL DEFAULT 0;");
+    mysql_query(_connection, "ALTER TABLE user_bookmarks ADD UNIQUE KEY uk_user_slot (userID, slotID);");
 
     return true;
 }

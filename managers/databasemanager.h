@@ -174,6 +174,7 @@ public:
 
 	// Gifts
 	bool EnsureGiftTables();
+	bool EnsureBookmarkTables();
 	bool AddUserGift(const UserGift& gift, unsigned int& outGiftID);
 	const std::vector<UserGift> GetUserGifts(unsigned long receiverUserID);
 	bool GetUserGiftByID(unsigned int giftID, unsigned long receiverUserID, UserGift& outGift);

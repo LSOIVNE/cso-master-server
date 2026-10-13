@@ -1,7 +1,7 @@
 #pragma once
 #include "user.h"
 
-constexpr auto BOOKMARK_NAME_MAX_SIZE = 12;
+constexpr auto BOOKMARK_NAME_MAX_SIZE = 32;
 
 enum Packet_FavoriteType {
 	UserBuyMenu = 0,
