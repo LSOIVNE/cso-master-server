@@ -240,14 +240,14 @@ std::vector<unsigned char> BingoManager::CheckNewlyCompletedLines(BingoBoard& bo
 	return newlyCompleted;
 }
 
-void BingoManager::GrantBingoPrize(User* user, const BingoPrize& prize) {
+void BingoManager::GrantBingoPrize(User* user, const BingoPrize& prize, InventoryItem* outItem) {
 	if (!user) return;
 	unsigned long userID = user->GetUserID();
 	auto inv = user->GetUserInventory();
 
 	unsigned short maxSlotID = 0;
 	bool alreadyOwned = false;
-	InventoryItem ownedItem;
+	InventoryItem ownedItem{};
 	for (const auto& it : inv) {
 		if (it.slotID > maxSlotID) {
 			maxSlotID = it.slotID;
@@ -266,6 +266,10 @@ void BingoManager::GrantBingoPrize(User* user, const BingoPrize& prize) {
 		// Count-based consumable item (e.g. spray, coupons, decoders)
 		if (alreadyOwned) {
 			databaseManager.UpdateUserInventoryItemCount(userID, prize.itemID, prize.count);
+			if (outItem != nullptr) {
+				ownedItem.count += prize.count;
+				*outItem = ownedItem;
+			}
 		}
 		else {
 			InventoryItem newItem;
@@ -278,6 +282,9 @@ void BingoManager::GrantBingoPrize(User* user, const BingoPrize& prize) {
 			newItem.expirationTime = 0;
 			newItem.enhanceBits = 0;
 			databaseManager.AddUserInventoryItems(userID, { newItem });
+			if (outItem != nullptr) {
+				*outItem = newItem;
+			}
 		}
 	}
 	else {
@@ -294,6 +301,10 @@ void BingoManager::GrantBingoPrize(User* user, const BingoPrize& prize) {
 				databaseManager.UpdateUserInventoryExpiration(userID, prize.itemID, 0);
 				serverConsole.Print(PrefixType::Info, format("[ BingoManager ] User ({}) upgraded itemID {} to permanent!\n",
 					user->GetUserLogName(), prize.itemID));
+				if (outItem != nullptr) {
+					ownedItem.expirationTime = 0;
+					*outItem = ownedItem;
+				}
 			}
 			else {
 				// Extend expiration of existing timed item
@@ -302,6 +313,10 @@ void BingoManager::GrantBingoPrize(User* user, const BingoPrize& prize) {
 				databaseManager.UpdateUserInventoryExpiration(userID, prize.itemID, newExp);
 				serverConsole.Print(PrefixType::Info, format("[ BingoManager ] User ({}) extended itemID {} expiration to {}.\n",
 					user->GetUserLogName(), prize.itemID, newExp));
+				if (outItem != nullptr) {
+					ownedItem.expirationTime = newExp;
+					*outItem = ownedItem;
+				}
 			}
 		}
 		else {
@@ -315,6 +330,9 @@ void BingoManager::GrantBingoPrize(User* user, const BingoPrize& prize) {
 			newItem.expirationTime = isPermItem ? 0 : (unsigned long)(now + (unsigned long)prize.duration * 86400);
 			newItem.enhanceBits = 0;
 			databaseManager.AddUserInventoryItems(userID, { newItem });
+			if (outItem != nullptr) {
+				*outItem = newItem;
+			}
 		}
 	}
 }
@@ -440,16 +458,23 @@ bool BingoManager::ShuffleBoard(TCPConnection::pointer connection, User* user) {
 	databaseManager.SaveUserBingoBoard(board);
 
 	if (!newlyCompleted.empty()) {
+		std::vector<InventoryItem> deltaItems;
 		for (unsigned char lineIdx : newlyCompleted) {
 			if (lineIdx < board.prizes.size()) {
 				const auto& prize = board.prizes[lineIdx];
-				GrantBingoPrize(user, prize);
+				InventoryItem prizeItem{};
+				GrantBingoPrize(user, prize, &prizeItem);
+				if (prizeItem.slotID != 0) {
+					deltaItems.push_back(prizeItem);
+				}
 				serverConsole.Print(PrefixType::Info, format("[ BingoManager ] User ({}) completed Bingo Line {} via shuffle! Won itemID {}\n",
 					user->GetUserLogName(), (int)lineIdx, prize.itemID));
 			}
 		}
 
-		packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
+		if (!deltaItems.empty()) {
+			packetManager.SendPacket_InventoryDelta(connection, deltaItems, {});
+		}
 		SendPacket_Bingo_LineCompleted(connection, newlyCompleted);
 	}
 
@@ -514,18 +539,25 @@ bool BingoManager::OnBoxOpened(TCPConnection::pointer connection, User* user, un
 	std::vector<unsigned char> newlyCompleted = CheckNewlyCompletedLines(board);
 
 	if (!newlyCompleted.empty()) {
+		std::vector<InventoryItem> deltaItems;
 		for (unsigned char lineIdx : newlyCompleted) {
 			if (lineIdx < board.prizes.size()) {
 				const auto& prize = board.prizes[lineIdx];
 				databaseManager.UpdateUserBingoPrize(userID, lineIdx, 1);
-				GrantBingoPrize(user, prize);
+				InventoryItem prizeItem{};
+				GrantBingoPrize(user, prize, &prizeItem);
+				if (prizeItem.slotID != 0) {
+					deltaItems.push_back(prizeItem);
+				}
 
 				serverConsole.Print(PrefixType::Info, format("[ BingoManager ] User ({}) completed Bingo Line {}! Won itemID {}\n",
 					user->GetUserLogName(), (int)lineIdx, prize.itemID));
 			}
 		}
 
-		packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
+		if (!deltaItems.empty()) {
+			packetManager.SendPacket_InventoryDelta(connection, deltaItems, {});
+		}
 	}
 
 	// Store pending roll for the client's upcoming Action 0 request
