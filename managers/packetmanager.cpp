@@ -110,18 +110,14 @@ void PacketManager::SendPacket_Inventory(TCPConnection::pointer connection, cons
 	for (const auto& item : userInventory) {
 		if (item.itemID == 166) {
 			cboxCount += item.count;
-			// Ensure any existing slot on client side for item 166 is removed
-			slotsToDelete.push_back(item.slotID);
+		}
+		const auto* itemDef = itemDefinitionManager.GetItem(item.itemID);
+		bool isFab = (itemDef != nullptr && itemDef->IsFabItem()) || (item.itemID >= 5001 && item.itemID <= 5999);
+		if (isFab) {
+			fabItems.push_back(item);
 		}
 		else {
-			const auto* itemDef = itemDefinitionManager.GetItem(item.itemID);
-			bool isFab = (itemDef != nullptr && itemDef->IsFabItem()) || (item.itemID >= 5001 && item.itemID <= 5999);
-			if (isFab) {
-				fabItems.push_back(item);
-			}
-			else {
-				normalItems.push_back(item);
-			}
+			normalItems.push_back(item);
 		}
 	}
 
@@ -214,8 +210,12 @@ void PacketManager::SendPacket_InventoryDelta(TCPConnection::pointer connection,
 
 	vector<InventoryItem> normalItems;
 	vector<InventoryItem> fabItems;
+	bool hasCBox = false;
 
 	for (const auto& item : updatedItems) {
+		if (item.itemID == 166) {
+			hasCBox = true;
+		}
 		const auto* itemDef = itemDefinitionManager.GetItem(item.itemID);
 		bool isFab = (itemDef != nullptr && itemDef->IsFabItem()) || (item.itemID >= 5001 && item.itemID <= 5999);
 		if (isFab) {
@@ -300,6 +300,18 @@ void PacketManager::SendPacket_InventoryDelta(TCPConnection::pointer connection,
 			}
 
 			fabPacket->Send();
+		}
+	}
+
+	// 3. Automatically sync C-Box count if C-Box was modified
+	if (hasCBox) {
+		User* user = userManager.GetUserByConnection(connection);
+		if (user != nullptr) {
+			unsigned short totalCBox = 0;
+			for (const auto& inv : user->GetUserInventory()) {
+				if (inv.itemID == 166) totalCBox += inv.count;
+			}
+			packet_UpdateInfoManager.SendPacket_UserUpdateInfo_CBoxCount(connection, user->GetUserID(), totalCBox);
 		}
 	}
 }

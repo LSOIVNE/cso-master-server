@@ -6,6 +6,7 @@
 #include <mutex>
 
 class User;
+struct InventoryItem;
 
 struct QuestConditionConfig {
 	unsigned char index = 0;
@@ -140,7 +141,7 @@ public:
 	void SetQuestRewardRevealed(unsigned long userID, unsigned int questID, bool revealed);
 	void ClearRolledQuestReward(unsigned long userID, unsigned int questID);
 	void ClearUserRolledRewards(unsigned long userID);
-	void GrantQuestRewardItem(User* user, unsigned short itemID, unsigned short count, unsigned short duration);
+	void GrantQuestRewardItem(User* user, unsigned short itemID, unsigned short count, unsigned short duration, InventoryItem* outDeltaItem = nullptr);
 
 	bool UpdateQuestProgress(User* user, unsigned int questID, unsigned char condIndex, unsigned short addCount);
 	bool CompleteQuest(User* user, unsigned int questID);

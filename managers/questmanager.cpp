@@ -845,7 +845,7 @@ void QuestManager::ClearUserRolledRewards(unsigned long userID) {
 	}
 }
 
-void QuestManager::GrantQuestRewardItem(User* user, unsigned short itemID, unsigned short count, unsigned short duration) {
+void QuestManager::GrantQuestRewardItem(User* user, unsigned short itemID, unsigned short count, unsigned short duration, InventoryItem* outDeltaItem) {
 	if (user == NULL || itemID == 0) return;
 	unsigned long userID = user->GetUserID();
 	auto currentInv = databaseManager.GetUserInventory(userID);
@@ -867,6 +867,10 @@ void QuestManager::GrantQuestRewardItem(User* user, unsigned short itemID, unsig
 	if (duration == 0) { // 數量型道具
 		if (alreadyOwned) {
 			databaseManager.UpdateUserInventoryItemCount(userID, itemID, count);
+			if (outDeltaItem) {
+				ownedItem.count += (count > 0) ? count : 1;
+				*outDeltaItem = ownedItem;
+			}
 		}
 		else {
 			InventoryItem newItem;
@@ -879,17 +883,27 @@ void QuestManager::GrantQuestRewardItem(User* user, unsigned short itemID, unsig
 			newItem.expirationTime = 0;
 			newItem.enhanceBits = 0;
 			databaseManager.AddUserInventoryItems(userID, { newItem });
+			if (outDeltaItem) {
+				*outDeltaItem = newItem;
+			}
 		}
 	}
 	else { // 期限型道具 (天數)
 		if (alreadyOwned) {
 			if (ownedItem.expirationTime == 0) {
 				// Already permanent, keep permanent
+				if (outDeltaItem) {
+					*outDeltaItem = ownedItem;
+				}
 			}
 			else {
 				unsigned long baseTime = (ownedItem.expirationTime > (unsigned long)now) ? ownedItem.expirationTime : (unsigned long)now;
 				unsigned long newExp = baseTime + (unsigned long)duration * 86400;
 				databaseManager.UpdateUserInventoryExpiration(userID, itemID, newExp);
+				if (outDeltaItem) {
+					ownedItem.expirationTime = newExp;
+					*outDeltaItem = ownedItem;
+				}
 			}
 		}
 		else {
@@ -903,6 +917,9 @@ void QuestManager::GrantQuestRewardItem(User* user, unsigned short itemID, unsig
 			newItem.expirationTime = (unsigned long)now + (unsigned long)duration * 86400;
 			newItem.enhanceBits = 0;
 			databaseManager.AddUserInventoryItems(userID, { newItem });
+			if (outDeltaItem) {
+				*outDeltaItem = newItem;
+			}
 		}
 	}
 }
@@ -1320,10 +1337,11 @@ bool QuestManager::ClaimReward(User* user, unsigned int questID, unsigned char r
 			RolledQuestReward rolled = GetOrRollQuestReward(user->GetUserID(), questID);
 
 			// Grant rolled item into inventory
-			GrantQuestRewardItem(user, rolled.itemID, rolled.count, rolled.duration);
+			InventoryItem grantedItem{};
+			GrantQuestRewardItem(user, rolled.itemID, rolled.count, rolled.duration, &grantedItem);
 
-			// Sync inventory to client
-			packetManager.SendPacket_Inventory(user->GetConnection(), user->GetUserInventory());
+			// Sync inventory to client (Delta 增量同步，若為 166 亦會自動觸發 Packet 157 CBoxCount 同步)
+			packetManager.SendPacket_InventoryDelta(user->GetConnection(), { grantedItem }, {});
 
 			QuestRewardItem rItem;
 			rItem.type = 0; // Item

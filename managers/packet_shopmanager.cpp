@@ -323,6 +323,7 @@ void Packet_ShopManager::parsePacket_Shop_Buy(User* user, TCPConnection::Packet:
 
 		std::vector<InventoryItem> itemsToAdd;
 		std::vector<std::string> rewardedNames;
+		std::vector<InventoryItem> deltaUpdatedItems;
 
 		for (const auto& reward : offer.packageItems) {
 			const ItemDefinition* itemDef = itemDefinitionManager.GetItem(reward.itemID);
@@ -354,12 +355,16 @@ void Packet_ShopManager::parsePacket_Shop_Buy(User* user, TCPConnection::Packet:
 					else if (effectiveDuration == 0 || effectiveDuration == 0xFFFF) {
 						// Upgrade to permanent
 						databaseManager.UpdateUserInventoryExpiration(userID, reward.itemID, 0);
+						ownedItem.expirationTime = 0;
+						deltaUpdatedItems.push_back(ownedItem);
 					}
 					else {
 						// Extend expiration
 						unsigned long baseTime = (ownedItem.expirationTime > (unsigned long)now) ? ownedItem.expirationTime : (unsigned long)now;
 						unsigned long newExp = baseTime + (unsigned long)effectiveDuration * 86400;
 						databaseManager.UpdateUserInventoryExpiration(userID, reward.itemID, newExp);
+						ownedItem.expirationTime = newExp;
+						deltaUpdatedItems.push_back(ownedItem);
 					}
 				}
 				else {
@@ -374,12 +379,15 @@ void Packet_ShopManager::parsePacket_Shop_Buy(User* user, TCPConnection::Packet:
 					newItem.enhanceBits = 0;
 					itemsToAdd.push_back(newItem);
 					currentInventory.push_back(newItem);
+					deltaUpdatedItems.push_back(newItem);
 				}
 			}
 			else {
 				// Count-based
 				if (itemOwned) {
 					databaseManager.UpdateUserInventoryItemCount(userID, reward.itemID, reward.count);
+					ownedItem.count += reward.count;
+					deltaUpdatedItems.push_back(ownedItem);
 				}
 				else {
 					InventoryItem newItem;
@@ -393,6 +401,7 @@ void Packet_ShopManager::parsePacket_Shop_Buy(User* user, TCPConnection::Packet:
 					newItem.enhanceBits = 0;
 					itemsToAdd.push_back(newItem);
 					currentInventory.push_back(newItem);
+					deltaUpdatedItems.push_back(newItem);
 				}
 			}
 		}
@@ -413,8 +422,8 @@ void Packet_ShopManager::parsePacket_Shop_Buy(User* user, TCPConnection::Packet:
 		}
 		sendPacket_Shop_BuyReply(connection, 1, "", purchasedItemIDs);
 
-		// 2. Immediately sync updated inventory to client (Packet 154)
-		packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
+		// 2. Immediately sync updated inventory to client (Delta 增量同步)
+		packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, {});
 
 		// 3. Immediately sync updated Points and Cash balance to client HUD (Packet 157 & 69)
 		auto charResult = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
@@ -451,6 +460,7 @@ void Packet_ShopManager::parsePacket_Shop_Buy(User* user, TCPConnection::Packet:
 	bool alreadyOwned = false;
 	InventoryItem ownedItem;
 	unsigned short maxSlotID = 0;
+	std::vector<InventoryItem> deltaUpdatedItems;
 
 	for (const auto& item : currentInventory) {
 		if (item.slotID > maxSlotID) {
@@ -465,6 +475,8 @@ void Packet_ShopManager::parsePacket_Shop_Buy(User* user, TCPConnection::Packet:
 	if (offer.isCount) {
 		if (alreadyOwned) {
 			databaseManager.UpdateUserInventoryItemCount(userID, (unsigned short)offer.productID, offer.count);
+			ownedItem.count += offer.count;
+			deltaUpdatedItems.push_back(ownedItem);
 		}
 		else {
 			InventoryItem newItem;
@@ -477,6 +489,7 @@ void Packet_ShopManager::parsePacket_Shop_Buy(User* user, TCPConnection::Packet:
 			newItem.expirationTime = 0;
 			newItem.enhanceBits = 0;
 			databaseManager.AddUserInventoryItems(userID, { newItem });
+			deltaUpdatedItems.push_back(newItem);
 		}
 	}
 	else {
@@ -489,12 +502,16 @@ void Packet_ShopManager::parsePacket_Shop_Buy(User* user, TCPConnection::Packet:
 			else if (isPermOffer) {
 				// Upgrade to permanent
 				databaseManager.UpdateUserInventoryExpiration(userID, (unsigned short)offer.productID, 0);
+				ownedItem.expirationTime = 0;
+				deltaUpdatedItems.push_back(ownedItem);
 			}
 			else {
 				// Extend expiration
 				unsigned long baseTime = (ownedItem.expirationTime > (unsigned long)now) ? ownedItem.expirationTime : (unsigned long)now;
 				unsigned long newExp = baseTime + (unsigned long)offer.duration * 86400;
 				databaseManager.UpdateUserInventoryExpiration(userID, (unsigned short)offer.productID, newExp);
+				ownedItem.expirationTime = newExp;
+				deltaUpdatedItems.push_back(ownedItem);
 			}
 		}
 		else {
@@ -508,6 +525,7 @@ void Packet_ShopManager::parsePacket_Shop_Buy(User* user, TCPConnection::Packet:
 			newItem.expirationTime = isPermOffer ? 0 : (unsigned long)(now + (unsigned long)offer.duration * 86400);
 			newItem.enhanceBits = 0;
 			databaseManager.AddUserInventoryItems(userID, { newItem });
+			deltaUpdatedItems.push_back(newItem);
 		}
 	}
 
@@ -519,8 +537,8 @@ void Packet_ShopManager::parsePacket_Shop_Buy(User* user, TCPConnection::Packet:
 	// 1. Send successful BuyReply to client
 	sendPacket_Shop_BuyReply(connection, 1, "", { (unsigned short)offer.productID });
 
-	// 2. Immediately sync updated inventory to client (Packet 154)
-	packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
+	// 2. Immediately sync updated inventory to client (Delta 增量同步)
+	packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, {});
 
 	// 3. Immediately sync updated Points and Cash balance to client HUD (Packet 157 & 69)
 	auto charResult = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
@@ -962,7 +980,8 @@ void Packet_ShopManager::parsePacket_Shop_ClaimGift(User* user, TCPConnection::P
 	}
 
 	std::vector<unsigned short> awardedItemIDs;
-	grantProductRewardToUser(user->GetUserID(), gift.productID, gift.duration, gift.isCount, gift.count, awardedItemIDs);
+	std::vector<InventoryItem> deltaUpdatedItems;
+	grantProductRewardToUser(user->GetUserID(), gift.productID, gift.duration, gift.isCount, gift.count, awardedItemIDs, &deltaUpdatedItems);
 
 	// Resolve bonus Points / ClanPoints from product offer
 	const ShopProduct* prod = GetProductByID(gift.productID);
@@ -1006,8 +1025,8 @@ void Packet_ShopManager::parsePacket_Shop_ClaimGift(User* user, TCPConnection::P
 	// Send ClaimGiftReply (Packet 72 SubType 4): client expects claimedCount (claimCount = 1) to remove gift from Gift Box
 	sendPacket_Shop_ClaimGiftReply(connection, 1, giftID_low, giftID_high, claimCount, awardedItemIDs);
 
-	// Sync updated inventory immediately to client (Packet 154)
-	packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
+	// Sync updated inventory immediately to client (Delta 增量同步)
+	packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, {});
 
 	// Immediately sync updated Points and Cash balance to client HUD (Packet 157 & 69)
 	auto charResult = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
@@ -1095,7 +1114,8 @@ bool Packet_ShopManager::grantProductRewardToUser(
 	unsigned short duration,
 	unsigned char isCount,
 	unsigned short count,
-	std::vector<unsigned short>& outAwardedItemIDs)
+	std::vector<unsigned short>& outAwardedItemIDs,
+	std::vector<InventoryItem>* outDeltaItems)
 {
 	outAwardedItemIDs.clear();
 	const ShopProduct* prod = GetProductByID(productID);
@@ -1139,11 +1159,19 @@ bool Packet_ShopManager::grantProductRewardToUser(
 					}
 					else if (effectiveDuration == 0 || effectiveDuration == 0xFFFF) {
 						databaseManager.UpdateUserInventoryExpiration(userID, reward.itemID, 0);
+						if (outDeltaItems) {
+							ownedItem.expirationTime = 0;
+							outDeltaItems->push_back(ownedItem);
+						}
 					}
 					else {
 						unsigned long baseTime = (ownedItem.expirationTime > (unsigned long)now) ? ownedItem.expirationTime : (unsigned long)now;
 						unsigned long newExp = baseTime + (unsigned long)effectiveDuration * 86400;
 						databaseManager.UpdateUserInventoryExpiration(userID, reward.itemID, newExp);
+						if (outDeltaItems) {
+							ownedItem.expirationTime = newExp;
+							outDeltaItems->push_back(ownedItem);
+						}
 					}
 				}
 				else {
@@ -1158,6 +1186,9 @@ bool Packet_ShopManager::grantProductRewardToUser(
 					newItem.enhanceBits = 0;
 					itemsToAdd.push_back(newItem);
 					targetInventory.push_back(newItem);
+					if (outDeltaItems) {
+						outDeltaItems->push_back(newItem);
+					}
 				}
 			}
 			else {
@@ -1165,6 +1196,10 @@ bool Packet_ShopManager::grantProductRewardToUser(
 				unsigned short addCount = reward.count * (count > 0 ? count : 1);
 				if (itemOwned) {
 					databaseManager.UpdateUserInventoryItemCount(userID, reward.itemID, addCount);
+					if (outDeltaItems) {
+						ownedItem.count += addCount;
+						outDeltaItems->push_back(ownedItem);
+					}
 				}
 				else {
 					InventoryItem newItem;
@@ -1178,6 +1213,9 @@ bool Packet_ShopManager::grantProductRewardToUser(
 					newItem.enhanceBits = 0;
 					itemsToAdd.push_back(newItem);
 					targetInventory.push_back(newItem);
+					if (outDeltaItems) {
+						outDeltaItems->push_back(newItem);
+					}
 				}
 			}
 		}
@@ -1204,6 +1242,10 @@ bool Packet_ShopManager::grantProductRewardToUser(
 		if (isCount) {
 			if (alreadyOwned) {
 				databaseManager.UpdateUserInventoryItemCount(userID, itemID, count);
+				if (outDeltaItems) {
+					ownedItem.count += count;
+					outDeltaItems->push_back(ownedItem);
+				}
 			}
 			else {
 				InventoryItem newItem;
@@ -1216,6 +1258,9 @@ bool Packet_ShopManager::grantProductRewardToUser(
 				newItem.expirationTime = 0;
 				newItem.enhanceBits = 0;
 				databaseManager.AddUserInventoryItems(userID, { newItem });
+				if (outDeltaItems) {
+					outDeltaItems->push_back(newItem);
+				}
 			}
 		}
 		else {
@@ -1226,11 +1271,19 @@ bool Packet_ShopManager::grantProductRewardToUser(
 				}
 				else if (isPermOffer) {
 					databaseManager.UpdateUserInventoryExpiration(userID, itemID, 0);
+					if (outDeltaItems) {
+						ownedItem.expirationTime = 0;
+						outDeltaItems->push_back(ownedItem);
+					}
 				}
 				else {
 					unsigned long baseTime = (ownedItem.expirationTime > (unsigned long)now) ? ownedItem.expirationTime : (unsigned long)now;
 					unsigned long newExp = baseTime + (unsigned long)duration * 86400;
 					databaseManager.UpdateUserInventoryExpiration(userID, itemID, newExp);
+					if (outDeltaItems) {
+						ownedItem.expirationTime = newExp;
+						outDeltaItems->push_back(ownedItem);
+					}
 				}
 			}
 			else {
@@ -1244,6 +1297,9 @@ bool Packet_ShopManager::grantProductRewardToUser(
 				newItem.expirationTime = isPermOffer ? 0 : (unsigned long)(now + (unsigned long)duration * 86400);
 				newItem.enhanceBits = 0;
 				databaseManager.AddUserInventoryItems(userID, { newItem });
+				if (outDeltaItems) {
+					outDeltaItems->push_back(newItem);
+				}
 			}
 		}
 	}

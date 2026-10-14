@@ -769,7 +769,8 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 				if (!hasP2 || p2Val == 0) {
 					// Upgrade to permanent
 					if (databaseManager.UpdateUserInventoryExpiration(userID, itemID, 0)) {
-						packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
+						ownedItem.expirationTime = 0;
+						packetManager.SendPacket_InventoryDelta(connection, { ownedItem }, {});
 						SendNotice(format("[系統] 物品「{}」(ID: {}) 原為期限物品，已成功升級為永久！", itemDef->name, itemID));
 						AwardItem award;
 						award.itemID = itemID;
@@ -789,7 +790,8 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 					unsigned long days = min(p2Val, 3650UL);
 					unsigned long newExp = min(baseTime + days * 86400, (unsigned long)(now + 3650UL * 86400));
 					if (databaseManager.UpdateUserInventoryExpiration(userID, itemID, newExp)) {
-						packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
+						ownedItem.expirationTime = newExp;
+						packetManager.SendPacket_InventoryDelta(connection, { ownedItem }, {});
 						SendNotice(format("[系統] 物品「{}」(ID: {}) 成功延長 {} 天期限！", itemDef->name, itemID, days));
 						AwardItem award;
 						award.itemID = itemID;
@@ -824,7 +826,7 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 			newItem.enhanceBits = 0;
 
 			if (databaseManager.AddUserInventoryItems(userID, { newItem })) {
-				packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
+				packetManager.SendPacket_InventoryDelta(connection, { newItem }, {});
 				if (expirationTime == 0) {
 					SendNotice(format("[系統] 成功添加「{}」(ID: {})，期限：永久。", itemDef->name, itemID));
 				}
@@ -848,8 +850,9 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 				if (hasP2 && p2Val > 0) {
 					unsigned short addCount = (unsigned short)min(p2Val, 999UL);
 					if (databaseManager.UpdateUserInventoryItemCount(userID, itemID, addCount)) {
-						packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
-						SendNotice(format("[系統] 物品「{}」(ID: {}) 已在倉庫，疊加數量 +{}，總計：{} 個。", itemDef->name, itemID, addCount, min((unsigned int)ownedItem.count + addCount, 999U)));
+						ownedItem.count += addCount;
+						packetManager.SendPacket_InventoryDelta(connection, { ownedItem }, {});
+						SendNotice(format("[系統] 物品「{}」(ID: {}) 已在倉庫，疊加數量 +{}，總計：{} 個。", itemDef->name, itemID, addCount, min((unsigned int)ownedItem.count, 999U)));
 						AwardItem award;
 						award.itemID = itemID;
 						award.count = addCount;
@@ -883,7 +886,7 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 			newItem.enhanceBits = 0;
 
 			if (databaseManager.AddUserInventoryItems(userID, { newItem })) {
-				packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
+				packetManager.SendPacket_InventoryDelta(connection, { newItem }, {});
 				SendNotice(format("[系統] 成功添加「{}」(ID: {})，數量：{} 個。", itemDef->name, itemID, count));
 				AwardItem award;
 				award.itemID = itemID;
@@ -1062,26 +1065,38 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		string catName = itemDefinitionManager.GetCategoryName(category);
 
 		bool changed = false;
+		std::vector<InventoryItem> deltaUpdatedItems;
 		if (!itemsToAdd.empty()) {
 			if (databaseManager.AddUserInventoryItems(userID, itemsToAdd)) {
 				changed = true;
+				deltaUpdatedItems.insert(deltaUpdatedItems.end(), itemsToAdd.begin(), itemsToAdd.end());
 			}
 		}
 
-		for (const auto& item : itemsToUpgradePermanent) {
+		for (auto item : itemsToUpgradePermanent) {
 			if (databaseManager.UpdateUserInventoryExpiration(userID, item.itemID, 0)) {
 				changed = true;
+				item.expirationTime = 0;
+				deltaUpdatedItems.push_back(item);
 			}
 		}
 
 		for (const auto& update : itemsToExtend) {
 			if (databaseManager.UpdateUserInventoryExpiration(userID, update.first, update.second)) {
 				changed = true;
+				for (const auto& invItem : inventory) {
+					if (invItem.itemID == update.first) {
+						InventoryItem updated = invItem;
+						updated.expirationTime = update.second;
+						deltaUpdatedItems.push_back(updated);
+						break;
+					}
+				}
 			}
 		}
 
 		if (changed) {
-			packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
+			packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, {});
 		}
 
 		// Feedback message
@@ -1209,8 +1224,8 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		vector<unsigned short> deletedSlots;
 		unsigned short actualDeleted = 0;
 		if (databaseManager.DeleteUserInventoryItem(userID, itemID, hasP2 ? countToDelete : 0, deletedSlots, actualDeleted)) {
-			// 1. Realtime sync updated inventory to client (including removed slots)
-			packetManager.SendPacket_Inventory(connection, user->GetUserInventory(), deletedSlots);
+			// 1. Realtime sync updated inventory to client (Delta 增量同步)
+			packetManager.SendPacket_InventoryDelta(connection, {}, deletedSlots);
 
 			// 2. Pop up native ItemExpireNotice dialog (Packet 67 Type 62: CSO_ItemExpireTitle / CSO_ItemExpireMsg with item icon)
 			SendPacket_UMsg_ItemExpireNotice(connection, { itemID });
@@ -1245,7 +1260,14 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		}
 
 		if (databaseManager.SetUserInventoryItemExpirationSeconds(userID, itemID, seconds)) {
-			packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
+			vector<InventoryItem> deltaUpdatedItems;
+			for (const auto& it : user->GetUserInventory()) {
+				if (it.itemID == itemID) {
+					deltaUpdatedItems.push_back(it);
+					break;
+				}
+			}
+			packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, {});
 			const ItemDefinition* itemDef = itemDefinitionManager.GetItem(itemID);
 			string itemName = (itemDef != NULL) ? itemDef->name : format("物品 (ID: {})", itemID);
 			SendNotice(format("[系統] 成功將「{}」(ID: {}) 的有效期限設定為 {} 秒後到期！", itemName, itemID, seconds));
@@ -1301,7 +1323,7 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		newItem.enhanceBits = 0;
 
 		if (databaseManager.AddUserInventoryItems(userID, { newItem })) {
-			packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
+			packetManager.SendPacket_InventoryDelta(connection, { newItem }, {});
 			AwardItem award;
 			award.itemID = itemID;
 			award.count = 1;

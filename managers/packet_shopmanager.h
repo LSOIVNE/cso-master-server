@@ -77,7 +77,7 @@ private:
 	void sendPacket_Shop_GiftReply(TCPConnection::pointer connection, unsigned char status, const std::string& message = "");
 	void sendPacket_Shop_GiftPush(TCPConnection::pointer connection, const UserGift& gift);
 	void sendPacket_Shop_ClaimGiftReply(TCPConnection::pointer connection, unsigned char status, unsigned int giftID_low, unsigned int giftID_high = 0, unsigned short claimedCount = 0, const std::vector<unsigned short>& itemIDs = {}, const std::string& message = "");
-	bool grantProductRewardToUser(unsigned long userID, unsigned int productID, unsigned short duration, unsigned char isCount, unsigned short count, std::vector<unsigned short>& outAwardedItemIDs);
+	bool grantProductRewardToUser(unsigned long userID, unsigned int productID, unsigned short duration, unsigned char isCount, unsigned short count, std::vector<unsigned short>& outAwardedItemIDs, std::vector<InventoryItem>* outDeltaItems = nullptr);
 
 private:
 	std::vector<ShopProduct> _products;

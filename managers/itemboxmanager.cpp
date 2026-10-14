@@ -386,6 +386,11 @@ bool ItemBoxManager::OpenBox(User* user, unsigned short decoderSlotID, unsigned 
 	if (boxDeleted) {
 		deletedSlots.push_back(boxSlotID);
 	}
+	else if (boxItem != nullptr) {
+		InventoryItem updatedBox = *boxItem;
+		updatedBox.count = (updatedBox.count > 1) ? (updatedBox.count - 1) : 0;
+		deltaUpdatedItems.push_back(updatedBox);
+	}
 
 	unsigned short remainingCBoxCount = (totalCBoxCount > 1) ? (totalCBoxCount - 1) : 0;
 	unsigned short remainingDecoderCount = (totalDecoderCount > 1) ? (totalDecoderCount - 1) : 0;
@@ -442,10 +447,8 @@ bool ItemBoxManager::OpenBox(User* user, unsigned short decoderSlotID, unsigned 
 				if (sAlreadyOwned) {
 					databaseManager.UpdateUserInventoryItemCount(userID, subID, 1);
 					sOwned.count += 1;
-					if (subID != CBOX_ITEM_ID) {
-						AddOrUpdateDelta(sOwned);
-					}
-					else {
+					AddOrUpdateDelta(sOwned);
+					if (subID == CBOX_ITEM_ID) {
 						remainingCBoxCount += 1;
 					}
 				}
@@ -460,10 +463,8 @@ bool ItemBoxManager::OpenBox(User* user, unsigned short decoderSlotID, unsigned 
 					newItem.expirationTime = 0;
 					newItem.enhanceBits = 0;
 					databaseManager.AddUserInventoryItems(userID, { newItem });
-					if (subID != CBOX_ITEM_ID) {
-						AddOrUpdateDelta(newItem);
-					}
-					else {
+					AddOrUpdateDelta(newItem);
+					if (subID == CBOX_ITEM_ID) {
 						remainingCBoxCount += 1;
 					}
 				}
@@ -522,10 +523,8 @@ bool ItemBoxManager::OpenBox(User* user, unsigned short decoderSlotID, unsigned 
 			if (alreadyOwned) {
 				databaseManager.UpdateUserInventoryItemCount(userID, wonItem->itemID, wonItem->count);
 				ownedItem.count += wonItem->count;
-				if (wonItem->itemID != CBOX_ITEM_ID) {
-					AddOrUpdateDelta(ownedItem);
-				}
-				else {
+				AddOrUpdateDelta(ownedItem);
+				if (wonItem->itemID == CBOX_ITEM_ID) {
 					remainingCBoxCount += wonItem->count;
 				}
 			}
@@ -540,10 +539,8 @@ bool ItemBoxManager::OpenBox(User* user, unsigned short decoderSlotID, unsigned 
 				newItem.expirationTime = 0;
 				newItem.enhanceBits = 0;
 				databaseManager.AddUserInventoryItems(userID, { newItem });
-				if (wonItem->itemID != CBOX_ITEM_ID) {
-					AddOrUpdateDelta(newItem);
-				}
-				else {
+				AddOrUpdateDelta(newItem);
+				if (wonItem->itemID == CBOX_ITEM_ID) {
 					remainingCBoxCount += wonItem->count;
 				}
 			}

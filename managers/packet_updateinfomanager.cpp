@@ -250,13 +250,23 @@ void Packet_UpdateInfoManager::parsePacket_UpdateInfo_ChangeNickname(User* user,
 	// 7. Send Packet 69 confirmation to client (triggers client's #CSO_Success_Change_NickName notice & closes modal)
 	SendPacket_UpdateInfo_ChangeNicknameResult(connection, true);
 
-	// 8. Sync updated inventory (Packet 154)
+	// 8. Sync updated inventory (Delta 增量同步)
+	vector<InventoryItem> deltaUpdatedItems;
 	vector<unsigned short> deletedSlots;
 	if (ticketDeleted) {
 		deletedSlots.push_back(ticketSlotID);
 	}
-	vector<InventoryItem> updatedInv = user->GetUserInventory();
-	packetManager.SendPacket_Inventory(connection, updatedInv, deletedSlots);
+	else {
+		for (const auto& item : inv) {
+			if (item.slotID == ticketSlotID) {
+				InventoryItem updated = item;
+				updated.count = (updated.count > 1) ? (updated.count - 1) : 0;
+				deltaUpdatedItems.push_back(updated);
+				break;
+			}
+		}
+	}
+	packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, deletedSlots);
 
 	// 9. Sync updated user character to user (Packet 157)
 	auto updatedChar = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
@@ -453,10 +463,22 @@ void Packet_UpdateInfoManager::parsePacket_UpdateInfo_SetRegion(User* user, TCPC
 		if (hasTicket) {
 			bool deleted = false;
 			databaseManager.ConsumeUserInventoryItemBySlot(userID, ticketSlotID, 1, deleted);
-			vector<InventoryItem> updatedInv = user->GetUserInventory();
+			vector<InventoryItem> deltaUpdatedItems;
 			vector<unsigned short> deletedSlots;
-			if (deleted) deletedSlots.push_back(ticketSlotID);
-			packetManager.SendPacket_Inventory(connection, updatedInv, deletedSlots);
+			if (deleted) {
+				deletedSlots.push_back(ticketSlotID);
+			}
+			else {
+				for (const auto& item : inv) {
+					if (item.slotID == ticketSlotID) {
+						InventoryItem updated = item;
+						updated.count = (updated.count > 1) ? (updated.count - 1) : 0;
+						deltaUpdatedItems.push_back(updated);
+						break;
+					}
+				}
+			}
+			packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, deletedSlots);
 			serverConsole.Print(PrefixType::Info, format("[ Packet_UpdateInfoManager ] User ({}) consumed ItemID 80 (更改個人地區券) for region change\n", user->GetUserLogName()));
 		}
 	}

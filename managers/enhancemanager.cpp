@@ -240,10 +240,23 @@ bool EnhanceManager::HandleEnhance(User* user, unsigned short weaponSlotID, unsi
 		// 重置武器為 0
 		databaseManager.UpdateUserInventoryItemEnhance(userID, weaponSlotID, 0);
 
-		// 刷新背包
+		// 刷新背包 (Delta 增量同步)
 		std::vector<unsigned short> deletedSlots;
-		if (deleted) deletedSlots.push_back(materialSlotID);
-		packetManager.SendPacket_Inventory(connection, user->GetUserInventory(), deletedSlots);
+		std::vector<InventoryItem> deltaUpdatedItems;
+		if (deleted) {
+			deletedSlots.push_back(materialSlotID);
+		}
+		else {
+			InventoryItem updatedMat = *mIt;
+			updatedMat.count = (updatedMat.count > 1) ? (updatedMat.count - 1) : 0;
+			deltaUpdatedItems.push_back(updatedMat);
+		}
+
+		InventoryItem updatedWeapon = *wIt;
+		updatedWeapon.enhanceBits = 0;
+		deltaUpdatedItems.push_back(updatedWeapon);
+
+		packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, deletedSlots);
 
 		// 回覆 Status 3 (全能力初始化成功)
 		SendEnhanceResult(connection, 3, weaponSlotID, 0, 0, "");
@@ -279,10 +292,23 @@ bool EnhanceManager::HandleEnhance(User* user, unsigned short weaponSlotID, unsi
 		uint32_t newBits = currentStats.ToBits();
 		databaseManager.UpdateUserInventoryItemEnhance(userID, weaponSlotID, newBits);
 
-		// 刷新背包
+		// 刷新背包 (Delta 增量同步)
 		std::vector<unsigned short> deletedSlots;
-		if (deleted) deletedSlots.push_back(materialSlotID);
-		packetManager.SendPacket_Inventory(connection, user->GetUserInventory(), deletedSlots);
+		std::vector<InventoryItem> deltaUpdatedItems;
+		if (deleted) {
+			deletedSlots.push_back(materialSlotID);
+		}
+		else {
+			InventoryItem updatedMat = *mIt;
+			updatedMat.count = (updatedMat.count > 1) ? (updatedMat.count - 1) : 0;
+			deltaUpdatedItems.push_back(updatedMat);
+		}
+
+		InventoryItem updatedWeapon = *wIt;
+		updatedWeapon.enhanceBits = newBits;
+		deltaUpdatedItems.push_back(updatedWeapon);
+
+		packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, deletedSlots);
 
 		// 回覆 Status 2 (單項能力還原 -1)
 		SendEnhanceResult(connection, 2, weaponSlotID, newBits, (unsigned char)statIndex, "");
@@ -323,14 +349,27 @@ bool EnhanceManager::HandleEnhance(User* user, unsigned short weaponSlotID, unsi
 		bool deleted = false;
 		databaseManager.ConsumeUserInventoryItemBySlot(userID, materialSlotID, 1, deleted);
 		std::vector<unsigned short> deletedSlots;
-		if (deleted) deletedSlots.push_back(materialSlotID);
+		std::vector<InventoryItem> deltaUpdatedItems;
+		if (deleted) {
+			deletedSlots.push_back(materialSlotID);
+		}
+		else {
+			InventoryItem updatedMat = *mIt;
+			updatedMat.count = (updatedMat.count > 1) ? (updatedMat.count - 1) : 0;
+			deltaUpdatedItems.push_back(updatedMat);
+		}
 
 		// 該屬性 +1
 		currentStats.SetStatByIndex(targetStat, currentStatVal + 1);
 		uint32_t newBits = currentStats.ToBits();
 
 		databaseManager.UpdateUserInventoryItemEnhance(userID, weaponSlotID, newBits);
-		packetManager.SendPacket_Inventory(connection, user->GetUserInventory(), deletedSlots);
+
+		InventoryItem updatedWeapon = *wIt;
+		updatedWeapon.enhanceBits = newBits;
+		deltaUpdatedItems.push_back(updatedWeapon);
+
+		packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, deletedSlots);
 
 		serverConsole.Print(PrefixType::Info, format("[ EnhanceManager ] User ({}) PERFECT ENHANCE SUCCESS: weapon {} stat {} +1, newBits={:#x}\n",
 			user->GetUserLogName(), wIt->itemID, targetStat, newBits));
@@ -407,7 +446,15 @@ bool EnhanceManager::HandleEnhance(User* user, unsigned short weaponSlotID, unsi
 		bool deleted = false;
 		databaseManager.ConsumeUserInventoryItemBySlot(userID, materialSlotID, 1, deleted);
 		std::vector<unsigned short> deletedSlots;
-		if (deleted) deletedSlots.push_back(materialSlotID);
+		std::vector<InventoryItem> deltaUpdatedItems;
+		if (deleted) {
+			deletedSlots.push_back(materialSlotID);
+		}
+		else {
+			InventoryItem updatedMat = *mIt;
+			updatedMat.count = (updatedMat.count > 1) ? (updatedMat.count - 1) : 0;
+			deltaUpdatedItems.push_back(updatedMat);
+		}
 
 		if (isSuccess) {
 			// 成功：抽選 1 個未滿屬性 +1 (若武器有自訂權重則依權重加權抽選，否則均等隨機)
@@ -445,7 +492,12 @@ bool EnhanceManager::HandleEnhance(User* user, unsigned short weaponSlotID, unsi
 			uint32_t newBits = currentStats.ToBits();
 
 			databaseManager.UpdateUserInventoryItemEnhance(userID, weaponSlotID, newBits);
-			packetManager.SendPacket_Inventory(connection, user->GetUserInventory(), deletedSlots);
+
+			InventoryItem updatedWeapon = *wIt;
+			updatedWeapon.enhanceBits = newBits;
+			deltaUpdatedItems.push_back(updatedWeapon);
+
+			packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, deletedSlots);
 
 			serverConsole.Print(PrefixType::Info, format("[ EnhanceManager ] User ({}) enhance SUCCESS: stat {} +1, newBits={:#x}\n",
 				user->GetUserLogName(), chosenStat, newBits));
@@ -492,6 +544,12 @@ bool EnhanceManager::HandleEnhance(User* user, unsigned short weaponSlotID, unsi
 				}
 			}
 
+			if (isLevelDown) {
+				InventoryItem updatedWeapon = *wIt;
+				updatedWeapon.enhanceBits = newBits;
+				deltaUpdatedItems.push_back(updatedWeapon);
+			}
+
 			// 5204 精密強化零件失敗返還完美屬性強化材料 (5212~5217)
 			unsigned short refundMatID = 0;
 			int refundCount = _settings.failureRefundCount;
@@ -522,15 +580,19 @@ bool EnhanceManager::HandleEnhance(User* user, unsigned short weaponSlotID, unsi
 				auto currentInv = user->GetUserInventory();
 				unsigned short maxSlotID = 0;
 				bool foundRefund = false;
+				InventoryItem refundItem{};
 				for (const auto& item : currentInv) {
 					if (item.slotID > maxSlotID) maxSlotID = item.slotID;
 					if (item.itemID == refundMatID) {
 						foundRefund = true;
+						refundItem = item;
 					}
 				}
 
 				if (foundRefund) {
 					databaseManager.UpdateUserInventoryItemCount(userID, refundMatID, refundCount);
+					refundItem.count += refundCount;
+					deltaUpdatedItems.push_back(refundItem);
 				}
 				else {
 					InventoryItem newItem;
@@ -543,14 +605,15 @@ bool EnhanceManager::HandleEnhance(User* user, unsigned short weaponSlotID, unsi
 					newItem.expirationTime = 0;
 					newItem.enhanceBits = 0;
 					databaseManager.AddUserInventoryItems(userID, { newItem });
+					deltaUpdatedItems.push_back(newItem);
 				}
 
 				serverConsole.Print(PrefixType::Info, format("[ EnhanceManager ] User ({}) AdvEnhance failed, granted {}x refund material {}\n",
 					user->GetUserLogName(), refundCount, refundMatID));
 			}
 
-			// 刷新背包
-			packetManager.SendPacket_Inventory(connection, user->GetUserInventory(), deletedSlots);
+			// 刷新背包 (Delta 增量同步)
+			packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, deletedSlots);
 
 			// 1. 若有返還材料，先發送獲得[完美屬性強化材料]彈窗封包
 			if (refundMatID != 0) {

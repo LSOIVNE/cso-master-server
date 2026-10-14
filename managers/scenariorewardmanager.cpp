@@ -339,6 +339,7 @@ bool ScenarioRewardManager::GrantScenarioReward(User* user, const ScenarioMapRew
 
 	vector<AwardItem> awardItems;
 	vector<InventoryItem> newItemsToAdd;
+	vector<InventoryItem> deltaUpdatedItems;
 
 	for (const auto& item : resolvedItems) {
 		if (item.itemID == 0) continue;
@@ -368,6 +369,8 @@ bool ScenarioRewardManager::GrantScenarioReward(User* user, const ScenarioMapRew
 			unsigned short addedCount = item.count > 0 ? item.count : 1;
 			if (alreadyOwned) {
 				databaseManager.UpdateUserInventoryItemCount(userID, item.itemID, addedCount);
+				ownedItem.count += addedCount;
+				deltaUpdatedItems.push_back(ownedItem);
 			}
 			else {
 				InventoryItem newItem;
@@ -380,6 +383,7 @@ bool ScenarioRewardManager::GrantScenarioReward(User* user, const ScenarioMapRew
 				newItem.expirationTime = 0;
 				newItem.enhanceBits = 0;
 				newItemsToAdd.push_back(newItem);
+				deltaUpdatedItems.push_back(newItem);
 			}
 		}
 		else if (isPerm) {
@@ -396,6 +400,7 @@ bool ScenarioRewardManager::GrantScenarioReward(User* user, const ScenarioMapRew
 				newItem.expirationTime = 0;
 				newItem.enhanceBits = 0;
 				newItemsToAdd.push_back(newItem);
+				deltaUpdatedItems.push_back(newItem);
 			}
 		}
 		else {
@@ -406,6 +411,8 @@ bool ScenarioRewardManager::GrantScenarioReward(User* user, const ScenarioMapRew
 				unsigned long baseTime = (ownedItem.expirationTime > (unsigned long)now) ? ownedItem.expirationTime : (unsigned long)now;
 				unsigned long newExp = baseTime + (unsigned long)days * 86400;
 				databaseManager.UpdateUserInventoryExpiration(userID, item.itemID, newExp);
+				ownedItem.expirationTime = newExp;
+				deltaUpdatedItems.push_back(ownedItem);
 			}
 			else if (!alreadyOwned) {
 				InventoryItem newItem;
@@ -418,6 +425,7 @@ bool ScenarioRewardManager::GrantScenarioReward(User* user, const ScenarioMapRew
 				newItem.expirationTime = (unsigned long)(now + (unsigned long)days * 86400);
 				newItem.enhanceBits = 0;
 				newItemsToAdd.push_back(newItem);
+				deltaUpdatedItems.push_back(newItem);
 			}
 		}
 
@@ -428,8 +436,8 @@ bool ScenarioRewardManager::GrantScenarioReward(User* user, const ScenarioMapRew
 		databaseManager.AddUserInventoryItems(userID, newItemsToAdd);
 	}
 
-	// Realtime sync inventory
-	packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
+	// Realtime sync inventory (Delta 增量同步，若包含 166 亦由底層自動同步 Packet 157 CBoxCount)
+	packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, {});
 
 	// Send ItemAwardNotice dialog (Packet 67 Type 60)
 	if (!awardItems.empty() || totalBonusPoints > 0 || reward->bonusExp > 0) {

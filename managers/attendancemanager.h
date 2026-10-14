@@ -46,7 +46,7 @@ public:
 	void ClearUserCandidates(unsigned long userID);
 
 private:
-	bool grantRewardItem(User* user, const AttendanceRewardItem& item);
+	bool grantRewardItem(User* user, const AttendanceRewardItem& item, std::vector<InventoryItem>& outDeltaItems);
 	std::vector<AttendanceRewardItem> selectCandidateItems(User* user = nullptr);
 
 	AttendanceConfig _config;

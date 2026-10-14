@@ -184,6 +184,7 @@ void Packet_ItemManager::parsePacket_Item_EquipItem(User* user, TCPConnection::P
 
 	unsigned long userID = user->GetUserID();
 	auto inventory = user->GetUserInventory();
+	vector<InventoryItem> deltaUpdatedItems;
 
 	auto it = find_if(inventory.begin(), inventory.end(), [slotID](const InventoryItem& item) {
 		return item.slotID == slotID;
@@ -205,6 +206,9 @@ void Packet_ItemManager::parsePacket_Item_EquipItem(User* user, TCPConnection::P
 			if (action != 0 || it->inUse) {
 				// Unequip costume
 				databaseManager.SetUserInventoryItemInUse(userID, slotID, false);
+				InventoryItem unequipped = *it;
+				unequipped.inUse = false;
+				deltaUpdatedItems.push_back(unequipped);
 			}
 			else {
 				// Equipping costume: unequip any other costume in the same slot
@@ -214,32 +218,53 @@ void Packet_ItemManager::parsePacket_Item_EquipItem(User* user, TCPConnection::P
 							const ItemDefinition* otherDef = itemDefinitionManager.GetItem(item.itemID);
 							if (otherDef != NULL && otherDef->IsCostume() && otherDef->GetCostumeSlot() == costumeSlot) {
 								databaseManager.SetUserInventoryItemInUse(userID, item.slotID, false);
+								InventoryItem otherUnequipped = item;
+								otherUnequipped.inUse = false;
+								deltaUpdatedItems.push_back(otherUnequipped);
 							}
 						}
 					}
 				}
 				databaseManager.SetUserInventoryItemInUse(userID, slotID, true);
+				InventoryItem equipped = *it;
+				equipped.inUse = true;
+				deltaUpdatedItems.push_back(equipped);
 			}
 		}
 		else if (IsTattooItem(it->itemID)) {
 			if (action != 0 || it->inUse) {
 				databaseManager.SetUserInventoryItemInUse(userID, slotID, false);
+				InventoryItem unequipped = *it;
+				unequipped.inUse = false;
+				deltaUpdatedItems.push_back(unequipped);
 			}
 			else {
 				for (const auto& item : inventory) {
 					if (item.inUse && item.slotID != slotID && IsTattooItem(item.itemID)) {
 						databaseManager.SetUserInventoryItemInUse(userID, item.slotID, false);
+						InventoryItem otherUnequipped = item;
+						otherUnequipped.inUse = false;
+						deltaUpdatedItems.push_back(otherUnequipped);
 					}
 				}
 				databaseManager.SetUserInventoryItemInUse(userID, slotID, true);
+				InventoryItem equipped = *it;
+				equipped.inUse = true;
+				deltaUpdatedItems.push_back(equipped);
 			}
 		}
 		else {
 			if (action == 0) {
 				databaseManager.SetUserInventoryItemInUse(userID, slotID, true);
+				InventoryItem equipped = *it;
+				equipped.inUse = true;
+				deltaUpdatedItems.push_back(equipped);
 			}
 			else {
 				databaseManager.SetUserInventoryItemInUse(userID, slotID, false);
+				InventoryItem unequipped = *it;
+				unequipped.inUse = false;
+				deltaUpdatedItems.push_back(unequipped);
 			}
 		}
 	}
@@ -253,8 +278,8 @@ void Packet_ItemManager::parsePacket_Item_EquipItem(User* user, TCPConnection::P
 		replyPacket->Send();
 	}
 
-	// Send refreshed inventory so client updates equipped badges/buttons
-	packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
+	// Send refreshed inventory so client updates equipped badges/buttons (Delta 增量同步)
+	packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, {});
 }
 
 void Packet_ItemManager::parsePacket_Item_UseRewardItem(User* user, const InventoryItem& item, const ItemDefinition& itemDef) {
@@ -305,11 +330,18 @@ void Packet_ItemManager::parsePacket_Item_UseRewardItem(User* user, const Invent
 			replyPacket->Send();
 		}
 
-		// 4. Sync updated inventory to client
-		vector<InventoryItem> updatedInv = user->GetUserInventory();
+		// 4. Sync updated inventory to client (Delta 增量同步)
+		vector<InventoryItem> deltaUpdatedItems;
 		vector<unsigned short> deletedSlots;
-		if (deleted) deletedSlots.push_back(item.slotID);
-		packetManager.SendPacket_Inventory(connection, updatedInv, deletedSlots);
+		if (deleted) {
+			deletedSlots.push_back(item.slotID);
+		}
+		else {
+			InventoryItem updated = item;
+			updated.count = (updated.count > 1) ? (updated.count - 1) : 0;
+			deltaUpdatedItems.push_back(updated);
+		}
+		packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, deletedSlots);
 
 		// 5. Sync updated character location (city:0, county:0, neighborhood:0) to client via Packet 157 UserUpdateInfo
 		auto updatedChar = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
@@ -341,10 +373,17 @@ void Packet_ItemManager::parsePacket_Item_UseRewardItem(User* user, const Invent
 			replyPacket->Send();
 		}
 
-		vector<InventoryItem> updatedInv = user->GetUserInventory();
+		vector<InventoryItem> deltaUpdatedItems;
 		vector<unsigned short> deletedSlots;
-		if (deleted) deletedSlots.push_back(item.slotID);
-		packetManager.SendPacket_Inventory(connection, updatedInv, deletedSlots);
+		if (deleted) {
+			deletedSlots.push_back(item.slotID);
+		}
+		else {
+			InventoryItem updated = item;
+			updated.count = (updated.count > 1) ? (updated.count - 1) : 0;
+			deltaUpdatedItems.push_back(updated);
+		}
+		packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, deletedSlots);
 
 		auto updatedChar = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
 		if (updatedChar.result) {
@@ -374,10 +413,17 @@ void Packet_ItemManager::parsePacket_Item_UseRewardItem(User* user, const Invent
 			replyPacket->Send();
 		}
 
-		vector<InventoryItem> updatedInv = user->GetUserInventory();
+		vector<InventoryItem> deltaUpdatedItems;
 		vector<unsigned short> deletedSlots;
-		if (deleted) deletedSlots.push_back(item.slotID);
-		packetManager.SendPacket_Inventory(connection, updatedInv, deletedSlots);
+		if (deleted) {
+			deletedSlots.push_back(item.slotID);
+		}
+		else {
+			InventoryItem updated = item;
+			updated.count = (updated.count > 1) ? (updated.count - 1) : 0;
+			deltaUpdatedItems.push_back(updated);
+		}
+		packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, deletedSlots);
 
 		auto updatedChar = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
 		if (updatedChar.result) {
@@ -606,6 +652,7 @@ void Packet_ItemManager::parsePacket_Item_UseRewardItem(User* user, const Invent
 
 	time_t now = time(nullptr);
 	std::vector<InventoryItem> newItemsToAdd;
+	std::vector<InventoryItem> deltaUpdatedItems;
 
 	for (const auto& g : itemsToGrant) {
 		const auto* def = itemDefinitionManager.GetItem(g.itemID);
@@ -620,6 +667,8 @@ void Packet_ItemManager::parsePacket_Item_UseRewardItem(User* user, const Invent
 			// Count item
 			if (found != curInv.end()) {
 				databaseManager.UpdateUserInventoryItemCount(userID, g.itemID, g.count);
+				found->count += g.count;
+				deltaUpdatedItems.push_back(*found);
 			}
 			else {
 				InventoryItem newItem;
@@ -632,6 +681,7 @@ void Packet_ItemManager::parsePacket_Item_UseRewardItem(User* user, const Invent
 				newItem.expirationTime = 0;
 				newItem.enhanceBits = 0;
 				newItemsToAdd.push_back(newItem);
+				deltaUpdatedItems.push_back(newItem);
 			}
 		}
 		else {
@@ -643,11 +693,15 @@ void Packet_ItemManager::parsePacket_Item_UseRewardItem(User* user, const Invent
 				}
 				else if (isPerm) {
 					databaseManager.UpdateUserInventoryExpiration(userID, g.itemID, 0);
+					found->expirationTime = 0;
+					deltaUpdatedItems.push_back(*found);
 				}
 				else {
 					unsigned long baseTime = (found->expirationTime > (unsigned long)now) ? found->expirationTime : (unsigned long)now;
 					unsigned long newExp = baseTime + (unsigned long)g.duration * 86400;
 					databaseManager.UpdateUserInventoryExpiration(userID, g.itemID, newExp);
+					found->expirationTime = newExp;
+					deltaUpdatedItems.push_back(*found);
 				}
 			}
 			else {
@@ -661,6 +715,7 @@ void Packet_ItemManager::parsePacket_Item_UseRewardItem(User* user, const Invent
 				newItem.expirationTime = isPerm ? 0 : (unsigned long)(now + (unsigned long)g.duration * 86400);
 				newItem.enhanceBits = 0;
 				newItemsToAdd.push_back(newItem);
+				deltaUpdatedItems.push_back(newItem);
 			}
 		}
 	}
@@ -687,10 +742,8 @@ void Packet_ItemManager::parsePacket_Item_UseRewardItem(User* user, const Invent
 		replyPacket->Send();
 	}
 
-	// 5. Sync updated inventory to client
-	// 5. Sync updated inventory to client
-	vector<InventoryItem> updatedInv = user->GetUserInventory();
-	packetManager.SendPacket_Inventory(connection, updatedInv, deletedSlots);
+	// 5. Sync updated inventory to client (Delta 增量同步)
+	packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, deletedSlots);
 
 	// 6. Sync updated character (Points, EXP, Level)
 	auto updatedChar = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
@@ -748,6 +801,7 @@ void Packet_ItemManager::parsePacket_Item_Tattoo(User* user, TCPConnection::Pack
 
 	unsigned long userID = user->GetUserID();
 	auto inventory = user->GetUserInventory();
+	vector<InventoryItem> deltaUpdatedItems;
 
 	auto it = find_if(inventory.begin(), inventory.end(), [slotID](const InventoryItem& item) {
 		return item.slotID == slotID;
@@ -757,16 +811,25 @@ void Packet_ItemManager::parsePacket_Item_Tattoo(User* user, TCPConnection::Pack
 		if (it->inUse) {
 			// Unequip target tattoo
 			databaseManager.SetUserInventoryItemInUse(userID, slotID, false);
+			InventoryItem unequipped = *it;
+			unequipped.inUse = false;
+			deltaUpdatedItems.push_back(unequipped);
 		}
 		else {
 			// Equipping target tattoo: unequip any other tattoo currently equipped
 			for (const auto& item : inventory) {
 				if (item.inUse && item.slotID != slotID && IsTattooItem(item.itemID)) {
 					databaseManager.SetUserInventoryItemInUse(userID, item.slotID, false);
+					InventoryItem otherUnequipped = item;
+					otherUnequipped.inUse = false;
+					deltaUpdatedItems.push_back(otherUnequipped);
 				}
 			}
 			// Equip target tattoo
 			databaseManager.SetUserInventoryItemInUse(userID, slotID, true);
+			InventoryItem equipped = *it;
+			equipped.inUse = true;
+			deltaUpdatedItems.push_back(equipped);
 		}
 	}
 
@@ -778,8 +841,8 @@ void Packet_ItemManager::parsePacket_Item_Tattoo(User* user, TCPConnection::Pack
 		replyPacket->Send();
 	}
 
-	// Send refreshed inventory so client updates equipped badges and button text (卸除 / 裝備)
-	packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
+	// Send refreshed inventory so client updates equipped badges and button text (Delta 增量同步)
+	packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, {});
 }
 
 void Packet_ItemManager::parsePacket_Item_OpenBox(User* user, TCPConnection::Packet::pointer packet) {

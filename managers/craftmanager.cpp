@@ -863,12 +863,16 @@ bool CraftManager::DisassembleItems(User* user, const std::vector<unsigned short
 		if (it.slotID > maxSlotID) maxSlotID = it.slotID;
 	}
 
+	std::vector<InventoryItem> deltaUpdatedItems;
+
 	for (const auto& [itemID, count] : rewardsToGrant) {
 		bool found = false;
-		for (const auto& it : updatedInv) {
+		for (auto& it : updatedInv) {
 			if (it.itemID == itemID) {
 				found = true;
 				databaseManager.UpdateUserInventoryItemCount(userID, itemID, count);
+				it.count += count;
+				deltaUpdatedItems.push_back(it);
 				break;
 			}
 		}
@@ -883,11 +887,13 @@ bool CraftManager::DisassembleItems(User* user, const std::vector<unsigned short
 			newItem.expirationTime = 0;
 			newItem.enhanceBits = 0;
 			databaseManager.AddUserInventoryItems(userID, { newItem });
+			deltaUpdatedItems.push_back(newItem);
+			updatedInv.push_back(newItem);
 		}
 	}
 
-	// 1. Send refreshed inventory with deleted slots FIRST
-	packetManager.SendPacket_Inventory(connection, user->GetUserInventory(), deletedSlots);
+	// 1. Send refreshed inventory with deleted slots FIRST (Delta 增量同步)
+	packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, deletedSlots);
 
 	// 2. Pop up Disassemble Result dialog via ItemAwardNotice (Packet 67 Type 60)
 	std::vector<AwardItem> awardItems;
@@ -1184,11 +1190,20 @@ bool CraftManager::AssembleMaterials(User* user, const std::vector<unsigned shor
 
 	// 11. 扣除投入材料
 	std::vector<unsigned short> deletedSlots;
+	std::vector<InventoryItem> deltaUpdatedItems;
 	for (const auto& [slotID, reqCount] : requestedSlots) {
 		bool deleted = false;
 		databaseManager.ConsumeUserInventoryItemBySlot(userID, slotID, reqCount, deleted);
 		if (deleted) {
 			deletedSlots.push_back(slotID);
+		}
+		else {
+			auto it = std::find_if(inv.begin(), inv.end(), [slotID](const InventoryItem& x) { return x.slotID == slotID; });
+			if (it != inv.end()) {
+				InventoryItem updatedMat = *it;
+				updatedMat.count = (updatedMat.count > reqCount) ? (updatedMat.count - reqCount) : 0;
+				deltaUpdatedItems.push_back(updatedMat);
+			}
 		}
 	}
 
@@ -1196,15 +1211,29 @@ bool CraftManager::AssembleMaterials(User* user, const std::vector<unsigned shor
 	auto updatedInv = user->GetUserInventory();
 	unsigned short maxSlotID = 0;
 	bool found = false;
+	InventoryItem foundItem{};
 	for (const auto& it : updatedInv) {
 		if (it.slotID > maxSlotID) maxSlotID = it.slotID;
 		if (it.itemID == grantedItemID) {
 			found = true;
+			foundItem = it;
 		}
 	}
 
 	if (found) {
 		databaseManager.UpdateUserInventoryItemCount(userID, grantedItemID, 1);
+		foundItem.count += 1;
+		bool inDelta = false;
+		for (auto& d : deltaUpdatedItems) {
+			if (d.slotID == foundItem.slotID) {
+				d.count = foundItem.count;
+				inDelta = true;
+				break;
+			}
+		}
+		if (!inDelta) {
+			deltaUpdatedItems.push_back(foundItem);
+		}
 	}
 	else {
 		InventoryItem newItem;
@@ -1217,10 +1246,11 @@ bool CraftManager::AssembleMaterials(User* user, const std::vector<unsigned shor
 		newItem.expirationTime = 0;
 		newItem.enhanceBits = 0;
 		databaseManager.AddUserInventoryItems(userID, { newItem });
+		deltaUpdatedItems.push_back(newItem);
 	}
 
-	// 13. 刷新並同步玩家背包
-	packetManager.SendPacket_Inventory(connection, user->GetUserInventory(), deletedSlots);
+	// 13. 刷新並同步玩家背包 (Delta 增量同步)
+	packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, deletedSlots);
 
 	// 14. 下發材料組合結果面板封包（isSuccess 成功升階時下發 1 播放 Assemble.bik 動畫；失敗保底時下發 0 跳過動畫）
 	unsigned char resultFlag = isSuccess ? 1 : 0;

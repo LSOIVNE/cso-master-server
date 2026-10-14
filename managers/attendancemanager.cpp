@@ -180,7 +180,7 @@ std::vector<AttendanceRewardItem> AttendanceManager::selectCandidateItems(User* 
 	return candidates;
 }
 
-bool AttendanceManager::grantRewardItem(User* user, const AttendanceRewardItem& item) {
+bool AttendanceManager::grantRewardItem(User* user, const AttendanceRewardItem& item, std::vector<InventoryItem>& outDeltaItems) {
 	if (!user) return false;
 	unsigned long userID = user->GetUserID();
 	time_t now = time(nullptr);
@@ -206,6 +206,8 @@ bool AttendanceManager::grantRewardItem(User* user, const AttendanceRewardItem& 
 			unsigned short addedCount = item.count > 0 ? item.count : 1;
 			if (alreadyOwned) {
 				databaseManager.UpdateUserInventoryItemCount(userID, (unsigned short)item.itemID, addedCount);
+				ownedItem.count += addedCount;
+				outDeltaItems.push_back(ownedItem);
 			}
 			else {
 				InventoryItem newItem;
@@ -218,6 +220,7 @@ bool AttendanceManager::grantRewardItem(User* user, const AttendanceRewardItem& 
 				newItem.expirationTime = 0;
 				newItem.enhanceBits = item.enhance;
 				databaseManager.AddUserInventoryItems(userID, { newItem });
+				outDeltaItems.push_back(newItem);
 			}
 		}
 		else {
@@ -226,6 +229,8 @@ bool AttendanceManager::grantRewardItem(User* user, const AttendanceRewardItem& 
 				unsigned long baseTime = (ownedItem.expirationTime > (unsigned long)now) ? ownedItem.expirationTime : (unsigned long)now;
 				unsigned long newExp = baseTime + (unsigned long)item.duration * 86400;
 				databaseManager.UpdateUserInventoryExpiration(userID, (unsigned short)item.itemID, newExp);
+				ownedItem.expirationTime = newExp;
+				outDeltaItems.push_back(ownedItem);
 			}
 			else if (!alreadyOwned) {
 				InventoryItem newItem;
@@ -238,6 +243,7 @@ bool AttendanceManager::grantRewardItem(User* user, const AttendanceRewardItem& 
 				newItem.expirationTime = (unsigned long)(now + (unsigned long)item.duration * 86400);
 				newItem.enhanceBits = item.enhance;
 				databaseManager.AddUserInventoryItems(userID, { newItem });
+				outDeltaItems.push_back(newItem);
 			}
 		}
 	}
@@ -391,8 +397,9 @@ void AttendanceManager::ClaimAttendanceReward(User* user) {
 		wonDaily = _config.dailyRewards[0].item;
 	}
 
-	grantRewardItem(user, wonCandidate);
-	grantRewardItem(user, wonDaily);
+	std::vector<InventoryItem> deltaUpdatedItems;
+	grantRewardItem(user, wonCandidate, deltaUpdatedItems);
+	grantRewardItem(user, wonDaily, deltaUpdatedItems);
 
 	auto packet = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::Item });
 	packet->WriteUInt8(Packet_ItemType::Roulette); // 8
@@ -421,8 +428,8 @@ void AttendanceManager::ClaimAttendanceReward(User* user) {
 	// Clear cached candidate items so next claim opportunity will sample a fresh set
 	ClearUserCandidates(userID);
 
-	// Sync inventory and currency
-	packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
+	// Sync inventory and currency (Delta 增量同步，若包含 166 亦由底層自動同步 Packet 157 CBoxCount)
+	packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, {});
 	auto charResult = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
 	packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, charResult.userCharacter });
 

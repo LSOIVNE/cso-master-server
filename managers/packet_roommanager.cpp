@@ -622,7 +622,6 @@ void Packet_RoomManager::parsePacket_Room_LeaveRoom(User* user, TCPConnection::P
 	}
 
 	userManager.CheckAndProcessUserExpiredItems(user, false);
-	packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
 }
 
 void Packet_RoomManager::parsePacket_Room_StartGame(User* user) {
@@ -948,8 +947,6 @@ void Packet_RoomManager::parsePacket_Room_ResultConfirm(User* user, TCPConnectio
 	if (ucr.result) {
 		packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, ucr.userCharacter });
 	}
-
-	packetManager.SendPacket_Inventory(connection, user->GetUserInventory());
 }
 
 void Packet_RoomManager::parsePacket_Room_ReturnToRoom(User* user) {
