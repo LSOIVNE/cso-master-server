@@ -438,28 +438,11 @@ void Packet_HostManager::parsePacket_Host_PlayerKilled(User* user, TCPConnection
 	}
 
 	unsigned long attackerUserID = packet->ReadUInt32_LE();
-
-	if (attackerUserID) {
-		User* targetUser = userManager.GetUserByUserID(attackerUserID);
-		if (!targetUser) {
-			serverConsole.Print(PrefixType::Warn, format("[ Packet_HostManager ] User ({}) has sent Packet_Host PlayerKilled, but targetUser is not logged in!\n", user->GetUserLogName()));
-			return;
-		}
-
-		GameMatchUser* gameMatchUser = gameMatch->GetGameMatchUserByUser(targetUser);
-		if (gameMatchUser == NULL) {
-			serverConsole.Print(PrefixType::Warn, format("[ Packet_HostManager ] User ({}) has sent Packet_Host PlayerKilled, but gameMatchUser is NULL!\n", user->GetUserLogName()));
-			return;
-		}
-	}
-
-	unsigned char attackerWeaponID = packet->ReadUInt8();
-	signed char attackerArmor = packet->ReadUInt8();
-	signed char attackerHealth = packet->ReadUInt8();
+	unsigned short attackerWeapon = packet->ReadUInt16_LE();
+	unsigned char attackerTeam = packet->ReadUInt8();
 	unsigned long victimUserID = packet->ReadUInt32_LE();
-	unsigned char victimWeaponID = packet->ReadUInt8();
-	signed char victimArmor = packet->ReadUInt8();
-	signed char victimHealth = packet->ReadUInt8();
+	unsigned char victimTeam = packet->ReadUInt8();
+	unsigned short killFlags = packet->ReadUInt16_LE();
 
 	float attX = 0.0f, attY = 0.0f, attZ = 0.0f, vicX = 0.0f, vicY = 0.0f, vicZ = 0.0f;
 	if (packet->GetBuffer().size() >= (size_t)(packet->GetReadOffset() + 24)) {
@@ -476,14 +459,61 @@ void Packet_HostManager::parsePacket_Host_PlayerKilled(User* user, TCPConnection
 	float dz = attZ - vicZ;
 	unsigned short distance = (unsigned short)sqrt(dx * dx + dy * dy + dz * dz);
 
-	bool isHeadshot = (attackerWeaponID & 0x80) != 0;
-	unsigned char realWeaponID = attackerWeaponID & 0x7F;
+	bool isHeadshot = (killFlags & 0x01) != 0;
+	unsigned char realWeaponID = (unsigned char)(attackerWeapon & 0xFF);
+	bool isKnife = (killFlags & 0x02) != 0 || realWeaponID == 29;
+	bool isGrenade = (killFlags & 0x10) != 0 || realWeaponID == 4;
+	bool isMotherZombieKill = (killFlags & 0x04) != 0;
 
-	serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] User ({}) has sent Packet_Host PlayerKilled - attackerUserID: {}, weapon: {} (HS: {}), attackerArmor: {}, attackerHealth: {}, victimUserID: {}, victimWeaponID: {}, victimArmor: {}, victimHealth: {}, distance: {}\n",
-		user->GetUserLogName(), attackerUserID, (int)realWeaponID, isHeadshot ? 1 : 0, attackerArmor, attackerHealth, victimUserID, victimWeaponID, victimArmor, victimHealth, distance));
+	serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] User ({}) PlayerKilled - attID: {} (team: {}), weapon: {} (HS: {}, knife: {}, nade: {}, flags: 0x{:04X}), vicID: {} (team: {}), dist: {}\n",
+		user->GetUserLogName(), attackerUserID, (int)attackerTeam, (int)realWeaponID, isHeadshot ? 1 : 0, isKnife ? 1 : 0, isGrenade ? 1 : 0, killFlags, victimUserID, (int)victimTeam, distance));
 
 	User* attackerUser = attackerUserID ? userManager.GetUserByUserID(attackerUserID) : NULL;
 	User* victimUser = victimUserID ? userManager.GetUserByUserID(victimUserID) : NULL;
+
+	GameMatchUser* attackerGmu = attackerUser ? gameMatch->GetGameMatchUserByUser(attackerUser) : NULL;
+	GameMatchUser* victimGmu = victimUser ? gameMatch->GetGameMatchUserByUser(victimUser) : NULL;
+
+	unsigned char gameModeID = room ? room->GetRoomSettings().gameModeID : 0;
+	bool isZombieMode = (gameModeID == 8 || gameModeID == 9 || gameModeID == 14 || gameModeID == 20 || gameModeID == 24);
+
+	if (attackerGmu) {
+		if (isZombieMode) {
+			unsigned char aTeam = attackerTeam ? attackerTeam : (unsigned char)attackerGmu->GetTeam();
+			unsigned char vTeam = victimTeam ? victimTeam : (victimGmu ? (unsigned char)victimGmu->GetTeam() : 1);
+			if (aTeam == (unsigned char)Team::CounterTerrorist && vTeam == (unsigned char)Team::Terrorist) {
+				attackerGmu->AddZombieKill(1);
+				if (isMotherZombieKill) {
+					attackerGmu->AddZombieMotherKill(1);
+				}
+				if (isHeadshot) attackerGmu->AddHeadshots(1);
+				if (isGrenade) attackerGmu->AddGrenadeKills(1);
+				if (isKnife) attackerGmu->AddKnifeKills(1);
+			}
+			else if (aTeam == (unsigned char)Team::Terrorist && vTeam == (unsigned char)Team::CounterTerrorist) {
+				attackerGmu->AddHumanKill(1);
+			}
+		}
+		else {
+			if (attackerUser != victimUser) {
+				unsigned char aTeam = attackerTeam ? attackerTeam : (unsigned char)attackerGmu->GetTeam();
+				unsigned char vTeam = victimTeam ? victimTeam : (victimGmu ? (unsigned char)victimGmu->GetTeam() : 0);
+				if (vTeam == 0 || aTeam != vTeam || gameModeID == 2) {
+					if (isHeadshot) attackerGmu->AddHeadshots(1);
+					if (isGrenade) attackerGmu->AddGrenadeKills(1);
+					if (isKnife) attackerGmu->AddKnifeKills(1);
+				}
+			}
+		}
+	}
+
+	if (victimGmu && isZombieMode) {
+		unsigned char aTeam = attackerTeam ? attackerTeam : (attackerGmu ? (unsigned char)attackerGmu->GetTeam() : 2);
+		if (aTeam == (unsigned char)Team::Terrorist) {
+			// Human victim was infected by zombie, victim becomes Zombie
+			victimGmu->SetTeam(Team::Terrorist);
+		}
+	}
 
 	if (attackerUser) {
 		questManager.OnPlayerKilled(attackerUser, victimUser, realWeaponID, isHeadshot, distance);
@@ -872,10 +902,32 @@ void Packet_HostManager::parsePacket_Host_RoundResult(User* user, TCPConnection:
 	gameMatch->SetTerWins(terWins);
 	gameMatch->SetCtWins(ctWins);
 
+	unsigned char gameModeID = room ? room->GetRoomSettings().gameModeID : 0;
+	bool isZombieMode = (gameModeID == 8 || gameModeID == 9 || gameModeID == 14 || gameModeID == 20 || gameModeID == 24);
+
+	if (isZombieMode) {
+		if (winTeam == (unsigned char)Team::CounterTerrorist) {
+			for (auto& gmu : gameMatch->GetGameMatchUsers()) {
+				if (gmu && gmu->GetTeam() == Team::CounterTerrorist) {
+					gmu->AddSurviveCount(1);
+				}
+			}
+		}
+	}
+
 	for (auto& gmu : gameMatch->GetGameMatchUsers()) {
 		if (gmu && gmu->GetUser()) {
 			if ((unsigned char)gmu->GetTeam() == winTeam) {
 				questManager.OnRoundWin(gmu->GetUser());
+			}
+		}
+	}
+
+	if (isZombieMode) {
+		// Reset players back to CounterTerrorist (Human) for the start of the next round
+		for (auto& gmu : gameMatch->GetGameMatchUsers()) {
+			if (gmu) {
+				gmu->SetTeam(Team::CounterTerrorist);
 			}
 		}
 	}
@@ -1154,15 +1206,50 @@ void Packet_HostManager::parsePacket_Host_GameEvent(User* user, TCPConnection::P
 		value = packet->ReadUInt32_LE();
 	}
 
-	User* targetUser = (targetUserID != 0) ? userManager.GetUserByUserID(targetUserID) : user;
-	if (!targetUser) {
-		targetUser = user;
-	}
+	User* targetUser = (targetUserID != 0) ? userManager.GetUserByUserID(targetUserID) : NULL;
 
 	serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] GameEvent: type {}, host: {}, targetUser: {} (ID: {}), value: {}\n",
-		(int)eventType, user->GetUserLogName(), targetUser->GetUserLogName(), targetUserID, value));
+		(int)eventType, user->GetUserLogName(), targetUser ? targetUser->GetUserLogName() : "None/Bot", targetUserID, value));
+
+	Room* room = roomManager.GetRoomByRoomID(user->GetCurrentRoomID());
+	GameMatch* gameMatch = room ? room->GetGameMatch() : NULL;
+	if (gameMatch != NULL) {
+		GameMatchUser* gmu = targetUser ? gameMatch->GetGameMatchUserByUser(targetUser) : NULL;
+		if (gmu != NULL) {
+			switch (eventType) {
+			case 0: // C4 Exploded / Target Destroyed
+				if (gmu->GetTeam() == Team::Terrorist) {
+					gmu->AddBombSuccess(1);
+				}
+				break;
+			case 1: // C4 Defused
+				if (gmu->GetTeam() == Team::CounterTerrorist) {
+					gmu->AddBombDeactivate(1);
+				}
+				break;
+			case 2: // Hostage Rescued
+				if (gmu->GetTeam() == Team::CounterTerrorist) {
+					gmu->AddHostageRescue(value > 0 ? (unsigned short)value : 1);
+				}
+				break;
+			case 6: // VIP Escaped
+				if (gmu->GetTeam() == Team::CounterTerrorist) {
+					gmu->AddVipEscape(1);
+				}
+				break;
+			case 7: // VIP Killed
+				if (gmu->GetTeam() == Team::Terrorist) {
+					gmu->AddVipKill(1);
+				}
+				break;
+			default:
+				break;
+			}
+		}
+	}
 
 	if (eventType == 34) { // 0x22: Scenario drop box / point pickup
-		scenarioRewardManager.HandleBoxPickup(targetUser, (unsigned int)value);
+		User* boxUser = targetUser ? targetUser : user;
+		scenarioRewardManager.HandleBoxPickup(boxUser, (unsigned int)value);
 	}
 }

@@ -286,11 +286,19 @@ void Packet_RoomManager::SendPacket_Room_GameResult(TCPConnection::pointer conne
 			packet->WriteUInt16_LE(0); // 14 x UInt16_LE bonus percentages
 		}
 
-		packet->WriteUInt8(0); // headshots
-		packet->WriteUInt8(0); // grenadeKills
-		packet->WriteUInt8(0); // knifeKills
-		packet->WriteUInt8(0); // miscKills
-		packet->WriteUInt16_LE(0); // clanBonusExp
+		unsigned char teamBonus = 0;
+		if (winTeam == 1 && team == 1) {
+			teamBonus = 1;
+		}
+		else if (winTeam == 2 && team == 2) {
+			teamBonus = 2;
+		}
+
+		packet->WriteUInt8(teamBonus);                              // teamBonus (0=none, 1=TR, 2=CT)
+		packet->WriteUInt8((unsigned char)gmu->GetHeadshots());     // headshots ("CSO_headshot")
+		packet->WriteUInt8((unsigned char)gmu->GetGrenadeKills());  // grenadeKills ("CSO_FragKill")
+		packet->WriteUInt8((unsigned char)gmu->GetKnifeKills());    // knifeKills ("CSO_CloseCombatKill")
+		packet->WriteUInt16_LE(0);                                  // clanBonusExp
 
 		// Mode-specific extra bytes
 		switch (gameModeID) {
@@ -298,21 +306,21 @@ void Packet_RoomManager::SendPacket_Room_GameResult(TCPConnection::pointer conne
 			case 3: // Bot
 			case 6: // Official
 			case 7: // Official_TieBreak
-				packet->WriteUInt8(0);
-				packet->WriteUInt8(0);
-				packet->WriteUInt8(0);
-				packet->WriteUInt8(0);
-				packet->WriteUInt8(0);
+				packet->WriteUInt8((unsigned char)gmu->GetBombDeactivate()); // "CSO_BomeBreak"
+				packet->WriteUInt8((unsigned char)gmu->GetBombSuccess());    // "CSO_TargetDestroy"
+				packet->WriteUInt8((unsigned char)gmu->GetHostageRescue());   // "CSO_RescueHostage"
+				packet->WriteUInt8((unsigned char)gmu->GetVipEscape());       // "CSO_VIPEscape"
+				packet->WriteUInt8((unsigned char)gmu->GetVipKill());         // "CSO_VIPKill"
 				break;
-			case 8:
-			case 9:
-			case 14:
-			case 20:
-			case 24:
-				packet->WriteUInt8(0);
-				packet->WriteUInt8(0);
-				packet->WriteUInt8(0);
-				packet->WriteUInt8(0);
+			case 8:  // Zombie 1
+			case 9:  // Zombie 2
+			case 14: // Zombie Hero (Zombie 3)
+			case 20: // Zombie Darkness
+			case 24: // Zombie Giant
+				packet->WriteUInt8((unsigned char)gmu->GetSurviveCount());       // "CSO_SurviveCount"
+				packet->WriteUInt8((unsigned char)gmu->GetZombieKill());         // "CSO_ZombieKill"
+				packet->WriteUInt8((unsigned char)gmu->GetZombieMotherKill());   // "CSO_MotherZombieKill"
+				packet->WriteUInt8((unsigned char)gmu->GetHumanKill());          // "CSO_HumanKill"
 				break;
 			case 10:
 				packet->WriteUInt16_LE(0);
@@ -355,11 +363,11 @@ void Packet_RoomManager::SendPacket_Room_GameResult(TCPConnection::pointer conne
 				packet->WriteUInt8(0);
 				break;
 			case 23:
-				packet->WriteUInt8(0);
-				packet->WriteUInt8(0);
-				packet->WriteUInt8(0);
-				packet->WriteUInt8(0);
-				packet->WriteUInt8(0);
+				packet->WriteUInt8((unsigned char)gmu->GetBombDeactivate());
+				packet->WriteUInt8((unsigned char)gmu->GetBombSuccess());
+				packet->WriteUInt8((unsigned char)gmu->GetHostageRescue());
+				packet->WriteUInt8((unsigned char)gmu->GetVipEscape());
+				packet->WriteUInt8((unsigned char)gmu->GetVipKill());
 				packet->WriteUInt16_LE(0);
 				break;
 			case 25:
