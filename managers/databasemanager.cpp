@@ -703,8 +703,6 @@ bool DatabaseManager::CreateUserInventory(unsigned long userID) {
             if (itemID == 166 || itemID == 173) {
                 count = 10;
                 inUse = 0;
-            } else if (itemID == 1001) {
-                inUse = 0;
             } else if (kTerroristCharacters.count(itemID)) {
                 if (!equippedT) {
                     inUse = 1;

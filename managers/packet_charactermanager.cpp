@@ -4,6 +4,7 @@
 #include "serverconfig.h"
 #include "serverconsole.h"
 #include "databasemanager.h"
+#include "packet_umsgmanager.h"
 
 Packet_CharacterManager packet_CharacterManager;
 
@@ -205,10 +206,44 @@ void Packet_CharacterManager::ParsePacket_RecvCharacter(TCPConnection::Packet::p
 		return;
 	}
 
+	// Grant Newbie Reward Item (Item 1001: 等級1獎勵箱)
+	auto currentInv = user->GetUserInventory();
+	unsigned short maxSlotID = 0;
+	for (const auto& item : currentInv) {
+		if (item.slotID > maxSlotID) {
+			maxSlotID = item.slotID;
+		}
+	}
+
+	InventoryItem newbieBox;
+	newbieBox.slotID = maxSlotID + 1;
+	newbieBox.itemID = 1001; // 等級1獎勵箱
+	newbieBox.count = 1;
+	newbieBox.activeFlag = 1;
+	newbieBox.inUse = false;
+	newbieBox.obtainTime = (unsigned long)time(nullptr);
+	newbieBox.expirationTime = 0;
+	newbieBox.enhanceBits = 0;
+	databaseManager.AddUserInventoryItems(user->GetUserID(), { newbieBox });
+
 	if (!userManager.SendLoginPackets(user, Packet_ReplyType::CreateCharacterSuccess) && connection) {
 		connection->DisconnectClient();
 		return;
 	}
+
+	AwardItem award;
+	award.itemID = 1001;
+	award.count = 1;
+	award.duration = 0;
+	award.flags = 0;
+	packet_UMsgManager.SendPacket_UMsg_ItemAwardNotice(
+		connection,
+		{ award },
+		"CSO_Warning_NEWBIE_GIVEITEM_TITLE",
+		"CSO_Warning_NEWBIE_GIVEITEM_MSG"
+	);
+
+	serverConsole.Print(PrefixType::Info, format("[ Packet_CharacterManager ] Granted newbie reward box (Item 1001) with award notice to user ({})\n", user->GetUserLogName()));
 }
 
 void Packet_CharacterManager::SendPacket_Character(TCPConnection::pointer connection) {
