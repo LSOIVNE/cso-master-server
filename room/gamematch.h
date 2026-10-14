@@ -33,10 +33,10 @@ public:
 		_winTeam = winTeam;
 	}
 
-	unsigned char GetTerWins() const noexcept {
+	unsigned short GetTerWins() const noexcept {
 		return _terWins;
 	}
-	void SetTerWins(unsigned char terWins) noexcept {
+	void SetTerWins(unsigned short terWins) noexcept {
 		_terWins = terWins;
 	}
 
@@ -47,11 +47,19 @@ public:
 		_ctWins = ctWins;
 	}
 
+	float GetMatchDuration() const noexcept {
+		return _matchDuration;
+	}
+	void SetMatchDuration(float matchDuration) noexcept {
+		_matchDuration = matchDuration;
+	}
+
 private:
 	unsigned short _roomID;
 	vector<unsigned char> _saveData;
 	vector<GameMatchUser*> _gameMatchUsers;
 	unsigned char _winTeam = 0;
-	unsigned char _terWins = 0;
+	unsigned short _terWins = 0;
 	unsigned char _ctWins = 0;
+	float _matchDuration = 0.0f;
 };

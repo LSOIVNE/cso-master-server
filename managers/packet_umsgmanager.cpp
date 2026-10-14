@@ -594,6 +594,7 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		cmdLower != "/banner" && cmdLower != "/yell" && cmdLower != "/reloadnotice" &&
 		cmdLower != "/addpoints" && cmdLower != "/addgash" &&
 		cmdLower != "/setlevel" && cmdLower != "/level" && cmdLower != "/addexp" &&
+		cmdLower != "/setzombiestats" && cmdLower != "/zombiestats" &&
 		cmdLower != "/reloadshop" &&
 		cmdLower != "/reloadcraft" &&
 		cmdLower != "/reloadenhance" &&
@@ -650,6 +651,7 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 
 	if (cmdLower == "/additem" || cmdLower == "/addallitem" || cmdLower == "/deleteitem" || cmdLower == "/delitem" || cmdLower == "/resetinv" || cmdLower == "/resetitem" ||
 		cmdLower == "/addpoints" || cmdLower == "/addgash" || cmdLower == "/setlevel" || cmdLower == "/level" || cmdLower == "/addexp" ||
+		cmdLower == "/setzombiestats" || cmdLower == "/zombiestats" ||
 		cmdLower == "/setexpire" || cmdLower == "/additemsec") {
 		if (!serverConfig.permissions.allowPlayerItemCommands && !isGM) {
 			SendNotice("權限不足：測試指令已被管理員停用！");
@@ -1569,6 +1571,34 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		}
 		else {
 			SendNotice("[系統] 增加經驗值失敗，數據庫寫入錯誤！");
+		}
+		return true;
+	}
+	else if (cmdLower == "/setzombiestats" || cmdLower == "/zombiestats") {
+		string killsStr, survsStr;
+		if (!(ss >> killsStr >> survsStr)) {
+			SendNotice("[系統] 用法：/setzombiestats <殭屍擊殺數> <生存次數>");
+			return true;
+		}
+
+		unsigned int kills = 0, survs = 0;
+		try {
+			kills = (unsigned int)stoul(killsStr);
+			survs = (unsigned int)stoul(survsStr);
+		}
+		catch (...) {
+			SendNotice("[系統] 請輸入有效的數字！用法：/setzombiestats <殭屍擊殺數> <生存次數>");
+			return true;
+		}
+
+		if (databaseManager.SetUserZombieStats(userID, kills, survs)) {
+			UserCharacterResult ucr = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
+			packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, ucr.userCharacter });
+			packet_MessengerManager.SendPacket_Messenger_ChatCount(connection, 255);
+			SendNotice(format("[系統] 成功設置個人狀態殭屍擊殺數: {}，生存次數: {}！", kills, survs));
+		}
+		else {
+			SendNotice("[系統] 設置失敗，數據庫寫入錯誤！");
 		}
 		return true;
 	}

@@ -50,8 +50,8 @@ struct UserCharacter {
 	unsigned long wins = 0;
 	unsigned long frags = 0;
 	unsigned long deaths = 0;
-	unsigned long battleStats4 = 0;
-	unsigned long battleStats5 = 0;
+	unsigned long battleStats4 = 0; // zombieKills (Mode 8, 9, 14 - #CSO_ZombieKillCount)
+	unsigned long battleStats5 = 0; // survivals (Mode 8, 9, 14 - #CSO_SurvivalCount)
 	unsigned short city = 0;
 	unsigned short county = 0;
 	unsigned short neighborhood = 0;

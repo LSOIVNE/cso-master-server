@@ -494,6 +494,19 @@ void Packet_HostManager::parsePacket_Host_PlayerKilled(User* user, TCPConnection
 				attackerGmu->AddHumanKill(1);
 			}
 		}
+		else if (gameModeID == 10) { // Phantom / Hidden Mode (魔幻空間 / 幽靈模式)
+			unsigned char aTeam = attackerTeam ? attackerTeam : (unsigned char)attackerGmu->GetTeam();
+			unsigned char vTeam = victimTeam ? victimTeam : (victimGmu ? (unsigned char)victimGmu->GetTeam() : 0);
+			if (aTeam == (unsigned char)Team::CounterTerrorist && vTeam == (unsigned char)Team::Terrorist) {
+				attackerGmu->AddHdHiddenKill(1);
+			}
+			else if (aTeam == (unsigned char)Team::Terrorist && vTeam == (unsigned char)Team::CounterTerrorist) {
+				attackerGmu->AddHdHumanKill(1);
+			}
+			if (isHeadshot) attackerGmu->AddHeadshots(1);
+			if (isGrenade) attackerGmu->AddGrenadeKills(1);
+			if (isKnife) attackerGmu->AddKnifeKills(1);
+		}
 		else {
 			if (attackerUser != victimUser) {
 				unsigned char aTeam = attackerTeam ? attackerTeam : (unsigned char)attackerGmu->GetTeam();
@@ -505,13 +518,25 @@ void Packet_HostManager::parsePacket_Host_PlayerKilled(User* user, TCPConnection
 				}
 			}
 		}
+
+		if (gameModeID == 21) { // Bazooka (轟炸擂台) combo tracking
+			attackerGmu->AddCombo(1);
+		}
 	}
 
-	if (victimGmu && isZombieMode) {
-		unsigned char aTeam = attackerTeam ? attackerTeam : (attackerGmu ? (unsigned char)attackerGmu->GetTeam() : 2);
-		if (aTeam == (unsigned char)Team::Terrorist) {
-			// Human victim was infected by zombie, victim becomes Zombie
-			victimGmu->SetTeam(Team::Terrorist);
+	if (victimGmu) {
+		if (isZombieMode) {
+			unsigned char aTeam = attackerTeam ? attackerTeam : (attackerGmu ? (unsigned char)attackerGmu->GetTeam() : 2);
+			if (aTeam == (unsigned char)Team::Terrorist) {
+				// Human victim was infected by zombie, victim becomes Zombie
+				victimGmu->SetTeam(Team::Terrorist);
+			}
+		}
+		if (gameModeID == 21) { // Bazooka (轟炸擂台) reset combo on death
+			victimGmu->ResetCombo();
+		}
+		if (gameModeID == 26) { // Shelter Survival (夜襲生存戰) reset consecutive survival days on death
+			victimGmu->SetAccumSurviveDays(0);
 		}
 	}
 
@@ -552,15 +577,20 @@ void Packet_HostManager::parsePacket_Host_EndGame(User* user, TCPConnection::Pac
 	unsigned char winTeam = packet->ReadUInt8();
 	unsigned short terWins = packet->ReadUInt16_LE();
 	unsigned char ctWins = packet->ReadUInt8();
-	unsigned long matchDuration = packet->ReadUInt32_LE();
+	float matchDuration = packet->ReadBytes<float>();
 
 	ProcessEndGame(room, winTeam, terWins, ctWins, matchDuration);
 }
 
-void Packet_HostManager::ProcessEndGame(Room* room, unsigned char winTeam, unsigned short terWins, unsigned char ctWins, unsigned long matchDuration) {
+void Packet_HostManager::ProcessEndGame(Room* room, unsigned char winTeam, unsigned short terWins, unsigned char ctWins, float matchDuration) {
 	if (room == NULL) return;
 	GameMatch* gameMatch = room->GetGameMatch();
 	if (gameMatch == NULL) return;
+
+	gameMatch->SetMatchDuration(matchDuration);
+	gameMatch->SetTerWins(terWins);
+	gameMatch->SetCtWins(ctWins);
+	gameMatch->SetWinTeam(winTeam);
 
 	unsigned char gameModeID = room ? room->GetRoomSettings().gameModeID : 0;
 
@@ -582,7 +612,7 @@ void Packet_HostManager::ProcessEndGame(Room* room, unsigned char winTeam, unsig
 	}
 
 	string hostName = room->GetRoomHostUser() ? room->GetRoomHostUser()->GetUserLogName() : "Unknown";
-	serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] ProcessEndGame in room (Host: {}) - winTeam: {}, terWins: {}, ctWins: {}, matchDuration: {}\n",
+	serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] ProcessEndGame in room (Host: {}) - winTeam: {}, terWins: {}, ctWins: {}, matchDuration: {:.2f}s\n",
 		hostName, winTeam, terWins, ctWins, matchDuration));
 
 	vector<GameMatchUser*> gameMatchUsers = gameMatch->GetGameMatchUsers();
@@ -629,6 +659,51 @@ void Packet_HostManager::ProcessEndGame(Room* room, unsigned char winTeam, unsig
 			isWin = (winTeam != 0 && team == winTeam);
 		}
 
+		// Mode-specific settlement stats calculations
+		if (gameModeID == 26) { // 夜襲生存戰 (Shelter Survival)
+			unsigned char matchDays = gmu->GetSurviveDays();
+			unsigned char matchRescuee = gmu->GetRescuee();
+			unsigned char consecutiveDays = gmu->GetAccumSurviveDays();
+			bool playerSurvived = (consecutiveDays > 0 || gmu->GetDeaths() == 0 || isWin || matchRescuee > 0);
+
+			unsigned int totalDays = 0, totalRescuee = 0;
+			databaseManager.UpdateUserShelterStats(
+				u->GetUserID(),
+				matchDays,
+				matchRescuee,
+				totalDays,
+				totalRescuee
+			);
+
+			if (gmu->GetZshPoint() == 0) {
+				unsigned short pts = (unsigned short)(kills * 15 + matchDays * 100);
+				gmu->SetZshPoint(pts);
+			}
+
+			// Scoreboard row "Rescuee" column:
+			// Non-zero = "生存" (#CSO_zsh_Rescuee), 0 = "死亡" (#CSO_zsh_Dead)
+			gmu->SetRescuee(playerSurvived ? 1 : 0);
+
+			// Summary box fields:
+			// "CSO_zsh_SurviveDays" (生存天數): continuously accumulated across matches in DB
+			gmu->SetSurviveDays((unsigned char)min(totalDays, 255u));
+
+			// "CSO_zsh_MaximumSurviveDays" (最高生存天數): current match total days
+			gmu->SetMaxSurviveDays(matchDays);
+
+			// "CSO_zsh_AccumulateSurviveDays" (連續生存天數): consecutive days survived without dying
+			gmu->SetAccumSurviveDays(consecutiveDays);
+
+			// "CSO_zsh_AccumulateRescuee" (使用無線電次數): total accumulated radio uses
+			gmu->SetAccumRescuee((unsigned char)min(totalRescuee, 255u));
+		}
+		else if (gameModeID == 25) { // 即刻救援 (Battle Run)
+			if (gmu->GetBrPoint() == 0) {
+				unsigned int pts = (unsigned int)(kills * 100 + gmu->GetLoAssist() * 50);
+				gmu->SetBrPoint(pts);
+			}
+		}
+
 		unsigned short earnedExp = 100 + kills * 10 + (isWin ? 50 : 0);
 		unsigned short earnedPoints = 200 + kills * 15 + (isWin ? 100 : 0);
 
@@ -657,11 +732,19 @@ void Packet_HostManager::ProcessEndGame(Room* room, unsigned char winTeam, unsig
 
 		gmu->SetLevelUp(levelUp);
 
+		// Calculate zombie kills and survivals to accumulate into user personal stats (only Mode 8, 9, 14)
+		unsigned int addedZombieKills = 0;
+		unsigned int addedSurvivals = 0;
+		if (gameModeID == 8 || gameModeID == 9 || gameModeID == 14) {
+			addedZombieKills = gmu->GetZombieKill();
+			addedSurvivals = gmu->GetSurviveCount();
+		}
+
 		// Save battle result to database (recordStats only for competitive modes)
-		databaseManager.SaveUserBattleResult(u->GetUserID(), earnedExp, earnedPoints, kills, deaths, isWin, newLevel, recordStats);
+		databaseManager.SaveUserBattleResult(u->GetUserID(), earnedExp, earnedPoints, kills, deaths, isWin, newLevel, recordStats, addedZombieKills, addedSurvivals);
 
 		// Quest progression hook
-		questManager.OnMatchEnd(u, isWin, kills, deaths, matchDuration);
+		questManager.OnMatchEnd(u, isWin, kills, deaths, (unsigned int)matchDuration);
 
 		// Note: DO NOT send UpdateInfo here!
 		// The client settlement dialog (CResultCurrentPlayerInfoPanel) expects localPlayer in memory
@@ -676,7 +759,7 @@ void Packet_HostManager::ProcessEndGame(Room* room, unsigned char winTeam, unsig
 
 		u->SetUserStatus(UserStatus::InRoom);
 		SendPacket_Host_HostEndSession(u->GetConnection());
-		packet_RoomManager.SendPacket_Room_GameResult(u->GetConnection(), room, gameMatch, winTeam, (unsigned char)terWins, ctWins);
+		packet_RoomManager.SendPacket_Room_GameResult(u->GetConnection(), room, gameMatch, winTeam, terWins, ctWins);
 
 		// Scenario custom clear rewards (grant items, sync inventory, and send ItemAwardNotice dialog)
 		if (IsScenarioMode(gameModeID) && (terWins > ctWins)) {
@@ -858,6 +941,9 @@ void Packet_HostManager::parsePacket_Host_AddDeath(User* user, TCPConnection::Pa
 
 	if (deaths >= 0) {
 		gameMatchUser->SetDeaths((unsigned short)deaths);
+		if (room && room->GetRoomSettings().gameModeID == 26) {
+			gameMatchUser->SetAccumSurviveDays(0);
+		}
 	}
 
 	serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] User ({}) has sent Packet_Host AddDeath - userID: {}, deathCount: {}, totalDeaths: {}\n", user->GetUserLogName(), userID, point, deaths));
@@ -1202,8 +1288,15 @@ void Packet_HostManager::parsePacket_Host_GameEvent(User* user, TCPConnection::P
 	unsigned long targetUserID = packet->ReadUInt32_LE();
 
 	unsigned long value = 0;
-	if (packet->GetBuffer().size() >= (size_t)packet->GetReadOffset() + 4) {
+	size_t remaining = packet->GetBuffer().size() - packet->GetReadOffset();
+	if (remaining >= 4) {
 		value = packet->ReadUInt32_LE();
+	}
+	else if (remaining >= 2) {
+		value = packet->ReadUInt16_LE();
+	}
+	else if (remaining >= 1) {
+		value = packet->ReadUInt8();
 	}
 
 	User* targetUser = (targetUserID != 0) ? userManager.GetUserByUserID(targetUserID) : NULL;
@@ -1215,6 +1308,9 @@ void Packet_HostManager::parsePacket_Host_GameEvent(User* user, TCPConnection::P
 	GameMatch* gameMatch = room ? room->GetGameMatch() : NULL;
 	if (gameMatch != NULL) {
 		GameMatchUser* gmu = targetUser ? gameMatch->GetGameMatchUserByUser(targetUser) : NULL;
+		if (gmu == NULL && user != NULL) {
+			gmu = gameMatch->GetGameMatchUserByUser(user);
+		}
 		if (gmu != NULL) {
 			switch (eventType) {
 			case 0: // C4 Exploded / Target Destroyed
@@ -1227,10 +1323,17 @@ void Packet_HostManager::parsePacket_Host_GameEvent(User* user, TCPConnection::P
 					gmu->AddBombDeactivate(1);
 				}
 				break;
-			case 2: // Hostage Rescued
+			case 2: // Hostage Rescued / Shelter Rescue
 				if (gmu->GetTeam() == Team::CounterTerrorist) {
 					gmu->AddHostageRescue(value > 0 ? (unsigned short)value : 1);
 				}
+				if (room && room->GetRoomSettings().gameModeID == 26) {
+					gmu->AddRescuee(value > 0 ? (unsigned char)value : 1);
+				}
+				break;
+			case 3: // Assist event
+				gmu->AddLoAssist(1);
+				gmu->AddBkAssist(1);
 				break;
 			case 6: // VIP Escaped
 				if (gmu->GetTeam() == Team::CounterTerrorist) {
@@ -1240,6 +1343,21 @@ void Packet_HostManager::parsePacket_Host_GameEvent(User* user, TCPConnection::P
 			case 7: // VIP Killed
 				if (gmu->GetTeam() == Team::Terrorist) {
 					gmu->AddVipKill(1);
+				}
+				break;
+			case 35: // Shelter points (Mode 26)
+				gmu->AddZshPoint((unsigned short)value);
+				break;
+			case 64: // Shelter Survival Event (Mode 26)
+				if (room && room->GetRoomSettings().gameModeID == 26) {
+					if (value == 1 || value == 0) {
+						gmu->AddSurviveDays(1);
+						gmu->AddAccumSurviveDays(1);
+					}
+					else if (value == 5) {
+						// Shelter radio / broadcast upgraded or activated
+						gmu->AddRescuee(1);
+					}
 				}
 				break;
 			default:

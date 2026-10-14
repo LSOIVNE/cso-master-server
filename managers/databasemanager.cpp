@@ -34,6 +34,8 @@ bool DatabaseManager::Init(const string& server, const string& user, const strin
         mysql_query(_connection, "ALTER TABLE user_characters MODIFY COLUMN clanName VARBINARY(32) DEFAULT ('');");
         mysql_query(_connection, "ALTER TABLE user_characters MODIFY COLUMN unk200_5 VARBINARY(64) DEFAULT ('');");
         mysql_query(_connection, "ALTER TABLE user_characters ADD UNIQUE KEY uk_nickName (nickName);");
+        mysql_query(_connection, "ALTER TABLE user_characters ADD COLUMN zombieKills INT UNSIGNED NOT NULL DEFAULT 0;");
+        mysql_query(_connection, "ALTER TABLE user_characters ADD COLUMN survivals INT UNSIGNED NOT NULL DEFAULT 0;");
 
         EnsureBingoTables();
         EnsureAttendanceTables();
@@ -41,6 +43,7 @@ bool DatabaseManager::Init(const string& server, const string& user, const strin
         EnsureQuestTables();
         EnsureGiftTables();
         EnsureBookmarkTables();
+        EnsureShelterTables();
     }
 
     return success;
@@ -393,7 +396,7 @@ const UserCharacterResult DatabaseManager::GetUserCharacter(unsigned long userID
             info += " points,";
         }
         if (flag & USERCHARACTER_FLAG_BATTLESTATS) {
-            info += " battles, wins, frags, deaths,";
+            info += " battles, wins, frags, deaths, zombieKills, survivals,";
         }
         if (flag & USERCHARACTER_FLAG_LOCATION) {
             info += " city, county, neighborhood, unk200_5,";
@@ -465,6 +468,8 @@ const UserCharacterResult DatabaseManager::GetUserCharacter(unsigned long userID
             userCharacter.wins = atoi(row[index++]);
             userCharacter.frags = atoi(row[index++]);
             userCharacter.deaths = atoi(row[index++]);
+            userCharacter.battleStats4 = atoi(row[index++]); // zombieKills (#CSO_ZombieKillCount)
+            userCharacter.battleStats5 = atoi(row[index++]); // survivals (#CSO_SurvivalCount)
         }
         if (flag & USERCHARACTER_FLAG_LOCATION) {
             userCharacter.city = atoi(row[index++]);
@@ -1690,18 +1695,18 @@ bool DatabaseManager::SetUserInventoryItemExpirationSeconds(unsigned long userID
     return true;
 }
 
-bool DatabaseManager::SaveUserBattleResult(unsigned long userID, unsigned long long addedExp, unsigned long long addedPoints, unsigned short addedFrags, unsigned short addedDeaths, bool isWin, unsigned char newLevel, bool recordStats) {
+bool DatabaseManager::SaveUserBattleResult(unsigned long userID, unsigned long long addedExp, unsigned long long addedPoints, unsigned short addedFrags, unsigned short addedDeaths, bool isWin, unsigned char newLevel, bool recordStats, unsigned int addedZombieKills, unsigned int addedSurvivals) {
     if (_connection == NULL) {
         return false;
     }
 
     string query;
     if (newLevel > 0) {
-        query = format("UPDATE user_characters SET exp = exp + {}, points = points + {}, battles = battles + {}, wins = wins + {}, frags = frags + {}, deaths = deaths + {}, level = {} WHERE userID = {};",
-            addedExp, addedPoints, recordStats ? 1 : 0, (recordStats && isWin) ? 1 : 0, recordStats ? addedFrags : 0, recordStats ? addedDeaths : 0, (int)newLevel, userID);
+        query = format("UPDATE user_characters SET exp = exp + {}, points = points + {}, battles = battles + {}, wins = wins + {}, frags = frags + {}, deaths = deaths + {}, zombieKills = zombieKills + {}, survivals = survivals + {}, level = {} WHERE userID = {};",
+            addedExp, addedPoints, recordStats ? 1 : 0, (recordStats && isWin) ? 1 : 0, recordStats ? addedFrags : 0, recordStats ? addedDeaths : 0, addedZombieKills, addedSurvivals, (int)newLevel, userID);
     } else {
-        query = format("UPDATE user_characters SET exp = exp + {}, points = points + {}, battles = battles + {}, wins = wins + {}, frags = frags + {}, deaths = deaths + {} WHERE userID = {};",
-            addedExp, addedPoints, recordStats ? 1 : 0, (recordStats && isWin) ? 1 : 0, recordStats ? addedFrags : 0, recordStats ? addedDeaths : 0, userID);
+        query = format("UPDATE user_characters SET exp = exp + {}, points = points + {}, battles = battles + {}, wins = wins + {}, frags = frags + {}, deaths = deaths + {}, zombieKills = zombieKills + {}, survivals = survivals + {} WHERE userID = {};",
+            addedExp, addedPoints, recordStats ? 1 : 0, (recordStats && isWin) ? 1 : 0, recordStats ? addedFrags : 0, recordStats ? addedDeaths : 0, addedZombieKills, addedSurvivals, userID);
     }
 
     if (mysql_query(_connection, query.c_str())) {
@@ -1709,8 +1714,8 @@ bool DatabaseManager::SaveUserBattleResult(unsigned long userID, unsigned long l
         return false;
     }
 
-    serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Updated battle result for userID {}: +{} exp, +{} points, recordStats: {}, +{} frags, +{} deaths, win: {}, level: {}\n",
-        userID, addedExp, addedPoints, recordStats ? 1 : 0, recordStats ? addedFrags : 0, recordStats ? addedDeaths : 0, (recordStats && isWin) ? 1 : 0, (int)newLevel));
+    serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Updated battle result for userID {}: +{} exp, +{} points, recordStats: {}, +{} frags, +{} deaths, win: {}, level: {}, +{} zombieKills, +{} survivals\n",
+        userID, addedExp, addedPoints, recordStats ? 1 : 0, recordStats ? addedFrags : 0, recordStats ? addedDeaths : 0, (recordStats && isWin) ? 1 : 0, (int)newLevel, addedZombieKills, addedSurvivals));
 
     return true;
 }
@@ -2965,8 +2970,93 @@ bool DatabaseManager::ClaimUserGift(unsigned int giftID, unsigned long receiverU
     return true;
 }
 
+bool DatabaseManager::EnsureShelterTables() {
+    if (_connection == NULL) {
+        return false;
+    }
 
+    const char* q =
+        "CREATE TABLE IF NOT EXISTS user_shelter_stats ("
+        "    userID INT UNSIGNED NOT NULL PRIMARY KEY,"
+        "    totalSurviveDays INT UNSIGNED NOT NULL DEFAULT 0,"
+        "    accumRescuee INT UNSIGNED NOT NULL DEFAULT 0,"
+        "    FOREIGN KEY (userID) REFERENCES user_characters(userID) ON DELETE CASCADE"
+        ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
 
+    if (mysql_query(_connection, q)) {
+        serverConsole.Print(PrefixType::Warn, format("[ DatabaseManager ] EnsureShelterTables warning: {}\n", mysql_error(_connection)));
+    }
 
+    return true;
+}
 
+bool DatabaseManager::GetUserShelterStats(unsigned long userID, unsigned int& outTotalDays, unsigned int& outAccumRescuee) {
+    outTotalDays = 0;
+    outAccumRescuee = 0;
+
+    if (_connection == NULL) {
+        return false;
+    }
+
+    string query = format("SELECT totalSurviveDays, accumRescuee FROM user_shelter_stats WHERE userID = {};", userID);
+    if (mysql_query(_connection, query.c_str())) {
+        return false;
+    }
+
+    MYSQL_RES* result = mysql_store_result(_connection);
+    if (result == NULL) {
+        return false;
+    }
+
+    MYSQL_ROW row = mysql_fetch_row(result);
+    if (row != NULL) {
+        outTotalDays = row[0] ? (unsigned int)strtoul(row[0], nullptr, 10) : 0;
+        outAccumRescuee = row[1] ? (unsigned int)strtoul(row[1], nullptr, 10) : 0;
+    }
+
+    mysql_free_result(result);
+    return true;
+}
+
+bool DatabaseManager::UpdateUserShelterStats(unsigned long userID, unsigned int matchDays, unsigned int matchRescuee,
+    unsigned int& outTotalDays, unsigned int& outAccumRescuee) {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    GetUserShelterStats(userID, outTotalDays, outAccumRescuee);
+
+    outTotalDays += matchDays;
+    outAccumRescuee += matchRescuee;
+
+    string query = format(
+        "INSERT INTO user_shelter_stats (userID, totalSurviveDays, accumRescuee) "
+        "VALUES ({}, {}, {}) "
+        "ON DUPLICATE KEY UPDATE totalSurviveDays = {}, accumRescuee = {};",
+        userID, outTotalDays, outAccumRescuee,
+        outTotalDays, outAccumRescuee
+    );
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Warn, format("[ DatabaseManager ] UpdateUserShelterStats error: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    return true;
+}
+
+bool DatabaseManager::SetUserZombieStats(unsigned long userID, unsigned int zombieKills, unsigned int survivals) {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    string query = format("UPDATE user_characters SET zombieKills = {}, survivals = {} WHERE userID = {};", zombieKills, survivals, userID);
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on SetUserZombieStats: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Set zombie stats for userID {}: zombieKills = {}, survivals = {}\n", userID, zombieKills, survivals));
+    return true;
+}
 

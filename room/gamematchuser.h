@@ -122,6 +122,63 @@ public:
 	void SetHumanKill(unsigned char v) noexcept { _humanKill = v; }
 	void AddHumanKill(unsigned char v) noexcept { _humanKill += v; }
 
+	// Mode 10: Phantom / Hidden (魔幻空間 / 幽靈模式)
+	unsigned short GetHdHiddenKill() const noexcept { return _hdHiddenKill; }
+	void SetHdHiddenKill(unsigned short v) noexcept { _hdHiddenKill = v; }
+	void AddHdHiddenKill(unsigned short v) noexcept { _hdHiddenKill += v; }
+
+	unsigned short GetHdHumanKill() const noexcept { return _hdHumanKill; }
+	void SetHdHumanKill(unsigned short v) noexcept { _hdHumanKill = v; }
+	void AddHdHumanKill(unsigned short v) noexcept { _hdHumanKill += v; }
+
+	// Mode 21: Bazooka (轟炸擂台)
+	unsigned short GetBkAssist() const noexcept { return _bkAssist; }
+	void SetBkAssist(unsigned short v) noexcept { _bkAssist = v; }
+	void AddBkAssist(unsigned short v) noexcept { _bkAssist += v; }
+
+	unsigned char GetBkMaxCombo() const noexcept { return _bkMaxCombo; }
+	void SetBkMaxCombo(unsigned char v) noexcept { _bkMaxCombo = v; }
+	void AddCombo(unsigned char v = 1) noexcept {
+		_currentCombo += v;
+		if (_currentCombo > _bkMaxCombo) {
+			_bkMaxCombo = _currentCombo;
+		}
+	}
+	void ResetCombo() noexcept { _currentCombo = 0; }
+
+	// Mode 23 (悠遊模式) & Mode 25 (即刻救援)
+	unsigned short GetLoAssist() const noexcept { return _loAssist; }
+	void SetLoAssist(unsigned short v) noexcept { _loAssist = v; }
+	void AddLoAssist(unsigned short v) noexcept { _loAssist += v; }
+
+	unsigned int GetBrPoint() const noexcept { return _brPoint; }
+	void SetBrPoint(unsigned int v) noexcept { _brPoint = v; }
+	void AddBrPoint(unsigned int v) noexcept { _brPoint += v; }
+
+	// Mode 26: Shelter Survival (夜襲生存戰)
+	unsigned short GetZshPoint() const noexcept { return _zshPoint; }
+	void SetZshPoint(unsigned short v) noexcept { _zshPoint = v; }
+	void AddZshPoint(unsigned short v) noexcept { _zshPoint += v; }
+
+	unsigned char GetRescuee() const noexcept { return _rescuee; }
+	void SetRescuee(unsigned char v) noexcept { _rescuee = v; }
+	void AddRescuee(unsigned char v) noexcept { _rescuee += v; }
+
+	unsigned char GetSurviveDays() const noexcept { return _surviveDays; }
+	void SetSurviveDays(unsigned char v) noexcept { _surviveDays = v; }
+	void AddSurviveDays(unsigned char v = 1) noexcept { _surviveDays += v; }
+
+	unsigned char GetMaxSurviveDays() const noexcept { return _maxSurviveDays; }
+	void SetMaxSurviveDays(unsigned char v) noexcept { _maxSurviveDays = v; }
+
+	unsigned char GetAccumSurviveDays() const noexcept { return _accumSurviveDays; }
+	void SetAccumSurviveDays(unsigned char v) noexcept { _accumSurviveDays = v; }
+	void AddAccumSurviveDays(unsigned char v) noexcept { _accumSurviveDays += v; }
+
+	unsigned char GetAccumRescuee() const noexcept { return _accumRescuee; }
+	void SetAccumRescuee(unsigned char v) noexcept { _accumRescuee = v; }
+	void AddAccumRescuee(unsigned char v) noexcept { _accumRescuee += v; }
+
 private:
 	User* _user;
 	Team _team;
@@ -149,4 +206,25 @@ private:
 	unsigned char _zombieKill;
 	unsigned char _zombieMotherKill;
 	unsigned char _humanKill;
+
+	// Mode 10 Stats
+	unsigned short _hdHiddenKill;
+	unsigned short _hdHumanKill;
+
+	// Mode 21 Stats
+	unsigned short _bkAssist;
+	unsigned char _bkMaxCombo;
+	unsigned char _currentCombo;
+
+	// Mode 23 & 25 Stats
+	unsigned short _loAssist;
+	unsigned int _brPoint;
+
+	// Mode 26 Stats
+	unsigned short _zshPoint;
+	unsigned char _rescuee;
+	unsigned char _surviveDays;
+	unsigned char _maxSurviveDays;
+	unsigned char _accumSurviveDays;
+	unsigned char _accumRescuee;
 };

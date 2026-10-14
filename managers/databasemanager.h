@@ -131,7 +131,7 @@ public:
 	};
 	bool RemoveExpiredInventoryItems(unsigned long userID, vector<ExpiredItemRecord>& outExpiredItems);
 	bool SetUserInventoryItemExpirationSeconds(unsigned long userID, unsigned short itemID, unsigned int seconds);
-	bool SaveUserBattleResult(unsigned long userID, unsigned long long addedExp, unsigned long long addedPoints, unsigned short addedFrags, unsigned short addedDeaths, bool isWin, unsigned char newLevel, bool recordStats = true);
+	bool SaveUserBattleResult(unsigned long userID, unsigned long long addedExp, unsigned long long addedPoints, unsigned short addedFrags, unsigned short addedDeaths, bool isWin, unsigned char newLevel, bool recordStats = true, unsigned int addedZombieKills = 0, unsigned int addedSurvivals = 0);
 	bool AddUserExp(unsigned long userID, unsigned long long addedExp, unsigned char* outNewLevel = nullptr);
 	bool SetUserLevel(unsigned long userID, unsigned char newLevel);
 	bool DeductUserFunds(unsigned long userID, bool isPoints, unsigned long long amount);
@@ -179,6 +179,13 @@ public:
 	const std::vector<UserGift> GetUserGifts(unsigned long receiverUserID);
 	bool GetUserGiftByID(unsigned int giftID, unsigned long receiverUserID, UserGift& outGift);
 	bool ClaimUserGift(unsigned int giftID, unsigned long receiverUserID, unsigned short claimCount, unsigned short& outRemainingCount);
+
+	// Shelter Survival (Mode 26)
+	bool EnsureShelterTables();
+	bool GetUserShelterStats(unsigned long userID, unsigned int& outTotalDays, unsigned int& outAccumRescuee);
+	bool UpdateUserShelterStats(unsigned long userID, unsigned int matchDays, unsigned int matchRescuee,
+		unsigned int& outTotalDays, unsigned int& outAccumRescuee);
+	bool SetUserZombieStats(unsigned long userID, unsigned int zombieKills, unsigned int survivals);
 
 private:
 	MYSQL* _connection;

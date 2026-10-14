@@ -65,7 +65,7 @@ public:
 	void SendPacket_RoomList_UpdateRoom(TCPConnection::pointer connection, Room* room, unsigned short flag);
 	void SendPacket_Room_UserLeave(TCPConnection::pointer connection, unsigned long userID);
 	void SendPacket_Room_ReplyUpdateRoomSettings(TCPConnection::pointer connection, const RoomSettings& roomSettings);
-	void SendPacket_Room_GameResult(TCPConnection::pointer connection, Room* room = NULL, GameMatch* gameMatch = NULL, unsigned char winTeam = 0, unsigned char terWins = 0, unsigned char ctWins = 0);
+	void SendPacket_Room_GameResult(TCPConnection::pointer connection, Room* room = NULL, GameMatch* gameMatch = NULL, unsigned char winTeam = 0, unsigned short terWins = 0, unsigned char ctWins = 0);
 	void SendPacket_Room_TeamChange(TCPConnection::pointer connection, unsigned long userID, unsigned char team);
 	void SendPacket_Room_UserReady(TCPConnection::pointer connection, unsigned long userID, unsigned char ready);
 

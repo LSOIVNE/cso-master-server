@@ -183,7 +183,7 @@ void Packet_RoomManager::SendPacket_Room_ReplyUpdateRoomSettings(TCPConnection::
 	packet->Send();
 }
 
-void Packet_RoomManager::SendPacket_Room_GameResult(TCPConnection::pointer connection, Room* room, GameMatch* gameMatch, unsigned char winTeam, unsigned char terWins, unsigned char ctWins) {
+void Packet_RoomManager::SendPacket_Room_GameResult(TCPConnection::pointer connection, Room* room, GameMatch* gameMatch, unsigned char winTeam, unsigned short terWins, unsigned char ctWins) {
 	if (connection == NULL) {
 		return;
 	}
@@ -226,11 +226,11 @@ void Packet_RoomManager::SendPacket_Room_GameResult(TCPConnection::pointer conne
 		outWinTeam = 0;
 	}
 
-	packet->WriteUInt8(outWinTeam); // 1 - tr, 2 - ct, 0 - draw/none (0 for Scenario)
-	packet->WriteUInt8(terWins);    // TER score
-	packet->WriteUInt8(ctWins);     // CT score
-	packet->WriteUInt8(playerCount);// num of players
-	packet->WriteUInt8(gameModeID); // gameModeID (e.g. 26 for Bot Mode)
+	packet->WriteUInt8(outWinTeam);             // 1 - tr, 2 - ct, 0 - draw/none (0 for Scenario)
+	packet->WriteUInt8((unsigned char)terWins); // TER score (1 byte in header)
+	packet->WriteUInt8(ctWins);                 // CT score
+	packet->WriteUInt8(playerCount);            // num of players
+	packet->WriteUInt8(gameModeID);             // gameModeID
 
 	for (unsigned char i = 0; i < playerCount; ++i) {
 		GameMatchUser* gmu = players[i];
@@ -322,65 +322,65 @@ void Packet_RoomManager::SendPacket_Room_GameResult(TCPConnection::pointer conne
 				packet->WriteUInt8((unsigned char)gmu->GetZombieMotherKill());   // "CSO_MotherZombieKill"
 				packet->WriteUInt8((unsigned char)gmu->GetHumanKill());          // "CSO_HumanKill"
 				break;
-			case 10:
-				packet->WriteUInt16_LE(0);
-				packet->WriteUInt16_LE(0);
+			case 10: // Phantom / Hidden Mode (魔幻空間 / 幽靈模式)
+				packet->WriteUInt16_LE(gmu->GetHdHiddenKill()); // Hd_HiddenKill ("CSO_Hd_HiddenKill")
+				packet->WriteUInt16_LE(gmu->GetHdHumanKill());  // Hd_HumanKill ("CSO_Hd_HumanKill")
 				break;
-			case 11:
-			case 13:
-				packet->WriteUInt32_LE(0);
-				packet->WriteUInt16_LE(0);
-				packet->WriteUInt16_LE(0);
+			case 11: // Zombie Unite (殭屍大亂鬥)
+			case 13: // Zombie Union (殭屍聯盟)
+				packet->WriteUInt32_LE(0); // UniteHealValue
+				packet->WriteUInt16_LE(0); // UniteHealPoint
+				packet->WriteUInt16_LE(0); // UniteItemCount
 				break;
-			case 12:
-				packet->WriteUInt32_LE(0);
-				packet->WriteUInt16_LE(0);
+			case 12: // Challenge Mode (挑戰模式)
+				packet->WriteFloat_LE(0.0f); // ChallBestRecord
+				packet->WriteUInt16_LE(0);    // ChallPassCount
 				break;
-			case 15:
-			case 17:
-				packet->WriteUInt32_LE(0);
-				packet->WriteUInt32_LE(0);
-				packet->WriteUInt16_LE(0);
+			case 15: // Zombie Scenario (災厄之章)
+			case 17: // Human Scenario (戰神之章)
+				packet->WriteUInt32_LE((unsigned int)gmu->GetKills());                      // ZBS_KillCnt ("CSO_ZBS_KillCnt")
+				packet->WriteFloat_LE(gameMatch ? gameMatch->GetMatchDuration() : 0.0f);   // ZBS_ClearTime (float seconds)
+				packet->WriteUInt16_LE(terWins);                                            // ZBS_RoundCount ("CSO_ZBS_RoundCount")
 				break;
-			case 16:
-				packet->WriteUInt16_LE(0);
-				packet->WriteUInt16_LE(0);
-				packet->WriteUInt16_LE(0);
-				packet->WriteUInt16_LE(0);
-				packet->WriteUInt32_LE(0);
-				packet->WriteUInt32_LE(0);
-				packet->WriteUInt32_LE(0);
-				packet->WriteUInt32_LE(0);
+			case 16: // Soccer Mode (足球模式)
+				packet->WriteUInt16_LE(0); // Sc_GoalCount
+				packet->WriteUInt16_LE(0); // Sc_AssistCount
+				packet->WriteUInt16_LE(0); // Sc_DefenceCount
+				packet->WriteUInt16_LE(0); // Sc_MVPCount
+				packet->WriteUInt32_LE(0); // Sc_AccumGoalCount
+				packet->WriteUInt32_LE(0); // Sc_AccumAssistCount
+				packet->WriteUInt32_LE(0); // Sc_AccumDefenceCount
+				packet->WriteUInt32_LE(0); // Sc_AccumMVPCount
 				break;
-			case 18:
-				packet->WriteUInt32_LE(0);
-				packet->WriteUInt16_LE(0);
-				packet->WriteUInt16_LE(0);
-				packet->WriteUInt16_LE(0);
+			case 18: // PVPVE
+				packet->WriteFloat_LE(0.0f); // Pvpve_ClearTime
+				packet->WriteUInt16_LE(0);    // Pvpve_HumanKill
+				packet->WriteUInt16_LE(0);    // Pvpve_BotKill
+				packet->WriteUInt16_LE(0);    // Pvpve_ConquestCount
 				break;
-			case 21:
-				packet->WriteUInt16_LE(0);
-				packet->WriteUInt8(0);
+			case 21: // Bazooka (轟炸擂台)
+				packet->WriteUInt16_LE(gmu->GetBkAssist()); // bk_Assist ("CSO_bk_Assist")
+				packet->WriteUInt8(gmu->GetBkMaxCombo());    // bk_MaxCombo ("CSO_bk_MaxCombo")
 				break;
-			case 23:
-				packet->WriteUInt8((unsigned char)gmu->GetBombDeactivate());
-				packet->WriteUInt8((unsigned char)gmu->GetBombSuccess());
-				packet->WriteUInt8((unsigned char)gmu->GetHostageRescue());
-				packet->WriteUInt8((unsigned char)gmu->GetVipEscape());
-				packet->WriteUInt8((unsigned char)gmu->GetVipKill());
-				packet->WriteUInt16_LE(0);
+			case 23: // Casual / Light Original (悠遊模式)
+				packet->WriteUInt8((unsigned char)gmu->GetBombDeactivate()); // BombDeactivate ("CSO_BomeBreak")
+				packet->WriteUInt8((unsigned char)gmu->GetBombSuccess());    // BombSuccess ("CSO_TargetDestroy")
+				packet->WriteUInt8((unsigned char)gmu->GetHostageRescue());   // HostageRescue ("CSO_RescueHostage")
+				packet->WriteUInt8((unsigned char)gmu->GetVipEscape());       // VipEscape ("CSO_VIPEscape")
+				packet->WriteUInt8((unsigned char)gmu->GetVipKill());         // VipKill ("CSO_VIPKill")
+				packet->WriteUInt16_LE(gmu->GetLoAssist());                  // lo_Assist ("CSO_lo_Assist")
 				break;
-			case 25:
-				packet->WriteUInt16_LE(0);
-				packet->WriteUInt32_LE(0);
+			case 25: // Battle Run / Rescue (即刻救援)
+				packet->WriteUInt16_LE(gmu->GetLoAssist()); // lo_Assist ("CSO_lo_Assist")
+				packet->WriteUInt32_LE(gmu->GetBrPoint());  // BR_Point ("CSO_BR_Point")
 				break;
-			case 26: // Bot Mode (0x1A)
-				packet->WriteUInt16_LE(0);
-				packet->WriteUInt8(0);
-				packet->WriteUInt8(0);
-				packet->WriteUInt8(0);
-				packet->WriteUInt8(0);
-				packet->WriteUInt8(0);
+			case 26: // Shelter Survival (夜襲生存戰)
+				packet->WriteUInt16_LE(gmu->GetZshPoint());     // ZSHPoint ("CSO_ZSHPoint")
+				packet->WriteUInt8(gmu->GetRescuee());          // Rescuee ("CSO_Rescuee")
+				packet->WriteUInt8(gmu->GetSurviveDays());      // SurviveDays ("CSO_SurviveDays")
+				packet->WriteUInt8(gmu->GetMaxSurviveDays());   // MaximumSurviveDays ("CSO_MaximumSurviveDays")
+				packet->WriteUInt8(gmu->GetAccumSurviveDays()); // AccumulateSurviveDays ("CSO_AccumulateSurviveDays")
+				packet->WriteUInt8(gmu->GetAccumRescuee());     // AccumulateRescuee ("CSO_AccumulateRescuee")
 				break;
 			default:
 				break;
