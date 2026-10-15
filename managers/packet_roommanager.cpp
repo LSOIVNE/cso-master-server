@@ -679,7 +679,7 @@ void Packet_RoomManager::parsePacket_Room_LeaveRoom(User* user, TCPConnection::P
 						}
 					}
 
-					databaseManager.RecordUserLeavePenalty(userID, true, 50, false, kills, deaths);
+					databaseManager.RecordUserLeavePenalty(userID, true, 50, false, 0, 0);
 					warningKey = "ROOM_LEAVE_NODEFEAT_ITEM_OK";
 				}
 				else {
@@ -710,7 +710,7 @@ void Packet_RoomManager::parsePacket_Room_LeaveRoom(User* user, TCPConnection::P
 					unsigned short totalEarnedExp = earnedExp + bonusResult.bonusExp;
 					unsigned short totalEarnedPoints = earnedPoints + bonusResult.bonusPoints;
 
-					databaseManager.SaveUserLeaveExpAndPoints(userID, totalEarnedExp, totalEarnedPoints, kills, deaths, false);
+					databaseManager.SaveUserLeaveExpAndPoints(userID, totalEarnedExp, totalEarnedPoints, 0, 0, false);
 					warningKey = "ROOM_LEAVE_NOPENALTYDEFEAT_ITEM_OK";
 				}
 				else {

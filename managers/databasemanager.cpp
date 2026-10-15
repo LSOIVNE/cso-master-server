@@ -1838,12 +1838,12 @@ bool DatabaseManager::SaveUserLeaveExpAndPoints(unsigned long userID, unsigned l
     }
     if (recordDefeat) {
         updates.push_back("battles = battles + 1");
-    }
-    if (frags > 0) {
-        updates.push_back(format("frags = frags + {}", frags));
-    }
-    if (deaths > 0) {
-        updates.push_back(format("deaths = deaths + {}", deaths));
+        if (frags > 0) {
+            updates.push_back(format("frags = frags + {}", frags));
+        }
+        if (deaths > 0) {
+            updates.push_back(format("deaths = deaths + {}", deaths));
+        }
     }
     if (newLevel > 0) {
         updates.push_back(format("level = {}", (int)newLevel));
@@ -1867,8 +1867,8 @@ bool DatabaseManager::SaveUserLeaveExpAndPoints(unsigned long userID, unsigned l
         return false;
     }
 
-    serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Saved leave exp & points for userID {}: +{} exp, +{} points, recordDefeat={}, level={}\n",
-        userID, addedExp, addedPoints, recordDefeat, (int)newLevel));
+    serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Saved leave exp & points for userID {}: +{} exp, +{} points, recordDefeat={}, frags={}, deaths={}, level={}\n",
+        userID, addedExp, addedPoints, recordDefeat, frags, deaths, (int)newLevel));
     return true;
 }
 
