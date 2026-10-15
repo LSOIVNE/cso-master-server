@@ -5,6 +5,8 @@
 #include "noticemanager.h"
 #include "packet_umsgmanager.h"
 #include "killdropmanager.h"
+#include "coineventmanager.h"
+#include "baseballeventmanager.h"
 #include <iostream>
 #include <sstream>
 #include <mutex>
@@ -214,8 +216,32 @@ void ServerConsole::StartRead() {
 			Print(PrefixType::Info, "[ ServerConsole ] Reloaded kill drop configuration.\n");
 			continue;
 		}
+		else if (command == "reloadcoinevent") {
+			coinEventManager.LoadConfig("configs/coinevent.json");
+			coinEventManager.InitPoolFromDatabase();
+			Print(PrefixType::Info, "[ ServerConsole ] Reloaded Coin Event configuration.\n");
+			continue;
+		}
+		else if (command == "reloadbaseballevent") {
+			baseballEventManager.LoadConfig("configs/baseballevent.json");
+			Print(PrefixType::Info, "[ ServerConsole ] Reloaded Baseball Event configuration.\n");
+			continue;
+		}
+		else if (command.rfind("resetbaseball", 0) == 0) {
+			string arg = command.size() > 14 ? command.substr(14) : "";
+			int count = 0;
+			for (User* u : userManager.GetUsers()) {
+				if (u && userManager.IsUserLoggedIn(u)) {
+					if (arg.empty() || u->GetUserName() == arg || to_string(u->GetUserID()) == arg) {
+						if (baseballEventManager.ForceDailyReset(u)) count++;
+					}
+				}
+			}
+			Print(PrefixType::Info, format("[ ServerConsole ] Triggered baseball settlement for {} user(s).\n", count));
+			continue;
+		}
 		else {
-			Print(PrefixType::Info, "[ ServerConsole ] Available commands: stop, status, users, notice <text>, yell <text>, msg <text>, banner <text>, reloadnotice, reloadkilldrop\n");
+			Print(PrefixType::Info, "[ ServerConsole ] Available commands: stop, status, users, notice <text>, yell <text>, msg <text>, banner <text>, reloadnotice, reloadkilldrop, reloadcoinevent, reloadbaseballevent, resetbaseball [user]\n");
 			continue;
 		}
 	}
@@ -271,6 +297,8 @@ void ServerConsole::onSecondTick() {
 	udpServer.OnSecondTick();
 	noticeManager.OnSecondTick();
 	userManager.OnSecondTick();
+	coinEventManager.OnSecondTick();
+	baseballEventManager.OnSecondTick();
 
 	_secondCount++;
 

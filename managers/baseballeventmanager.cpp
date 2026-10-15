@@ -1,5 +1,6 @@
 #include "baseballeventmanager.h"
 #include "usermanager.h"
+#include "roommanager.h"
 #include "serverconsole.h"
 #include "packetmanager.h"
 #include "packet_umsgmanager.h"
@@ -15,12 +16,31 @@ using json = nlohmann::json;
 
 BaseballEventManager baseballEventManager;
 
-static std::string GetCurrentDateString() {
-	time_t t = time(nullptr);
+static std::string GetBaseballResetPeriodString(const std::string& testResetTime) {
+	time_t now = time(nullptr);
+	if (testResetTime == "now" || testResetTime == "always") {
+		return format("now_{}", now);
+	}
+
+	int resetHour = 0;
+	int resetMinute = 0;
+	if (!testResetTime.empty()) {
+		int h = 0, m = 0;
+		if (sscanf_s(testResetTime.c_str(), "%d:%d", &h, &m) == 2) {
+			resetHour = std::clamp(h, 0, 23);
+			resetMinute = std::clamp(m, 0, 59);
+		}
+	}
+
+	time_t adjustedTime = now - (resetHour * 3600 + resetMinute * 60);
 	tm localTm{};
-	localtime_s(&localTm, &t);
+	localtime_s(&localTm, &adjustedTime);
 	char buf[32];
 	strftime(buf, sizeof(buf), "%Y-%m-%d", &localTm);
+
+	if (!testResetTime.empty()) {
+		return format("{}@{}:{:02d}", buf, resetHour, resetMinute);
+	}
 	return std::string(buf);
 }
 
@@ -28,6 +48,7 @@ BaseballEventManager::BaseballEventManager() {
 }
 
 BaseballEventManager::~BaseballEventManager() {
+	FlushAllDirty();
 }
 
 bool BaseballEventManager::Init(const std::string& configPath) {
@@ -57,6 +78,10 @@ bool BaseballEventManager::LoadConfig(const std::string& configPath) {
 			_settings.active = s.value("Active", true);
 			_settings.playtimeSecondsPerBall = s.value("PlaytimeSecondsPerBall", 1200);
 			_settings.maxBalls = (unsigned char)s.value("MaxBalls", 99);
+			_settings.minPlayers = s.value("MinPlayers", 4);
+			_settings.testResetTime = s.value("TestResetTime", "");
+			_settings.awardTitle = s.value("AwardTitle", "棒球一個入手!");
+			_settings.awardContent = s.value("AwardContent", "感謝您參與CSO棒球經典賽活動,恭喜您獲得以下獎勵,祝您游戲愉快!");
 
 			if (s.contains("HitWeights")) {
 				const auto& hw = s["HitWeights"];
@@ -75,14 +100,44 @@ bool BaseballEventManager::LoadConfig(const std::string& configPath) {
 				tier.minScore = it.value("MinScore", 0);
 				tier.maxScore = it.value("MaxScore", 0);
 				tier.itemID = (unsigned short)it.value("ItemID", 0);
-				tier.count = (unsigned short)it.value("Count", 1);
 				tier.duration = it.value("Duration", 0);
 				tier.name = it.value("Name", "");
+
+				if (it.contains("CountByScore")) {
+					tier.countByScore = it.value("CountByScore", false);
+				}
+				if (it.contains("CountPerScore")) {
+					tier.countPerScore = (unsigned short)it.value("CountPerScore", 1);
+					tier.countByScore = true;
+				}
+				if (it.contains("ScoreMultiplier")) {
+					tier.countPerScore = (unsigned short)it.value("ScoreMultiplier", 1);
+					tier.countByScore = true;
+				}
+
+				if (it.contains("Count")) {
+					if (it["Count"].is_string()) {
+						std::string cStr = it["Count"].get<std::string>();
+						if (cStr == "score" || cStr == "Score") {
+							tier.countByScore = true;
+							tier.countPerScore = 1;
+							tier.count = 1;
+						}
+					}
+					else if (it["Count"].is_number()) {
+						tier.count = (unsigned short)it.value("Count", 1);
+					}
+				}
+				else {
+					tier.count = 1;
+				}
+
 				_dailyRewards.push_back(tier);
 			}
 		}
 
-		serverConsole.Print(PrefixType::Info, format("[ BaseballEventManager ] Loaded config with {} reward tiers.\n", _dailyRewards.size()));
+		serverConsole.Print(PrefixType::Info, format("[ BaseballEventManager ] Loaded config with {} reward tiers (minPlayers: {}, testReset: '{}').\n",
+			_dailyRewards.size(), _settings.minPlayers, _settings.testResetTime));
 		return true;
 	}
 	catch (const std::exception& e) {
@@ -93,33 +148,88 @@ bool BaseballEventManager::LoadConfig(const std::string& configPath) {
 
 bool BaseballEventManager::GetOrInitUserData(User* user, UserBaseballData& outData) {
 	if (!user) return false;
-	return databaseManager.GetUserBaseballData(user->GetUserID(), outData);
+	unsigned long userID = user->GetUserID();
+
+	{
+		std::lock_guard<std::mutex> lock(_mutex);
+		auto it = _userCache.find(userID);
+		if (it != _userCache.end()) {
+			outData = it->second;
+			return true;
+		}
+	}
+
+	bool res = databaseManager.GetUserBaseballData(userID, outData);
+	if (res) {
+		std::lock_guard<std::mutex> lock(_mutex);
+		_userCache[userID] = outData;
+	}
+	return res;
 }
 
 bool BaseballEventManager::CheckDailyReset(User* user, UserBaseballData& data) {
 	if (!user) return false;
 
-	std::string curDate = GetCurrentDateString();
-	if (data.lastResetDate == curDate) {
+	std::string curPeriod = GetBaseballResetPeriodString(_settings.testResetTime);
+	if (data.lastResetDate == curPeriod) {
 		return false;
 	}
 
-	// Date changed: issue yesterday's reward if todayScore > 0 and previous date existed
+	// Date/period changed: issue yesterday's reward if todayScore > 0 and previous date existed
 	if (!data.lastResetDate.empty() && data.todayScore > 0) {
 		for (const auto& tier : _dailyRewards) {
 			if (data.todayScore >= tier.minScore && data.todayScore <= tier.maxScore) {
-				InventoryItem item{};
-				GrantPrize(user, tier.itemID, tier.count, tier.duration, &item);
-				if (item.slotID != 0 && user->GetConnection()) {
-					packetManager.SendPacket_InventoryDelta(user->GetConnection(), { item }, {});
+				unsigned short finalCount = tier.count;
+				if (tier.countByScore) {
+					unsigned int mult = tier.countPerScore > 0 ? tier.countPerScore : (tier.count > 0 ? tier.count : 1);
+					unsigned int calc = (unsigned int)data.todayScore * mult;
+					if (calc == 0) calc = 1;
+					if (calc > 65535) calc = 65535;
+					finalCount = (unsigned short)calc;
 				}
 
-				std::string msg = format("[CSO棒球經典賽] 昨日累積分數為 {} 分，已獲得結算獎勵：{}！", (int)data.todayScore, tier.name);
-				if (user->GetConnection()) {
-					packet_UMsgManager.SendPacket_UMsg_Chat(user->GetConnection(), Packet_UMsgType::ChannelChat, Utf8ToCp950("系統"), Utf8ToCp950(msg));
+				std::string rewardDisplayName = tier.name;
+				if (tier.countByScore) {
+					size_t pos = rewardDisplayName.find("%d");
+					if (pos != std::string::npos) {
+						rewardDisplayName.replace(pos, 2, std::to_string(finalCount));
+					}
+					else if (rewardDisplayName.find("個") == std::string::npos && rewardDisplayName.find(")") == std::string::npos) {
+						rewardDisplayName += " (" + std::to_string(finalCount) + "個)";
+					}
 				}
-				serverConsole.Print(PrefixType::Info, format("[ BaseballEventManager ] User ({}) granted yesterday's reward (score {} -> itemID {})\n",
-					user->GetUserLogName(), (int)data.todayScore, tier.itemID));
+
+				InventoryItem item{};
+				GrantPrize(user, tier.itemID, finalCount, tier.duration, &item);
+				auto conn = user->GetConnection();
+				if (item.slotID != 0 && conn) {
+					packetManager.SendPacket_InventoryDelta(conn, { item }, {});
+				}
+
+				if (conn) {
+					// 1. 發放獎勵使用 AwardItem award 彈窗 (ItemAwardNoticeRaw 支援自訂標題與內容)
+					AwardItem award;
+					award.itemID = tier.itemID;
+					award.count = finalCount;
+					award.duration = (unsigned short)tier.duration;
+					award.flags = 0;
+
+					packet_UMsgManager.SendPacket_UMsg_ItemAwardNotice(
+						conn,
+						{ award },
+						_settings.awardTitle,
+						_settings.awardContent,
+						{},
+						Packet_UMsgType::ItemAwardNoticeRaw
+					);
+
+					// 2. 定向發送黃色字體伺服器訊息
+					std::string msg = format("CSO棒球經典賽：昨日累積分數為 {} 分，已獲得結算獎勵：{}！", (int)data.todayScore, rewardDisplayName);
+					packet_UMsgManager.SendPacket_UMsg_ServerMessageText(conn, msg);
+				}
+
+				serverConsole.Print(PrefixType::Info, format("[ BaseballEventManager ] User ({}) granted settlement reward (score {} -> itemID {} [x{}])\n",
+					user->GetUserLogName(), (int)data.todayScore, tier.itemID, finalCount));
 				break;
 			}
 		}
@@ -128,9 +238,106 @@ bool BaseballEventManager::CheckDailyReset(User* user, UserBaseballData& data) {
 	data.todayScore = 0;
 	data.outCount = 0;
 	data.baseStatus = 0;
-	data.lastResetDate = curDate;
+	data.playtimeSeconds = 0;
+	data.lastResetDate = curPeriod;
+
+	{
+		std::lock_guard<std::mutex> lock(_mutex);
+		_userCache[data.userID] = data;
+		_dirtyUsers[data.userID] = false;
+	}
 	databaseManager.SaveUserBaseballData(data);
 	return true;
+}
+
+bool BaseballEventManager::ForceDailyReset(User* user) {
+	if (!user) return false;
+
+	UserBaseballData data;
+	GetOrInitUserData(user, data);
+
+	if (data.todayScore == 0) {
+		data.outCount = 0;
+		data.baseStatus = 0;
+		data.playtimeSeconds = 0;
+		data.lastResetDate = format("force_{}", time(nullptr));
+		databaseManager.SaveUserBaseballData(data);
+		if (user->GetConnection()) SendPacket_Status(user->GetConnection(), data);
+		return false;
+	}
+
+	bool granted = false;
+	for (const auto& tier : _dailyRewards) {
+		if (data.todayScore >= tier.minScore && data.todayScore <= tier.maxScore) {
+			unsigned short finalCount = tier.count;
+			if (tier.countByScore) {
+				unsigned int mult = tier.countPerScore > 0 ? tier.countPerScore : (tier.count > 0 ? tier.count : 1);
+				unsigned int calc = (unsigned int)data.todayScore * mult;
+				if (calc == 0) calc = 1;
+				if (calc > 65535) calc = 65535;
+				finalCount = (unsigned short)calc;
+			}
+
+			std::string rewardDisplayName = tier.name;
+			if (tier.countByScore) {
+				size_t pos = rewardDisplayName.find("%d");
+				if (pos != std::string::npos) {
+					rewardDisplayName.replace(pos, 2, std::to_string(finalCount));
+				}
+				else if (rewardDisplayName.find("個") == std::string::npos && rewardDisplayName.find(")") == std::string::npos) {
+					rewardDisplayName += " (" + std::to_string(finalCount) + "個)";
+				}
+			}
+
+			InventoryItem item{};
+			GrantPrize(user, tier.itemID, finalCount, tier.duration, &item);
+			auto conn = user->GetConnection();
+			if (item.slotID != 0 && conn) {
+				packetManager.SendPacket_InventoryDelta(conn, { item }, {});
+			}
+
+			if (conn) {
+				AwardItem award;
+				award.itemID = tier.itemID;
+				award.count = finalCount;
+				award.duration = (unsigned short)tier.duration;
+				award.flags = 0;
+
+				packet_UMsgManager.SendPacket_UMsg_ItemAwardNotice(
+					conn,
+					{ award },
+					_settings.awardTitle,
+					_settings.awardContent,
+					{},
+					Packet_UMsgType::ItemAwardNoticeRaw
+				);
+
+				std::string msg = format("CSO棒球經典賽：今日手動結算分數為 {} 分，已獲得結算獎勵：{}！", (int)data.todayScore, rewardDisplayName);
+				packet_UMsgManager.SendPacket_UMsg_ServerMessageText(conn, msg);
+			}
+
+			granted = true;
+			break;
+		}
+	}
+
+	data.todayScore = 0;
+	data.outCount = 0;
+	data.baseStatus = 0;
+	data.playtimeSeconds = 0;
+	data.lastResetDate = format("force_{}", time(nullptr));
+
+	{
+		std::lock_guard<std::mutex> lock(_mutex);
+		_userCache[data.userID] = data;
+		_dirtyUsers[data.userID] = false;
+	}
+	databaseManager.SaveUserBaseballData(data);
+
+	if (user->GetConnection()) {
+		SendPacket_Status(user->GetConnection(), data);
+	}
+	return granted;
 }
 
 void BaseballEventManager::ParsePacket(User* user, TCPConnection::Packet::pointer packet) {
@@ -206,6 +413,8 @@ void BaseballEventManager::ParsePacket(User* user, TCPConnection::Packet::pointe
 				if (data.outCount >= 3) {
 					data.outCount = 3;
 					data.baseStatus = 0; // Clear bases on 3 OUT
+					data.ballCount = 0;  // 清空當天剩餘的棒球
+					data.playtimeSeconds = 0; // 當天無法再累積遊戲時間獲得棒球
 				}
 			}
 			else if (hitResult == 1) { // 1-Base Hit
@@ -240,6 +449,11 @@ void BaseballEventManager::ParsePacket(User* user, TCPConnection::Packet::pointe
 			data.todayScore = (unsigned char)std::min(255, (int)data.todayScore + runsScored);
 			data.totalScore = (unsigned short)std::min(65535, (int)data.totalScore + runsScored);
 
+			{
+				std::lock_guard<std::mutex> lock(_mutex);
+				_userCache[data.userID] = data;
+				_dirtyUsers[data.userID] = false;
+			}
 			databaseManager.SaveUserBaseballData(data);
 
 			serverConsole.Print(PrefixType::Info, format("[ BaseballEventManager ] User ({}) swing result: hitResult={}, runs={}, todayScore={}, outCount={}, baseStatus={}\n",
@@ -255,14 +469,67 @@ void BaseballEventManager::ParsePacket(User* user, TCPConnection::Packet::pointe
 	}
 }
 
-void BaseballEventManager::OnMatchEnd(User* user, unsigned int durationSeconds) {
-	if (!user || !_settings.active || durationSeconds == 0) return;
+void BaseballEventManager::OnSecondTick() {
+	if (!_settings.active) return;
+
+	static unsigned int secondCounter = 0;
+	secondCounter++;
+
+	// Periodic flush of dirty cached users every 60 seconds
+	if (secondCounter % 60 == 0) {
+		FlushAllDirty();
+	}
+
+	// Periodic reset check for online users every 5 seconds
+	if (secondCounter % 5 == 0) {
+		for (User* u : userManager.GetUsers()) {
+			if (u && u->GetConnection() && userManager.IsUserLoggedIn(u)) {
+				// Avoid interrupting active gameplay with modal dialogs
+				if (u->GetUserStatus() != UserStatus::InGame) {
+					UserBaseballData data;
+					GetOrInitUserData(u, data);
+					CheckDailyReset(u, data);
+				}
+			}
+		}
+	}
+
+	// In-game playtime accumulation and periodic reminder check
+	for (Room* room : roomManager.GetRooms()) {
+		if (!room) continue;
+		if (room->GetRoomSettings().roomState != RoomState::Playing && room->GetGameMatch() == nullptr) {
+			continue;
+		}
+
+		std::vector<User*> inGameUsers;
+		for (User* u : room->GetRoomUsers()) {
+			if (u && u->GetConnection() && u->GetUserStatus() == UserStatus::InGame) {
+				inGameUsers.push_back(u);
+			}
+		}
+
+		if (inGameUsers.size() < _settings.minPlayers) {
+			continue;
+		}
+
+		for (User* u : inGameUsers) {
+			ProcessInGameTick(u, 1);
+		}
+	}
+}
+
+void BaseballEventManager::ProcessInGameTick(User* user, unsigned int deltaSeconds) {
+	if (!user || !_settings.active) return;
+	unsigned long userID = user->GetUserID();
 
 	UserBaseballData data;
 	GetOrInitUserData(user, data);
-	CheckDailyReset(user, data);
 
-	data.playtimeSeconds += durationSeconds;
+	if (data.ballCount >= _settings.maxBalls || data.outCount >= 3) {
+		return;
+	}
+
+	data.playtimeSeconds += deltaSeconds;
 	unsigned char earnedBalls = 0;
 
 	while (data.playtimeSeconds >= _settings.playtimeSecondsPerBall) {
@@ -271,20 +538,109 @@ void BaseballEventManager::OnMatchEnd(User* user, unsigned int durationSeconds) 
 			data.ballCount++;
 			earnedBalls++;
 		}
-		else {
+		if (data.ballCount >= _settings.maxBalls) {
 			break;
 		}
 	}
 
-	databaseManager.SaveUserBaseballData(data);
+	bool shouldSaveImmediate = false;
+
+	if (earnedBalls > 0) {
+		shouldSaveImmediate = true;
+		auto conn = user->GetConnection();
+		if (conn) {
+			SendPacket_Status(conn, data);
+			std::string msg = format("CSO棒球經典賽：遊戲時間累積滿 20 分鐘，獲得 {} 顆棒球！目前持有棒球：{} 顆",
+				(int)earnedBalls, (int)data.ballCount);
+			packet_UMsgManager.SendPacket_UMsg_ServerMessageText(conn, msg);
+		}
+	}
+
+	{
+		std::lock_guard<std::mutex> lock(_mutex);
+		_userCache[userID] = data;
+		_dirtyUsers[userID] = true;
+	}
+
+	if (shouldSaveImmediate) {
+		databaseManager.SaveUserBaseballData(data);
+		std::lock_guard<std::mutex> lock(_mutex);
+		_dirtyUsers[userID] = false;
+	}
+}
+
+void BaseballEventManager::OnMatchEnd(User* user, unsigned int /*durationSeconds*/) {
+	if (!user || !_settings.active) return;
+	FlushUserData(user->GetUserID());
 
 	auto conn = user->GetConnection();
 	if (conn) {
-		if (earnedBalls > 0) {
-			std::string msg = format("[CSO棒球經典賽] 遊戲累積滿20分鐘，獲得 {} 顆棒球！目前持有：{} 顆", (int)earnedBalls, (int)data.ballCount);
-			packet_UMsgManager.SendPacket_UMsg_Chat(conn, Packet_UMsgType::ChannelChat, Utf8ToCp950("系統"), Utf8ToCp950(msg));
-		}
+		UserBaseballData data;
+		GetOrInitUserData(user, data);
+		CheckDailyReset(user, data);
 		SendPacket_Status(conn, data);
+	}
+}
+
+void BaseballEventManager::OnUserLogout(User* user) {
+	if (!user) return;
+	unsigned long userID = user->GetUserID();
+	FlushUserData(userID);
+	std::lock_guard<std::mutex> lock(_mutex);
+	_userCache.erase(userID);
+	_dirtyUsers.erase(userID);
+}
+
+void BaseballEventManager::OnUserLogin(User* user) {
+	if (!user) return;
+	UserBaseballData data;
+	GetOrInitUserData(user, data);
+	CheckDailyReset(user, data);
+}
+
+void BaseballEventManager::OnUserEnterLobby(User* user) {
+	if (!user) return;
+	UserBaseballData data;
+	GetOrInitUserData(user, data);
+	CheckDailyReset(user, data);
+}
+
+void BaseballEventManager::FlushUserData(unsigned long userID) {
+	UserBaseballData data;
+	bool dirty = false;
+	{
+		std::lock_guard<std::mutex> lock(_mutex);
+		auto it = _userCache.find(userID);
+		if (it != _userCache.end()) {
+			data = it->second;
+			auto dirtyIt = _dirtyUsers.find(userID);
+			if (dirtyIt != _dirtyUsers.end() && dirtyIt->second) {
+				dirty = true;
+				dirtyIt->second = false;
+			}
+		}
+	}
+	if (dirty) {
+		databaseManager.SaveUserBaseballData(data);
+	}
+}
+
+void BaseballEventManager::FlushAllDirty() {
+	std::vector<UserBaseballData> toSave;
+	{
+		std::lock_guard<std::mutex> lock(_mutex);
+		for (auto& pair : _dirtyUsers) {
+			if (pair.second) {
+				auto it = _userCache.find(pair.first);
+				if (it != _userCache.end()) {
+					toSave.push_back(it->second);
+				}
+				pair.second = false;
+			}
+		}
+	}
+	for (const auto& data : toSave) {
+		databaseManager.SaveUserBaseballData(data);
 	}
 }
 
@@ -335,6 +691,11 @@ bool BaseballEventManager::AddUserBalls(User* user, int deltaBalls) {
 	if (newCount > (int)_settings.maxBalls) newCount = (int)_settings.maxBalls;
 
 	data.ballCount = (unsigned char)newCount;
+	{
+		std::lock_guard<std::mutex> lock(_mutex);
+		_userCache[data.userID] = data;
+		_dirtyUsers[data.userID] = false;
+	}
 	databaseManager.SaveUserBaseballData(data);
 
 	if (user->GetConnection()) {
@@ -352,7 +713,13 @@ bool BaseballEventManager::ResetUserToday(User* user) {
 	data.todayScore = 0;
 	data.outCount = 0;
 	data.baseStatus = 0;
-	data.lastResetDate = GetCurrentDateString();
+	data.playtimeSeconds = 0;
+	data.lastResetDate = GetBaseballResetPeriodString(_settings.testResetTime);
+	{
+		std::lock_guard<std::mutex> lock(_mutex);
+		_userCache[data.userID] = data;
+		_dirtyUsers[data.userID] = false;
+	}
 	databaseManager.SaveUserBaseballData(data);
 
 	if (user->GetConnection()) {
@@ -370,6 +737,11 @@ bool BaseballEventManager::SetUserScore(User* user, unsigned char todayScore, un
 
 	data.todayScore = todayScore;
 	data.totalScore = totalScore;
+	{
+		std::lock_guard<std::mutex> lock(_mutex);
+		_userCache[data.userID] = data;
+		_dirtyUsers[data.userID] = false;
+	}
 	databaseManager.SaveUserBaseballData(data);
 
 	if (user->GetConnection()) {

@@ -90,7 +90,7 @@ struct CoinEventPoolItem {
 	unsigned short itemID = 0;
 	unsigned short count = 1;
 	unsigned int duration = 0;
-	int winRate = 10;
+	double winRate = 10.0;
 	std::string latestWinner = "";
 };
 

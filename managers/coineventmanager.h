@@ -3,12 +3,14 @@
 #include "databasemanager.h"
 #include <string>
 #include <vector>
+#include <map>
 #include <mutex>
 
 struct CoinEventSettings {
 	bool active = true;
 	unsigned int playtimeSecondsPerCoin = 1200;
 	unsigned char maxCoins = 3;
+	unsigned int minPlayers = 4;
 };
 
 class CoinEventManager {
@@ -25,7 +27,10 @@ public:
 	const CoinEventSettings& GetSettings() const { return _settings; }
 
 	void ParsePacket(User* user, TCPConnection::Packet::pointer packet);
-	void OnMatchEnd(User* user, unsigned int durationSeconds);
+	void OnSecondTick();
+	void ProcessInGameTick(User* user, unsigned int deltaSeconds);
+	void OnMatchEnd(User* user, unsigned int durationSeconds = 0);
+	void OnUserLogout(User* user);
 
 	// Packet sending helpers
 	void SendPacket_Settings(TCPConnection::pointer connection);
@@ -35,14 +40,19 @@ public:
 
 	// User operations
 	bool GetUserCoinData(unsigned long userID, UserCoinEventData& outData);
+	bool SaveUserCoinData(const UserCoinEventData& data);
 	bool AddUserCoins(User* user, int deltaCoins);
 	bool SetUserCoins(User* user, unsigned char coins);
 
 	void GrantPrize(User* user, unsigned short itemID, unsigned short count, unsigned int durationDays, InventoryItem* outItem = nullptr);
+	void FlushUserData(unsigned long userID);
+	void FlushAllDirty();
 
 private:
 	CoinEventSettings _settings;
 	std::vector<CoinEventPoolItem> _pool;
+	std::map<unsigned long, UserCoinEventData> _userCache;
+	std::map<unsigned long, bool> _dirtyUsers;
 	std::mutex _mutex;
 };
 

@@ -3226,9 +3226,11 @@ bool DatabaseManager::EnsureCoinEventTables() {
         "    itemID INT UNSIGNED NOT NULL DEFAULT 0,"
         "    count SMALLINT UNSIGNED NOT NULL DEFAULT 1,"
         "    duration INT UNSIGNED NOT NULL DEFAULT 0,"
-        "    winRate INT NOT NULL DEFAULT 10,"
+        "    winRate DOUBLE NOT NULL DEFAULT 10,"
         "    latestWinner VARCHAR(64) NOT NULL DEFAULT ''"
-        ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;"
+        ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
+
+        "ALTER TABLE coin_event_pool MODIFY COLUMN winRate DOUBLE NOT NULL DEFAULT 10;"
     };
 
     for (const char* q : queries) {
@@ -3308,7 +3310,7 @@ bool DatabaseManager::GetCoinEventPool(vector<CoinEventPoolItem>& outPool) {
         item.itemID = row[5] ? (unsigned short)atoi(row[5]) : 0;
         item.count = row[6] ? (unsigned short)atoi(row[6]) : 1;
         item.duration = row[7] ? (unsigned int)atoi(row[7]) : 0;
-        item.winRate = row[8] ? atoi(row[8]) : 10;
+        item.winRate = row[8] ? atof(row[8]) : 10.0;
         item.latestWinner = row[9] ? row[9] : "";
         outPool.push_back(item);
     }
@@ -3370,9 +3372,11 @@ bool DatabaseManager::EnsureBaseballEventTables() {
         "    outCount TINYINT UNSIGNED NOT NULL DEFAULT 0,"
         "    baseStatus TINYINT UNSIGNED NOT NULL DEFAULT 0,"
         "    playtimeSeconds INT UNSIGNED NOT NULL DEFAULT 0,"
-        "    lastResetDate VARCHAR(16) NOT NULL DEFAULT '',"
+        "    lastResetDate VARCHAR(32) NOT NULL DEFAULT '',"
         "    FOREIGN KEY (userID) REFERENCES user_characters(userID) ON DELETE CASCADE"
-        ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;"
+        ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
+
+        "ALTER TABLE user_baseball_event MODIFY COLUMN lastResetDate VARCHAR(32) NOT NULL DEFAULT '';"
     };
 
     for (const char* q : queries) {

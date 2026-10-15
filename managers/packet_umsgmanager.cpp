@@ -221,11 +221,16 @@ void Packet_UMsgManager::SendPacket_UMsg_ItemAwardNotice(TCPConnection::pointer 
 		return key;
 	};
 
-	// 7. titleKey (client formats as "#CSO_Warning_%s")
-	packet->WriteString(SanitizeKey(titleKey));
-
-	// 8. msgKey (client formats as "#CSO_Warning_%s")
-	packet->WriteString(SanitizeKey(msgKey));
+	// 7. titleKey and 8. msgKey
+	if (type == Packet_UMsgType::ItemAwardNoticeRaw || type == Packet_UMsgType::ItemAwardNoticeRaw_InGame) {
+		packet->WriteString(Utf8ToCp950(titleKey));
+		packet->WriteString(Utf8ToCp950(msgKey));
+	}
+	else {
+		// Client formats as "#CSO_Warning_%s"
+		packet->WriteString(SanitizeKey(titleKey));
+		packet->WriteString(SanitizeKey(msgKey));
+	}
 
 	// 9. Formatted arguments list
 	packet->WriteUInt8((unsigned char)args.size());
@@ -643,6 +648,8 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		cmdLower != "/addball" &&
 		cmdLower != "/setball" &&
 		cmdLower != "/resetball" &&
+		cmdLower != "/resetbaseball" &&
+		cmdLower != "/triggerbaseballaward" &&
 		cmdLower != "/setscore" &&
 		cmdLower != "/reloadevent") {
 		return false;
@@ -2330,6 +2337,16 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 	else if (cmdLower == "/resetball") {
 		baseballEventManager.ResetUserToday(user);
 		SendNotice("[CSO棒球經典賽] 今日出局數與跑壘狀態已重置，可以再次進行揮棒！");
+		return true;
+	}
+	else if (cmdLower == "/resetbaseball" || cmdLower == "/triggerbaseballaward") {
+		bool res = baseballEventManager.ForceDailyReset(user);
+		if (res) {
+			SendNotice("[CSO棒球經典賽] 已手動觸發結算，已發放結算獎勵！");
+		}
+		else {
+			SendNotice("[CSO棒球經典賽] 今日分數為 0 或無可領取的階層獎勵。");
+		}
 		return true;
 	}
 	else if (cmdLower == "/setscore") {

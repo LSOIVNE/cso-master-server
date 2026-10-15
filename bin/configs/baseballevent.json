@@ -3,46 +3,36 @@
     "Active": true,
     "PlaytimeSecondsPerBall": 1200,
     "MaxBalls": 99,
+    "MinPlayers": 1,
+    "TestResetTime": "",
+    "AwardTitle": "棒球一個入手!",
+    "AwardContent": "感謝您參與CSO棒球經典賽活動,恭喜您獲得以下獎勵,祝您游戲愉快!",
     "HitWeights": {
-      "Out": 38,
+      "Out": 33,
       "Single": 32,
-      "Double": 18,
-      "Triple": 8,
-      "HomeRun": 4
+      "Double": 20,
+      "Triple": 10,
+      "HomeRun": 5
     }
   },
   "DailyScoreRewards": [
     {
       "MinScore": 1,
-      "MaxScore": 5,
-      "ItemID": 165,
-      "Count": 1,
-      "Duration": 0,
-      "Name": "電子解碼器 (1個)"
-    },
-    {
-      "MinScore": 6,
       "MaxScore": 10,
-      "ItemID": 165,
-      "Count": 3,
+      "ItemID": 173,
+      "CountByScore": true,
+      "CountPerScore": 1,
       "Duration": 0,
-      "Name": "電子解碼器 (3個)"
+      "Name": "電子解碼器"
     },
     {
       "MinScore": 11,
-      "MaxScore": 20,
-      "ItemID": 396,
-      "Count": 3,
-      "Duration": 0,
-      "Name": "A世代解碼器 (3個)"
-    },
-    {
-      "MinScore": 21,
       "MaxScore": 999,
       "ItemID": 396,
-      "Count": 5,
+      "CountByScore": true,
+      "CountPerScore": 1,
       "Duration": 0,
-      "Name": "A世代解碼器 (5個)"
+      "Name": "A世代解碼器"
     }
   ]
 }

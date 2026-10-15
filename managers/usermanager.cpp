@@ -19,6 +19,8 @@
 #include "packet_questmanager.h"
 #include "packet_umsgmanager.h"
 #include "serverconsole.h"
+#include "coineventmanager.h"
+#include "baseballeventmanager.h"
 
 UserManager userManager;
 
@@ -60,6 +62,9 @@ void UserManager::RemoveUser(User* user) {
 		room->RemoveRoomUser(user);
 	}
 
+	coinEventManager.OnUserLogout(user);
+	baseballEventManager.OnUserLogout(user);
+
 	user->RemoveUserSession();
 	_users.erase(find(_users.begin(), _users.end(), user));
 	delete user;
@@ -73,9 +78,9 @@ void UserManager::DisconnectUser(User* user, const boost::system::error_code& ec
 		return;
 	}
 
+	auto connection = user->GetConnection();
 	RemoveUser(user);
 
-	auto& connection = user->GetConnection();
 	if (connection == NULL) {
 		return;
 	}
@@ -256,6 +261,9 @@ bool UserManager::SendLoginPackets(User* user, Packet_ReplyType reply) {
 		OnUserEnterLobby(user);
 	}
 
+	// Check Baseball Event daily settlement reward upon login
+	baseballEventManager.OnUserLogin(user);
+
 	// Dispatch expired item notices immediately upon login (synchronized with login bulletin/welcome dialog)
 	if (user->HasPendingExpireNotices()) {
 		vector<unsigned short> pendingIDs = user->GetAndClearPendingExpireNoticeItemIDs();
@@ -425,6 +433,9 @@ void UserManager::OnUserEnterLobby(User* user) {
 		serverConsole.Print(PrefixType::Info, format("[ UserManager ] User ({}) entered lobby, dispatched {} expired item notice(s).\n",
 			user->GetUserLogName(), uniquePendingIDs.size()));
 	}
+
+	// 3. Check Baseball Event daily settlement reward upon entering lobby
+	baseballEventManager.OnUserEnterLobby(user);
 }
 
 bool UserManager::CheckAndProcessUserExpiredItems(User* user, bool isGameResult) {

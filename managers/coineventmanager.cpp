@@ -1,5 +1,6 @@
 #include "coineventmanager.h"
 #include "usermanager.h"
+#include "roommanager.h"
 #include "serverconsole.h"
 #include "packetmanager.h"
 #include "packet_umsgmanager.h"
@@ -10,6 +11,8 @@
 #include <format>
 #include <algorithm>
 #include <ctime>
+#include <random>
+#include <chrono>
 
 using json = nlohmann::json;
 
@@ -26,6 +29,7 @@ CoinEventManager::CoinEventManager() {
 }
 
 CoinEventManager::~CoinEventManager() {
+	FlushAllDirty();
 }
 
 bool CoinEventManager::Init(const std::string& configPath) {
@@ -47,7 +51,9 @@ bool CoinEventManager::InitPoolFromDatabase() {
 				}
 			}
 		}
-		serverConsole.Print(PrefixType::Info, format("[ CoinEventManager ] Loaded {} pool items from database.\n", dbPool.size()));
+		// Also update DB with stripped image names from config
+		databaseManager.InitOrUpdateCoinEventPool(_pool);
+		serverConsole.Print(PrefixType::Info, format("[ CoinEventManager ] Loaded and synced {} pool items with database.\n", dbPool.size()));
 	}
 	else {
 		// Initialize DB pool from config
@@ -80,6 +86,7 @@ bool CoinEventManager::LoadConfig(const std::string& configPath) {
 			_settings.active = s.value("Active", true);
 			_settings.playtimeSecondsPerCoin = s.value("PlaytimeSecondsPerCoin", 1200);
 			_settings.maxCoins = (unsigned char)s.value("MaxCoins", 3);
+			_settings.minPlayers = s.value("MinPlayers", 4);
 		}
 
 		_pool.clear();
@@ -94,7 +101,7 @@ bool CoinEventManager::LoadConfig(const std::string& configPath) {
 				item.itemID = (unsigned short)it.value("ItemID", 0);
 				item.count = (unsigned short)it.value("Count", 1);
 				item.duration = it.value("Duration", 0);
-				item.winRate = it.value("WinRate", 10);
+				item.winRate = it.value("WinRate", 10.0);
 				item.latestWinner = "";
 				_pool.push_back(item);
 			}
@@ -105,7 +112,8 @@ bool CoinEventManager::LoadConfig(const std::string& configPath) {
 			return a.slotIdx < b.slotIdx;
 		});
 
-		serverConsole.Print(PrefixType::Info, format("[ CoinEventManager ] Loaded config with {} pool items.\n", _pool.size()));
+		serverConsole.Print(PrefixType::Info, format("[ CoinEventManager ] Loaded config with {} pool items (minPlayers: {}).\n",
+			_pool.size(), _settings.minPlayers));
 		return true;
 	}
 	catch (const std::exception& e) {
@@ -150,7 +158,6 @@ void CoinEventManager::ParsePacket(User* user, TCPConnection::Packet::pointer pa
 			GetUserCoinData(user->GetUserID(), coinData);
 
 			if (coinData.coinCount == 0) {
-				// No coins available
 				serverConsole.Print(PrefixType::Info, format("[ CoinEventManager ] User ({}) tried to draw without coins!\n", user->GetUserLogName()));
 				SendPacket_DrawResult(connection, slotIdx, false);
 				SendPacket_Status(connection);
@@ -160,7 +167,7 @@ void CoinEventManager::ParsePacket(User* user, TCPConnection::Packet::pointer pa
 
 			// Deduct 1 coin
 			coinData.coinCount--;
-			databaseManager.SaveUserCoinData(coinData);
+			SaveUserCoinData(coinData);
 
 			bool isWin = false;
 			CoinEventPoolItem wonItemCopy;
@@ -179,8 +186,10 @@ void CoinEventManager::ParsePacket(User* user, TCPConnection::Packet::pointer pa
 				std::lock_guard<std::mutex> lock(_mutex);
 				if (slotIdx < _pool.size()) {
 					CoinEventPoolItem& poolItem = _pool[slotIdx];
-					if (poolItem.remainCount > 0) {
-						int roll = rand() % 100;
+					if (poolItem.remainCount > 0 && poolItem.winRate > 0.0) {
+						static thread_local std::mt19937_64 rng((unsigned long long)std::chrono::high_resolution_clock::now().time_since_epoch().count());
+						std::uniform_real_distribution<double> dist(0.0, 100.0);
+						double roll = dist(rng);
 						if (roll < poolItem.winRate) {
 							isWin = true;
 							poolItem.remainCount--;
@@ -199,8 +208,6 @@ void CoinEventManager::ParsePacket(User* user, TCPConnection::Packet::pointer pa
 					packetManager.SendPacket_InventoryDelta(connection, { prizeItem }, {});
 				}
 
-				std::string winNotice = format("[抓錢活動] 恭喜玩家 [{}] 獲得 [{}]！", userNick, wonItemCopy.itemName);
-				packet_UMsgManager.SendPacket_UMsg_Chat(connection, Packet_UMsgType::ChannelChat, Utf8ToCp950("系統"), Utf8ToCp950(winNotice));
 				serverConsole.Print(PrefixType::Info, format("[ CoinEventManager ] User ({}) WON slot {} (itemID {})!\n", user->GetUserLogName(), (int)slotIdx, wonItemCopy.itemID));
 			}
 			else {
@@ -219,13 +226,56 @@ void CoinEventManager::ParsePacket(User* user, TCPConnection::Packet::pointer pa
 	}
 }
 
-void CoinEventManager::OnMatchEnd(User* user, unsigned int durationSeconds) {
-	if (!user || !_settings.active || durationSeconds == 0) return;
+void CoinEventManager::OnSecondTick() {
+	if (!_settings.active) return;
+
+	static unsigned int secondCounter = 0;
+	secondCounter++;
+
+	// Periodic flush of dirty cached users every 60 seconds
+	if (secondCounter % 60 == 0) {
+		FlushAllDirty();
+	}
+
+	// In-game playtime accumulation and periodic reminder check
+	for (Room* room : roomManager.GetRooms()) {
+		if (!room) continue;
+		if (room->GetRoomSettings().roomState != RoomState::Playing && room->GetGameMatch() == nullptr) {
+			continue;
+		}
+
+		// Count in-game active users in this room
+		std::vector<User*> inGameUsers;
+		for (User* u : room->GetRoomUsers()) {
+			if (u && u->GetConnection() && u->GetUserStatus() == UserStatus::InGame) {
+				inGameUsers.push_back(u);
+			}
+		}
+
+		// Require minimum players in room to start accumulating
+		if (inGameUsers.size() < _settings.minPlayers) {
+			continue;
+		}
+
+		for (User* u : inGameUsers) {
+			ProcessInGameTick(u, 1);
+		}
+	}
+}
+
+void CoinEventManager::ProcessInGameTick(User* user, unsigned int deltaSeconds) {
+	if (!user || !_settings.active) return;
+	unsigned long userID = user->GetUserID();
 
 	UserCoinEventData coinData;
-	GetUserCoinData(user->GetUserID(), coinData);
+	GetUserCoinData(userID, coinData);
 
-	coinData.playtimeSeconds += durationSeconds;
+	// 金幣滿了就不繼續發信息了，也不繼續累積
+	if (coinData.coinCount >= _settings.maxCoins) {
+		return;
+	}
+
+	coinData.playtimeSeconds += deltaSeconds;
 	unsigned char earnedCoins = 0;
 
 	while (coinData.playtimeSeconds >= _settings.playtimeSecondsPerCoin) {
@@ -234,24 +284,94 @@ void CoinEventManager::OnMatchEnd(User* user, unsigned int durationSeconds) {
 			coinData.coinCount++;
 			earnedCoins++;
 		}
-		else {
-			auto conn = user->GetConnection();
-			if (conn) {
-				packet_UMsgManager.SendPacket_UMsg_Chat(conn, Packet_UMsgType::ChannelChat, Utf8ToCp950("系統"), Utf8ToCp950("[抓錢活動] 硬幣欄位已滿(3個)，無法再累積硬幣，請盡速使用！"));
-			}
+		if (coinData.coinCount >= _settings.maxCoins) {
 			break;
 		}
 	}
 
-	databaseManager.SaveUserCoinData(coinData);
+	bool shouldSaveImmediate = false;
+
+	if (earnedCoins > 0) {
+		shouldSaveImmediate = true;
+		auto conn = user->GetConnection();
+		if (conn) {
+			SendPacket_Coins(conn, coinData.coinCount);
+			std::string msg = format("抓錢活動：遊戲時間累積滿 20 分鐘，獲得 {} 個硬幣！目前持有硬幣：{}/{} 個",
+				(int)earnedCoins, (int)coinData.coinCount, (int)_settings.maxCoins);
+			packet_UMsgManager.SendPacket_UMsg_ServerMessageText(conn, msg);
+		}
+	}
+
+	{
+		std::lock_guard<std::mutex> lock(_mutex);
+		_userCache[userID] = coinData;
+		_dirtyUsers[userID] = true;
+	}
+
+	if (shouldSaveImmediate) {
+		databaseManager.SaveUserCoinData(coinData);
+		std::lock_guard<std::mutex> lock(_mutex);
+		_dirtyUsers[userID] = false;
+	}
+}
+
+void CoinEventManager::OnMatchEnd(User* user, unsigned int /*durationSeconds*/) {
+	if (!user || !_settings.active) return;
+	FlushUserData(user->GetUserID());
 
 	auto conn = user->GetConnection();
 	if (conn) {
-		if (earnedCoins > 0) {
-			std::string msg = format("[抓錢活動] 遊戲累積滿20分鐘，獲得 {} 個硬幣！目前持有：{} 個", (int)earnedCoins, (int)coinData.coinCount);
-			packet_UMsgManager.SendPacket_UMsg_Chat(conn, Packet_UMsgType::ChannelChat, Utf8ToCp950("系統"), Utf8ToCp950(msg));
-		}
+		UserCoinEventData coinData;
+		GetUserCoinData(user->GetUserID(), coinData);
 		SendPacket_Coins(conn, coinData.coinCount);
+	}
+}
+
+void CoinEventManager::OnUserLogout(User* user) {
+	if (!user) return;
+	unsigned long userID = user->GetUserID();
+	FlushUserData(userID);
+	std::lock_guard<std::mutex> lock(_mutex);
+	_userCache.erase(userID);
+	_dirtyUsers.erase(userID);
+}
+
+void CoinEventManager::FlushUserData(unsigned long userID) {
+	UserCoinEventData coinData;
+	bool dirty = false;
+	{
+		std::lock_guard<std::mutex> lock(_mutex);
+		auto it = _userCache.find(userID);
+		if (it != _userCache.end()) {
+			coinData = it->second;
+			auto dirtyIt = _dirtyUsers.find(userID);
+			if (dirtyIt != _dirtyUsers.end() && dirtyIt->second) {
+				dirty = true;
+				dirtyIt->second = false;
+			}
+		}
+	}
+	if (dirty) {
+		databaseManager.SaveUserCoinData(coinData);
+	}
+}
+
+void CoinEventManager::FlushAllDirty() {
+	std::vector<UserCoinEventData> toSave;
+	{
+		std::lock_guard<std::mutex> lock(_mutex);
+		for (auto& pair : _dirtyUsers) {
+			if (pair.second) {
+				auto it = _userCache.find(pair.first);
+				if (it != _userCache.end()) {
+					toSave.push_back(it->second);
+				}
+				pair.second = false;
+			}
+		}
+	}
+	for (const auto& data : toSave) {
+		databaseManager.SaveUserCoinData(data);
 	}
 }
 
@@ -308,7 +428,7 @@ void CoinEventManager::SendPacket_Coins(TCPConnection::pointer connection, unsig
 	if (!packet) return;
 
 	packet->WriteUInt8(3);  // gameType: Coin Event
-	packet->WriteUInt8(35); // subAction: Coins
+	packet->WriteUInt8(35); // subAction: 35 (Coins count update)
 	packet->WriteUInt8(coinCount);
 
 	packet->Send();
@@ -329,7 +449,30 @@ void CoinEventManager::SendPacket_DrawResult(TCPConnection::pointer connection, 
 }
 
 bool CoinEventManager::GetUserCoinData(unsigned long userID, UserCoinEventData& outData) {
-	return databaseManager.GetUserCoinData(userID, outData);
+	{
+		std::lock_guard<std::mutex> lock(_mutex);
+		auto it = _userCache.find(userID);
+		if (it != _userCache.end()) {
+			outData = it->second;
+			return true;
+		}
+	}
+
+	bool res = databaseManager.GetUserCoinData(userID, outData);
+	if (res) {
+		std::lock_guard<std::mutex> lock(_mutex);
+		_userCache[userID] = outData;
+	}
+	return res;
+}
+
+bool CoinEventManager::SaveUserCoinData(const UserCoinEventData& data) {
+	{
+		std::lock_guard<std::mutex> lock(_mutex);
+		_userCache[data.userID] = data;
+		_dirtyUsers[data.userID] = false;
+	}
+	return databaseManager.SaveUserCoinData(data);
 }
 
 bool CoinEventManager::AddUserCoins(User* user, int deltaCoins) {
@@ -343,7 +486,7 @@ bool CoinEventManager::AddUserCoins(User* user, int deltaCoins) {
 	if (newCount > (int)_settings.maxCoins) newCount = (int)_settings.maxCoins;
 
 	coinData.coinCount = (unsigned char)newCount;
-	databaseManager.SaveUserCoinData(coinData);
+	SaveUserCoinData(coinData);
 
 	if (user->GetConnection()) {
 		SendPacket_Coins(user->GetConnection(), coinData.coinCount);
@@ -359,7 +502,7 @@ bool CoinEventManager::SetUserCoins(User* user, unsigned char coins) {
 
 	if (coins > _settings.maxCoins) coins = _settings.maxCoins;
 	coinData.coinCount = coins;
-	databaseManager.SaveUserCoinData(coinData);
+	SaveUserCoinData(coinData);
 
 	if (user->GetConnection()) {
 		SendPacket_Coins(user->GetConnection(), coinData.coinCount);

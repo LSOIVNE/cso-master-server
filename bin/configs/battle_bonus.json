@@ -1,6 +1,6 @@
 {
   "pass_items": {
-    "stack_general_and_zombie": false,
+    "stack_general_and_zombie": true,
     "general": [
       {
         "itemID": 108,

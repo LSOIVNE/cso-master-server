@@ -2,58 +2,59 @@
   "Settings": {
     "Active": true,
     "PlaytimeSecondsPerCoin": 1200,
-    "MaxCoins": 3
+    "MaxCoins": 3,
+    "MinPlayers": 1
   },
   "Items": [
     {
       "SlotIdx": 0,
-      "ImageName": "sccannon.tga",
-      "ItemName": "極道狂飆",
+      "ImageName": "Sfsniper",
+      "ItemName": "隼雷 (永久)",
       "TotalCount": 50,
-      "ItemID": 476,
+      "ItemID": 495,
       "Count": 1,
       "Duration": 0,
       "WinRate": 10
     },
     {
       "SlotIdx": 1,
-      "ImageName": "skull11.tga",
-      "ItemName": "貝西摩斯之爪(SKULL-11)",
+      "ImageName": "SKULL5",
+      "ItemName": "貝西摩斯之爪(SKULL-11) (永久)",
       "TotalCount": 100,
-      "ItemID": 471,
+      "ItemID": 367,
       "Count": 1,
       "Duration": 0,
       "WinRate": 15
     },
     {
       "SlotIdx": 2,
-      "ImageName": "katana.tga",
-      "ItemName": "隼雷",
+      "ImageName": "katana",
+      "ItemName": "一刀斷罪 (30日)",
       "TotalCount": 150,
-      "ItemID": 361,
+      "ItemID": 345,
       "Count": 1,
-      "Duration": 0,
+      "Duration": 30,
       "WinRate": 20
     },
     {
       "SlotIdx": 3,
-      "ImageName": "cashdecodera.tga",
+      "ImageName": "cashdecodera",
       "ItemName": "A世代解碼器 (5個)",
       "TotalCount": 300,
       "ItemID": 396,
       "Count": 5,
       "Duration": 0,
-      "WinRate": 30
+      "WinRate": 25
     },
     {
       "SlotIdx": 4,
-      "ImageName": "m134.tga",
-      "ItemName": "殲滅者-M134 (30天)",
+      "ImageName": "M134",
+      "ItemName": "火神機槍-Minigun (30天)",
       "TotalCount": 200,
-      "ItemID": 20,
+      "ItemID": 213,
       "Count": 1,
       "Duration": 30,
-      "WinRate": 25
+      "WinRate": 30
     }
   ]
 }
