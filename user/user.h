@@ -172,6 +172,9 @@ public:
 	const vector<BookMark> GetUserBookMarks() const noexcept;
 	const vector<InventoryItem> GetUserInventory() const noexcept;
 	bool HasItem(unsigned short itemID) const noexcept;
+	unsigned long GetCBoxCount() const noexcept;
+	bool SetCBoxCount(unsigned long count) const noexcept;
+	bool AddCBoxCount(long delta, unsigned long* outNewCount = nullptr) const noexcept;
 	static unsigned char CalculateLevel(unsigned long long exp);
 	static unsigned long long GetExpForLevel(unsigned char level);
 

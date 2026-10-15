@@ -195,7 +195,15 @@ void Packet_ItemManager::parsePacket_Item_EquipItem(User* user, TCPConnection::P
 		bool isCostume = (itemDef != NULL && itemDef->IsCostume());
 		CostumeSlot costumeSlot = isCostume ? itemDef->GetCostumeSlot() : CostumeSlot::None;
 
-		if (itemDef != NULL && (itemDef->className == "RewardItem" || itemDef->category == 8 || itemDef->category == 9 || itemDef->id == 80)) {
+		bool isRewardItem = (itemDef != NULL && (
+			itemDef->className == "RewardItem" ||
+			rewardItemManager.HasRewardItem(it->itemID) ||
+			it->itemID == 80 || it->itemID == 115 || itemDef->className == "ResetCafe" ||
+			it->itemID == 82 || itemDef->className == "ResetWinLose" ||
+			it->itemID == 103 || itemDef->className == "ResetKillDeath"
+		));
+
+		if (isRewardItem) {
 			if (action == 0) {
 				parsePacket_Item_UseRewardItem(user, *it, *itemDef);
 				return;
@@ -253,6 +261,10 @@ void Packet_ItemManager::parsePacket_Item_EquipItem(User* user, TCPConnection::P
 				deltaUpdatedItems.push_back(equipped);
 			}
 		}
+		else if (itemDef != NULL && !itemDef->IsEquipment()) {
+			// Consumable non-equipment items (e.g. C-Box 166, decoders 173/378/533, craft materials, blueprints)
+			// Do NOT toggle inUse in DB. Simply reply EquipItem success so client performs native UI action (such as opening C-Box lottery window)
+		}
 		else {
 			if (action == 0) {
 				databaseManager.SetUserInventoryItemInUse(userID, slotID, true);
@@ -279,7 +291,9 @@ void Packet_ItemManager::parsePacket_Item_EquipItem(User* user, TCPConnection::P
 	}
 
 	// Send refreshed inventory so client updates equipped badges/buttons (Delta 增量同步)
-	packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, {});
+	if (!deltaUpdatedItems.empty()) {
+		packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, {});
+	}
 }
 
 void Packet_ItemManager::parsePacket_Item_UseRewardItem(User* user, const InventoryItem& item, const ItemDefinition& itemDef) {
@@ -559,6 +573,17 @@ void Packet_ItemManager::parsePacket_Item_UseRewardItem(User* user, const Invent
 
 	// 1. Consume required items and/or target reward item
 	vector<unsigned short> deletedSlots;
+	vector<InventoryItem> deltaUpdatedItems;
+
+	auto AddOrUpdateDelta = [&](const InventoryItem& dItem) {
+		for (auto& d : deltaUpdatedItems) {
+			if (d.slotID == dItem.slotID) {
+				d = dItem;
+				return;
+			}
+		}
+		deltaUpdatedItems.push_back(dItem);
+	};
 
 	bool selfInRequired = false;
 	unsigned short selfRequiredCount = 0;
@@ -582,7 +607,14 @@ void Packet_ItemManager::parsePacket_Item_UseRewardItem(User* user, const Invent
 			serverConsole.Print(PrefixType::Error, format("[ Packet_ItemManager ] Failed to consume RewardItem slot {} for user ({})\n", item.slotID, user->GetUserLogName()));
 			return;
 		}
-		if (clickedDeleted) deletedSlots.push_back(item.slotID);
+		if (clickedDeleted) {
+			deletedSlots.push_back(item.slotID);
+		}
+		else {
+			InventoryItem updated = item;
+			updated.count = (updated.count > clickedConsume) ? (updated.count - clickedConsume) : 0;
+			AddOrUpdateDelta(updated);
+		}
 		remainingToConsume -= clickedConsume;
 
 		// 2. Consume from other slots of item.itemID if needed
@@ -593,7 +625,14 @@ void Packet_ItemManager::parsePacket_Item_UseRewardItem(User* user, const Invent
 					unsigned short toConsume = min((unsigned short)invItem.count, remainingToConsume);
 					bool del = false;
 					databaseManager.ConsumeUserInventoryItemBySlot(userID, invItem.slotID, toConsume, del);
-					if (del) deletedSlots.push_back(invItem.slotID);
+					if (del) {
+						deletedSlots.push_back(invItem.slotID);
+					}
+					else {
+						InventoryItem updated = invItem;
+						updated.count = (updated.count > toConsume) ? (updated.count - toConsume) : 0;
+						AddOrUpdateDelta(updated);
+					}
 					remainingToConsume -= toConsume;
 				}
 			}
@@ -609,7 +648,14 @@ void Packet_ItemManager::parsePacket_Item_UseRewardItem(User* user, const Invent
 						unsigned short toConsume = min((unsigned short)invItem.count, reqRem);
 						bool del = false;
 						databaseManager.ConsumeUserInventoryItemBySlot(userID, invItem.slotID, toConsume, del);
-						if (del) deletedSlots.push_back(invItem.slotID);
+						if (del) {
+							deletedSlots.push_back(invItem.slotID);
+						}
+						else {
+							InventoryItem updated = invItem;
+							updated.count = (updated.count > toConsume) ? (updated.count - toConsume) : 0;
+							AddOrUpdateDelta(updated);
+						}
 						reqRem -= toConsume;
 					}
 				}
@@ -623,7 +669,14 @@ void Packet_ItemManager::parsePacket_Item_UseRewardItem(User* user, const Invent
 			serverConsole.Print(PrefixType::Error, format("[ Packet_ItemManager ] Failed to consume RewardItem slot {} for user ({})\n", item.slotID, user->GetUserLogName()));
 			return;
 		}
-		if (deleted) deletedSlots.push_back(item.slotID);
+		if (deleted) {
+			deletedSlots.push_back(item.slotID);
+		}
+		else {
+			InventoryItem updated = item;
+			updated.count = (updated.count > 1) ? (updated.count - 1) : 0;
+			AddOrUpdateDelta(updated);
+		}
 
 		// Consume all items in requireItems (if any)
 		if (cfg != nullptr && !cfg->requireItems.empty()) {
@@ -635,7 +688,14 @@ void Packet_ItemManager::parsePacket_Item_UseRewardItem(User* user, const Invent
 						unsigned short toConsume = min((unsigned short)invItem.count, reqRem);
 						bool del = false;
 						databaseManager.ConsumeUserInventoryItemBySlot(userID, invItem.slotID, toConsume, del);
-						if (del) deletedSlots.push_back(invItem.slotID);
+						if (del) {
+							deletedSlots.push_back(invItem.slotID);
+						}
+						else {
+							InventoryItem updated = invItem;
+							updated.count = (updated.count > toConsume) ? (updated.count - toConsume) : 0;
+							AddOrUpdateDelta(updated);
+						}
 						reqRem -= toConsume;
 					}
 				}
@@ -652,9 +712,14 @@ void Packet_ItemManager::parsePacket_Item_UseRewardItem(User* user, const Invent
 
 	time_t now = time(nullptr);
 	std::vector<InventoryItem> newItemsToAdd;
-	std::vector<InventoryItem> deltaUpdatedItems;
 
 	for (const auto& g : itemsToGrant) {
+		if (g.itemID == 166) {
+			unsigned short addedCount = g.count > 0 ? g.count : 1;
+			databaseManager.AddUserCBoxCount(userID, addedCount);
+			continue;
+		}
+
 		const auto* def = itemDefinitionManager.GetItem(g.itemID);
 		bool isCountItem = (def != nullptr && !def->isPeriod);
 		bool isPeriod = !isCountItem && ((g.duration != 0) || (def != nullptr && def->isPeriod));
@@ -668,7 +733,7 @@ void Packet_ItemManager::parsePacket_Item_UseRewardItem(User* user, const Invent
 			if (found != curInv.end()) {
 				databaseManager.UpdateUserInventoryItemCount(userID, g.itemID, g.count);
 				found->count += g.count;
-				deltaUpdatedItems.push_back(*found);
+				AddOrUpdateDelta(*found);
 			}
 			else {
 				InventoryItem newItem;
@@ -681,7 +746,8 @@ void Packet_ItemManager::parsePacket_Item_UseRewardItem(User* user, const Invent
 				newItem.expirationTime = 0;
 				newItem.enhanceBits = 0;
 				newItemsToAdd.push_back(newItem);
-				deltaUpdatedItems.push_back(newItem);
+				curInv.push_back(newItem);
+				AddOrUpdateDelta(newItem);
 			}
 		}
 		else {
@@ -694,14 +760,14 @@ void Packet_ItemManager::parsePacket_Item_UseRewardItem(User* user, const Invent
 				else if (isPerm) {
 					databaseManager.UpdateUserInventoryExpiration(userID, g.itemID, 0);
 					found->expirationTime = 0;
-					deltaUpdatedItems.push_back(*found);
+					AddOrUpdateDelta(*found);
 				}
 				else {
 					unsigned long baseTime = (found->expirationTime > (unsigned long)now) ? found->expirationTime : (unsigned long)now;
 					unsigned long newExp = baseTime + (unsigned long)g.duration * 86400;
 					databaseManager.UpdateUserInventoryExpiration(userID, g.itemID, newExp);
 					found->expirationTime = newExp;
-					deltaUpdatedItems.push_back(*found);
+					AddOrUpdateDelta(*found);
 				}
 			}
 			else {
@@ -715,7 +781,8 @@ void Packet_ItemManager::parsePacket_Item_UseRewardItem(User* user, const Invent
 				newItem.expirationTime = isPerm ? 0 : (unsigned long)(now + (unsigned long)g.duration * 86400);
 				newItem.enhanceBits = 0;
 				newItemsToAdd.push_back(newItem);
-				deltaUpdatedItems.push_back(newItem);
+				curInv.push_back(newItem);
+				AddOrUpdateDelta(newItem);
 			}
 		}
 	}

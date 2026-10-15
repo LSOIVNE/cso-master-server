@@ -320,30 +320,20 @@ bool ItemBoxManager::OpenBox(User* user, unsigned short decoderSlotID, unsigned 
 		return false;
 	}
 
-	// 2. Locate required C-Box item (All decoders require C-Box itemID 166 in this version)
-	const unsigned short CBOX_ITEM_ID = 166;
-	const InventoryItem* boxItem = nullptr;
-	unsigned short totalCBoxCount = 0;
-	unsigned short totalDecoderCount = 0;
-
-	for (const auto& it : inv) {
-		if (it.itemID == CBOX_ITEM_ID && it.count > 0) {
-			totalCBoxCount += it.count;
-			if (boxItem == nullptr || it.slotID == boxSlotID) {
-				boxItem = &it;
-				boxSlotID = it.slotID;
-			}
-		}
-		if (it.itemID == decoderItem->itemID && it.count > 0) {
-			totalDecoderCount += it.count;
-		}
-	}
-
-	if (!boxItem || totalCBoxCount == 0) {
-		serverConsole.Print(PrefixType::Warn, format("[ ItemBoxManager ] User ({}) lacks required C-Box (166) for decoder {}!\n",
+	// 2. Check required C-Box (Stored in user_characters.cboxCount, not inventory)
+	unsigned long currentCBoxCount = user->GetCBoxCount();
+	if (currentCBoxCount == 0) {
+		serverConsole.Print(PrefixType::Warn, format("[ ItemBoxManager ] User ({}) lacks required C-Box for decoder {}!\n",
 			user->GetUserLogName(), boxDef->decoderID));
 		SendPacket_Item_OpenBoxResult(connection, 0, 1);
 		return false;
+	}
+
+	unsigned short totalDecoderCount = 0;
+	for (const auto& it : inv) {
+		if (it.itemID == decoderItem->itemID && it.count > 0) {
+			totalDecoderCount += it.count;
+		}
 	}
 
 	// 3. Roll reward (filters permanently owned items if configured)
@@ -354,7 +344,7 @@ bool ItemBoxManager::OpenBox(User* user, unsigned short decoderSlotID, unsigned 
 		return false;
 	}
 
-	// 4. Consume decoder item
+	// 4. Consume decoder item from inventory
 	bool decoderDeleted = false;
 	if (!databaseManager.ConsumeUserInventoryItemBySlot(userID, decoderSlotID, 1, decoderDeleted)) {
 		serverConsole.Print(PrefixType::Error, format("[ ItemBoxManager ] Failed to consume decoder slot {} for user ({})\n", decoderSlotID, user->GetUserLogName()));
@@ -362,13 +352,9 @@ bool ItemBoxManager::OpenBox(User* user, unsigned short decoderSlotID, unsigned 
 		return false;
 	}
 
-	// 5. Consume C-Box item (166)
-	bool boxDeleted = false;
-	if (boxItem != nullptr) {
-		if (!databaseManager.ConsumeUserInventoryItemBySlot(userID, boxSlotID, 1, boxDeleted)) {
-			serverConsole.Print(PrefixType::Error, format("[ ItemBoxManager ] Failed to consume C-Box slot {} for user ({})\n", boxSlotID, user->GetUserLogName()));
-		}
-	}
+	// 5. Consume C-Box (user_characters.cboxCount)
+	unsigned long remainingCBoxCount = 0;
+	user->AddCBoxCount(-1, &remainingCBoxCount);
 
 	// Track delta inventory changes for high-performance microsecond synchronization (0 dropped frames)
 	vector<InventoryItem> deltaUpdatedItems;
@@ -383,16 +369,6 @@ bool ItemBoxManager::OpenBox(User* user, unsigned short decoderSlotID, unsigned 
 		deltaUpdatedItems.push_back(updatedDecoder);
 	}
 
-	if (boxDeleted) {
-		deletedSlots.push_back(boxSlotID);
-	}
-	else if (boxItem != nullptr) {
-		InventoryItem updatedBox = *boxItem;
-		updatedBox.count = (updatedBox.count > 1) ? (updatedBox.count - 1) : 0;
-		deltaUpdatedItems.push_back(updatedBox);
-	}
-
-	unsigned short remainingCBoxCount = (totalCBoxCount > 1) ? (totalCBoxCount - 1) : 0;
 	unsigned short remainingDecoderCount = (totalDecoderCount > 1) ? (totalDecoderCount - 1) : 0;
 
 	auto AddOrUpdateDelta = [&](const InventoryItem& item) {
@@ -428,6 +404,11 @@ bool ItemBoxManager::OpenBox(User* user, unsigned short decoderSlotID, unsigned 
 	if (!subItems.empty() || bonusPts > 0) {
 		// Grant all sub-items in the bundle
 		for (unsigned short subID : subItems) {
+			if (subID == 166) {
+				user->AddCBoxCount(1, &remainingCBoxCount);
+				continue;
+			}
+
 			const auto* sDef = itemDefinitionManager.GetItem(subID);
 			bool sIsCount = (sDef != nullptr && !sDef->isPeriod);
 			bool sIsPeriod = !sIsCount && ((wonItem->duration != 0) || (sDef != nullptr && sDef->isPeriod));
@@ -448,9 +429,6 @@ bool ItemBoxManager::OpenBox(User* user, unsigned short decoderSlotID, unsigned 
 					databaseManager.UpdateUserInventoryItemCount(userID, subID, 1);
 					sOwned.count += 1;
 					AddOrUpdateDelta(sOwned);
-					if (subID == CBOX_ITEM_ID) {
-						remainingCBoxCount += 1;
-					}
 				}
 				else {
 					InventoryItem newItem;
@@ -464,9 +442,6 @@ bool ItemBoxManager::OpenBox(User* user, unsigned short decoderSlotID, unsigned 
 					newItem.enhanceBits = 0;
 					databaseManager.AddUserInventoryItems(userID, { newItem });
 					AddOrUpdateDelta(newItem);
-					if (subID == CBOX_ITEM_ID) {
-						remainingCBoxCount += 1;
-					}
 				}
 			}
 			else {
@@ -514,71 +489,71 @@ bool ItemBoxManager::OpenBox(User* user, unsigned short decoderSlotID, unsigned 
 	}
 	else {
 		// Single-item grant
-		const auto* itemDef = itemDefinitionManager.GetItem(wonItem->itemID);
-		bool isCountItem = (itemDef != nullptr && !itemDef->isPeriod);
-		bool isPeriodItem = !isCountItem && ((wonItem->duration != 0) || (itemDef != nullptr && itemDef->isPeriod));
-
-		if (isCountItem || (!isPeriodItem && wonItem->duration == 0)) {
-			// Count-based item
-			if (alreadyOwned) {
-				databaseManager.UpdateUserInventoryItemCount(userID, wonItem->itemID, wonItem->count);
-				ownedItem.count += wonItem->count;
-				AddOrUpdateDelta(ownedItem);
-				if (wonItem->itemID == CBOX_ITEM_ID) {
-					remainingCBoxCount += wonItem->count;
-				}
-			}
-			else {
-				InventoryItem newItem;
-				newItem.slotID = ++maxSlotID;
-				newItem.itemID = wonItem->itemID;
-				newItem.count = wonItem->count;
-				newItem.activeFlag = 1;
-				newItem.inUse = false;
-				newItem.obtainTime = (unsigned long)now;
-				newItem.expirationTime = 0;
-				newItem.enhanceBits = 0;
-				databaseManager.AddUserInventoryItems(userID, { newItem });
-				AddOrUpdateDelta(newItem);
-				if (wonItem->itemID == CBOX_ITEM_ID) {
-					remainingCBoxCount += wonItem->count;
-				}
-			}
+		if (wonItem->itemID == 166) {
+			unsigned short addCount = wonItem->count > 0 ? wonItem->count : 1;
+			user->AddCBoxCount(addCount, &remainingCBoxCount);
 		}
 		else {
-			// Duration / permanent item
-			bool isPermItem = (wonItem->duration == -1 || wonItem->duration == 0);
-			if (alreadyOwned) {
-				if (ownedItem.expirationTime == 0) {
-					// Already permanent, keep permanent
-				}
-				else if (isPermItem) {
-					// Upgrade to permanent
-					databaseManager.UpdateUserInventoryExpiration(userID, wonItem->itemID, 0);
-					ownedItem.expirationTime = 0;
+			const auto* itemDef = itemDefinitionManager.GetItem(wonItem->itemID);
+			bool isCountItem = (itemDef != nullptr && !itemDef->isPeriod);
+			bool isPeriodItem = !isCountItem && ((wonItem->duration != 0) || (itemDef != nullptr && itemDef->isPeriod));
+
+			if (isCountItem || (!isPeriodItem && wonItem->duration == 0)) {
+				// Count-based item
+				if (alreadyOwned) {
+					databaseManager.UpdateUserInventoryItemCount(userID, wonItem->itemID, wonItem->count);
+					ownedItem.count += wonItem->count;
 					AddOrUpdateDelta(ownedItem);
 				}
 				else {
-					// Extend expiration
-					unsigned long baseTime = (ownedItem.expirationTime > (unsigned long)now) ? ownedItem.expirationTime : (unsigned long)now;
-					unsigned long newExp = baseTime + (unsigned long)wonItem->duration * 86400;
-					databaseManager.UpdateUserInventoryExpiration(userID, wonItem->itemID, newExp);
-					ownedItem.expirationTime = newExp;
-					AddOrUpdateDelta(ownedItem);
+					InventoryItem newItem;
+					newItem.slotID = ++maxSlotID;
+					newItem.itemID = wonItem->itemID;
+					newItem.count = wonItem->count;
+					newItem.activeFlag = 1;
+					newItem.inUse = false;
+					newItem.obtainTime = (unsigned long)now;
+					newItem.expirationTime = 0;
+					newItem.enhanceBits = 0;
+					databaseManager.AddUserInventoryItems(userID, { newItem });
+					AddOrUpdateDelta(newItem);
 				}
 			}
 			else {
-				InventoryItem newItem;
-				newItem.slotID = ++maxSlotID;
-				newItem.itemID = wonItem->itemID;
-				newItem.count = 1;
-				newItem.activeFlag = 1;
-				newItem.inUse = false;
-				newItem.obtainTime = (unsigned long)now;
-				newItem.expirationTime = isPermItem ? 0 : (unsigned long)(now + (unsigned long)wonItem->duration * 86400);
-				newItem.enhanceBits = 0;
-				databaseManager.AddUserInventoryItems(userID, { newItem });
-				AddOrUpdateDelta(newItem);
+				// Duration / permanent item
+				bool isPermItem = (wonItem->duration == -1 || wonItem->duration == 0);
+				if (alreadyOwned) {
+					if (ownedItem.expirationTime == 0) {
+						// Already permanent, keep permanent
+					}
+					else if (isPermItem) {
+						// Upgrade to permanent
+						databaseManager.UpdateUserInventoryExpiration(userID, wonItem->itemID, 0);
+						ownedItem.expirationTime = 0;
+						AddOrUpdateDelta(ownedItem);
+					}
+					else {
+						// Extend expiration
+						unsigned long baseTime = (ownedItem.expirationTime > (unsigned long)now) ? ownedItem.expirationTime : (unsigned long)now;
+						unsigned long newExp = baseTime + (unsigned long)wonItem->duration * 86400;
+						databaseManager.UpdateUserInventoryExpiration(userID, wonItem->itemID, newExp);
+						ownedItem.expirationTime = newExp;
+						AddOrUpdateDelta(ownedItem);
+					}
+				}
+				else {
+					InventoryItem newItem;
+					newItem.slotID = ++maxSlotID;
+					newItem.itemID = wonItem->itemID;
+					newItem.count = 1;
+					newItem.activeFlag = 1;
+					newItem.inUse = false;
+					newItem.obtainTime = (unsigned long)now;
+					newItem.expirationTime = isPermItem ? 0 : (unsigned long)(now + (unsigned long)wonItem->duration * 86400);
+					newItem.enhanceBits = 0;
+					databaseManager.AddUserInventoryItems(userID, { newItem });
+					AddOrUpdateDelta(newItem);
+				}
 			}
 		}
 	}
@@ -592,7 +567,7 @@ bool ItemBoxManager::OpenBox(User* user, unsigned short decoderSlotID, unsigned 
 	// 8. Send instant inventory delta update & CBox count (Packet 154 / 157)
 	// Sending only modified slots (< 50 bytes) instead of full 266+ items eliminates main UI thread stall!
 	packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, deletedSlots);
-	packet_UpdateInfoManager.SendPacket_UserUpdateInfo_CBoxCount(connection, userID, remainingCBoxCount);
+	packet_UpdateInfoManager.SendPacket_UserUpdateInfo_CBoxCount(connection, userID, (unsigned short)remainingCBoxCount);
 
 	// 9. Send Packet 78 result to client (grade 1=Normal, 2=Bronze/Silver, 3=Silver, 4=Gold fireworks)
 	const auto* wonDef = itemDefinitionManager.GetItem(wonItem->itemID);

@@ -136,6 +136,9 @@ const vector<InventoryItem> User::GetUserInventory() const noexcept {
 }
 
 bool User::HasItem(unsigned short itemID) const noexcept {
+	if (itemID == 166) {
+		return GetCBoxCount() > 0;
+	}
 	const auto inv = databaseManager.GetUserInventory(_userID);
 	const auto now = (unsigned long)time(nullptr);
 	for (const auto& item : inv) {
@@ -147,6 +150,18 @@ bool User::HasItem(unsigned short itemID) const noexcept {
 		}
 	}
 	return false;
+}
+
+unsigned long User::GetCBoxCount() const noexcept {
+	return databaseManager.GetUserCBoxCount(_userID);
+}
+
+bool User::SetCBoxCount(unsigned long count) const noexcept {
+	return databaseManager.SetUserCBoxCount(_userID, count);
+}
+
+bool User::AddCBoxCount(long delta, unsigned long* outNewCount) const noexcept {
+	return databaseManager.AddUserCBoxCount(_userID, delta, outNewCount);
 }
 
 static const unsigned long long LEVEL_EXP_TABLE[] = {

@@ -185,6 +185,12 @@ bool AttendanceManager::grantRewardItem(User* user, const AttendanceRewardItem& 
 	unsigned long userID = user->GetUserID();
 	time_t now = time(nullptr);
 
+	if (item.itemID == 166) {
+		unsigned short addedCount = item.count > 0 ? item.count : 1;
+		databaseManager.AddUserCBoxCount(userID, addedCount);
+		return true;
+	}
+
 	if (item.itemID > 0) {
 		auto currentInv = user->GetUserInventory();
 		bool alreadyOwned = false;

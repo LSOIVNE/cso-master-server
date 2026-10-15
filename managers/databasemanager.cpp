@@ -315,7 +315,7 @@ char DatabaseManager::CreateUserCharacter(unsigned long userID, const string& ni
     char escaped[64] = {};
     mysql_real_escape_string(_connection, escaped, nickName.c_str(), (unsigned long)nickName.size());
 
-    string query = format("INSERT INTO user_characters (userID, nickName, unk4_1, points, cash, unk400) VALUES ({}, '{}', '{}', 100000, 100000, 100000);", userID, escaped, escaped);
+    string query = format("INSERT INTO user_characters (userID, nickName, unk4_1, points, cash, unk400, cboxCount) VALUES ({}, '{}', '{}', 100000, 100000, 100000, 10);", userID, escaped, escaped);
 
     if (mysql_query(_connection, query.c_str())) {
         if (mysql_errno(_connection) == ER_DUP_ENTRY) {
@@ -416,6 +416,9 @@ const UserCharacterResult DatabaseManager::GetUserCharacter(unsigned long userID
         if ((flag & USERCHARACTER_FLAG_HONORPOINTS) || (flag & USERCHARACTER_FLAG_PREFIXID) || (flag & USERCHARACTER_FLAG_PREFIXID_EX)) {
             info += " prefixID, honorPoints,";
         }
+        if (flag & USERCHARACTER_FLAG_CBOXCOUNT) {
+            info += " cboxCount,";
+        }
         info[info.size() - 1] = ' ';
     }
 
@@ -506,6 +509,9 @@ const UserCharacterResult DatabaseManager::GetUserCharacter(unsigned long userID
             userCharacter.prefixID = atoi(row[index++]);
             userCharacter.honorPoints = atoi(row[index++]);
         }
+        if (flag & USERCHARACTER_FLAG_CBOXCOUNT) {
+            userCharacter.cboxCount = row[index] ? (unsigned long)atoll(row[index++]) : 0;
+        }
     }
 
     mysql_free_result(res);
@@ -540,23 +546,6 @@ const UserCharacterResult DatabaseManager::GetUserCharacter(unsigned long userID
         string healQuery = format("UPDATE user_characters SET level = {} WHERE userID = {};", (int)userCharacter.level, userID);
         mysql_query(_connection, healQuery.c_str());
         serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Auto-healed level 0 to {} for userID {}\n", (int)userCharacter.level, userID));
-    }
-
-    if ((flag & USERCHARACTER_FLAG_HONORPOINTS) || (flag & USERCHARACTER_FLAG_CBOXCOUNT)) {
-        string cboxQuery = format("SELECT COALESCE(SUM(count), 0) FROM user_inventory WHERE userID = {} AND itemID = 166;", userID);
-        if (!mysql_query(_connection, cboxQuery.c_str())) {
-            MYSQL_RES* cboxRes = mysql_store_result(_connection);
-            if (cboxRes) {
-                MYSQL_ROW cboxRow = mysql_fetch_row(cboxRes);
-                if (cboxRow && cboxRow[0]) {
-                    userCharacter.cboxCount = (unsigned short)atoi(cboxRow[0]);
-                }
-                mysql_free_result(cboxRes);
-            }
-        }
-        else {
-            serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on GetUserCharacter (cboxCount): {}\n", mysql_error(_connection)));
-        }
     }
 
     if (flag & USERCHARACTER_FLAG_ACHIEVEMENTS) {
@@ -703,9 +692,14 @@ bool DatabaseManager::CreateUserInventory(unsigned long userID) {
 
         string query = format("INSERT INTO user_inventory (userID, slotID, itemID, count, activeFlag, inUse, obtainTime, expirationTime, enhanceBits) VALUES");
         for (auto& itemID : serverConfig.defaultInventory) {
+            if (itemID == 166) {
+                // C-Box is stored in user_characters.cboxCount, never in user_inventory
+                AddUserCBoxCount(userID, 10);
+                continue;
+            }
             int inUse = 1;
             int count = 1;
-            if (itemID == 166 || itemID == 173) {
+            if (itemID == 173) {
                 count = 10;
                 inUse = 0;
             } else if (kTerroristCharacters.count(itemID)) {
@@ -1598,6 +1592,69 @@ bool DatabaseManager::DeleteUserInventoryItem(unsigned long userID, unsigned sho
 
     serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Deleted {} of itemID {} (deleted slots: {}) for userID {}\n",
         outActualDeletedCount, itemID, outDeletedSlots.size(), userID));
+    return true;
+}
+
+unsigned long DatabaseManager::GetUserCBoxCount(unsigned long userID) {
+    if (_connection == NULL) {
+        return 0;
+    }
+
+    string query = format("SELECT cboxCount FROM user_characters WHERE userID = {} LIMIT 1;", userID);
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on GetUserCBoxCount: {}\n", mysql_error(_connection)));
+        return 0;
+    }
+
+    MYSQL_RES* res = mysql_store_result(_connection);
+    if (res == NULL) {
+        return 0;
+    }
+
+    MYSQL_ROW row = mysql_fetch_row(res);
+    unsigned long count = 0;
+    if (row && row[0]) {
+        count = (unsigned long)atoll(row[0]);
+    }
+    mysql_free_result(res);
+    return count;
+}
+
+bool DatabaseManager::SetUserCBoxCount(unsigned long userID, unsigned long count) {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    string query = format("UPDATE user_characters SET cboxCount = {} WHERE userID = {};", count, userID);
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on SetUserCBoxCount: {}\n", mysql_error(_connection)));
+        return false;
+    }
+    return true;
+}
+
+bool DatabaseManager::AddUserCBoxCount(unsigned long userID, long delta, unsigned long* outNewCount) {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    string query;
+    if (delta >= 0) {
+        query = format("UPDATE user_characters SET cboxCount = cboxCount + {} WHERE userID = {};", delta, userID);
+    }
+    else {
+        unsigned long absDelta = (unsigned long)(-delta);
+        query = format("UPDATE user_characters SET cboxCount = IF(cboxCount >= {}, cboxCount - {}, 0) WHERE userID = {};", absDelta, absDelta, userID);
+    }
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on AddUserCBoxCount: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    if (outNewCount != nullptr) {
+        *outNewCount = GetUserCBoxCount(userID);
+    }
     return true;
 }
 

@@ -848,6 +848,18 @@ void QuestManager::ClearUserRolledRewards(unsigned long userID) {
 void QuestManager::GrantQuestRewardItem(User* user, unsigned short itemID, unsigned short count, unsigned short duration, InventoryItem* outDeltaItem) {
 	if (user == NULL || itemID == 0) return;
 	unsigned long userID = user->GetUserID();
+
+	// Special handling for C-Box (itemID 166): Stored in user_characters.cboxCount, never in inventory
+	if (itemID == 166) {
+		unsigned short addedCount = (count > 0) ? count : 1;
+		databaseManager.AddUserCBoxCount(userID, addedCount);
+		if (outDeltaItem) {
+			*outDeltaItem = {};
+		}
+		packet_UpdateInfoManager.SendPacket_UserUpdateInfo_CBoxCount(user->GetConnection(), userID, (unsigned short)user->GetCBoxCount());
+		return;
+	}
+
 	auto currentInv = databaseManager.GetUserInventory(userID);
 
 	bool alreadyOwned = false;
@@ -1340,8 +1352,10 @@ bool QuestManager::ClaimReward(User* user, unsigned int questID, unsigned char r
 			InventoryItem grantedItem{};
 			GrantQuestRewardItem(user, rolled.itemID, rolled.count, rolled.duration, &grantedItem);
 
-			// Sync inventory to client (Delta 增量同步，若為 166 亦會自動觸發 Packet 157 CBoxCount 同步)
-			packetManager.SendPacket_InventoryDelta(user->GetConnection(), { grantedItem }, {});
+			// Sync inventory to client (if item was added to inventory)
+			if (grantedItem.itemID != 0) {
+				packetManager.SendPacket_InventoryDelta(user->GetConnection(), { grantedItem }, {});
+			}
 
 			QuestRewardItem rItem;
 			rItem.type = 0; // Item

@@ -104,13 +104,8 @@ void PacketManager::SendPacket_Inventory(TCPConnection::pointer connection, cons
 
 	vector<InventoryItem> normalItems;
 	vector<InventoryItem> fabItems;
-	vector<unsigned short> slotsToDelete = deletedSlots;
-	unsigned short cboxCount = 0;
 
 	for (const auto& item : userInventory) {
-		if (item.itemID == 166) {
-			cboxCount += item.count;
-		}
 		const auto* itemDef = itemDefinitionManager.GetItem(item.itemID);
 		bool isFab = (itemDef != nullptr && itemDef->IsFabItem()) || (item.itemID >= 5001 && item.itemID <= 5999);
 		if (isFab) {
@@ -124,9 +119,9 @@ void PacketManager::SendPacket_Inventory(TCPConnection::pointer connection, cons
 	// 1. Send normal items via Packet 154 (Inventory)
 	auto packet = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::Inventory });
 	if (packet != NULL) {
-		packet->WriteUInt16_LE((unsigned short)(normalItems.size() + slotsToDelete.size()));
+		packet->WriteUInt16_LE((unsigned short)(normalItems.size() + deletedSlots.size()));
 
-		for (unsigned short slotID : slotsToDelete) {
+		for (unsigned short slotID : deletedSlots) {
 			packet->WriteUInt16_LE(slotID);
 			packet->WriteUInt8(0); // status (0 = removed / deleted from client inventory)
 		}
@@ -170,12 +165,12 @@ void PacketManager::SendPacket_Inventory(TCPConnection::pointer connection, cons
 	}
 
 	// 2. Send craft materials via Packet 158 (FabItems)
-	if (!fabItems.empty() || !slotsToDelete.empty()) {
+	if (!fabItems.empty() || !deletedSlots.empty()) {
 		auto fabPacket = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::FabItems });
 		if (fabPacket != NULL) {
-			fabPacket->WriteUInt16_LE((unsigned short)(fabItems.size() + slotsToDelete.size()));
+			fabPacket->WriteUInt16_LE((unsigned short)(fabItems.size() + deletedSlots.size()));
 
-			for (unsigned short slotID : slotsToDelete) {
+			for (unsigned short slotID : deletedSlots) {
 				fabPacket->WriteUInt16_LE(slotID);
 				fabPacket->WriteUInt8(0); // status (0 = removed / deleted from client inventory)
 			}
@@ -196,10 +191,10 @@ void PacketManager::SendPacket_Inventory(TCPConnection::pointer connection, cons
 		}
 	}
 
-	// Also sync CBox count to client HUD / CGamePlayer
+	// Also sync CBox count to client HUD / CGamePlayer from character
 	User* user = userManager.GetUserByConnection(connection);
 	if (user != NULL) {
-		packet_UpdateInfoManager.SendPacket_UserUpdateInfo_CBoxCount(connection, user->GetUserID(), cboxCount);
+		packet_UpdateInfoManager.SendPacket_UserUpdateInfo_CBoxCount(connection, user->GetUserID(), (unsigned short)user->GetCBoxCount());
 	}
 }
 
@@ -210,12 +205,8 @@ void PacketManager::SendPacket_InventoryDelta(TCPConnection::pointer connection,
 
 	vector<InventoryItem> normalItems;
 	vector<InventoryItem> fabItems;
-	bool hasCBox = false;
 
 	for (const auto& item : updatedItems) {
-		if (item.itemID == 166) {
-			hasCBox = true;
-		}
 		const auto* itemDef = itemDefinitionManager.GetItem(item.itemID);
 		bool isFab = (itemDef != nullptr && itemDef->IsFabItem()) || (item.itemID >= 5001 && item.itemID <= 5999);
 		if (isFab) {
@@ -300,18 +291,6 @@ void PacketManager::SendPacket_InventoryDelta(TCPConnection::pointer connection,
 			}
 
 			fabPacket->Send();
-		}
-	}
-
-	// 3. Automatically sync C-Box count if C-Box was modified
-	if (hasCBox) {
-		User* user = userManager.GetUserByConnection(connection);
-		if (user != nullptr) {
-			unsigned short totalCBox = 0;
-			for (const auto& inv : user->GetUserInventory()) {
-				if (inv.itemID == 166) totalCBox += inv.count;
-			}
-			packet_UpdateInfoManager.SendPacket_UserUpdateInfo_CBoxCount(connection, user->GetUserID(), totalCBox);
 		}
 	}
 }

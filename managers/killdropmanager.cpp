@@ -191,6 +191,42 @@ void KillDropManager::GiveDropItem(User* killer, Room* room, const KillDropItem&
 	unsigned long userID = killer->GetUserID();
 	time_t now = time(NULL);
 
+	unsigned short addedCount = dropItem.count > 0 ? dropItem.count : 1;
+
+	// Special handling for C-Box (itemID 166): Stored in user_characters.cboxCount, never in inventory
+	if (dropItem.itemID == 166) {
+		unsigned long newTotal = 0;
+		killer->AddCBoxCount(addedCount, &newTotal);
+
+		if (_settings.showRightHudIcon) {
+			unsigned char notice = dropItem.noticeType != 0 ? dropItem.noticeType : (unsigned char)Packet_ItemType::GachaponNotice;
+			packet_ItemManager.SendPacket_Item_Notice(connection, notice);
+		}
+
+		packet_UpdateInfoManager.SendPacket_UserUpdateInfo_CBoxCount(connection, userID, (unsigned short)newTotal);
+
+		if (_settings.showChatNotice) {
+			AwardItem award;
+			award.itemID = dropItem.itemID;
+			award.count = addedCount;
+			award.duration = dropItem.duration;
+			award.flags = 0;
+
+			packet_UMsgManager.SendPacket_UMsg_ItemAwardNotice(
+				connection,
+				{ award },
+				"HSCENARIO_MONSTER_DROP_ITEM_TITLE",
+				"HSCENARIO_MONSTER_DROP_ITEM_GIVE",
+				{},
+				Packet_UMsgType::ItemAwardNotice_InGame
+			);
+		}
+
+		serverConsole.Print(PrefixType::Info, format("[ KillDropManager ] User ({}) dropped C-Box (x{}) on kill! Total CBox: {}\n",
+			killer->GetUserLogName(), addedCount, newTotal));
+		return;
+	}
+
 	std::vector<InventoryItem> invItems = killer->GetUserInventory();
 	bool alreadyOwned = false;
 	unsigned short maxSlotID = 0;
@@ -203,8 +239,6 @@ void KillDropManager::GiveDropItem(User* killer, Room* room, const KillDropItem&
 			alreadyOwned = true;
 		}
 	}
-
-	unsigned short addedCount = dropItem.count > 0 ? dropItem.count : 1;
 
 	// 1. Persist to Database
 	if (alreadyOwned) {
@@ -228,20 +262,9 @@ void KillDropManager::GiveDropItem(User* killer, Room* room, const KillDropItem&
 	if (_settings.showRightHudIcon) {
 		unsigned char notice = dropItem.noticeType;
 		if (notice == 0) {
-			notice = (dropItem.itemID == 166) ? (unsigned char)Packet_ItemType::GachaponNotice : (unsigned char)Packet_ItemType::FabEnduNotice;
+			notice = (unsigned char)Packet_ItemType::FabEnduNotice;
 		}
 		packet_ItemManager.SendPacket_Item_Notice(connection, notice);
-	}
-
-	// 3. For C-Box (itemID 166), sync updated total CBoxCount to client HUD (Packet 157)
-	if (dropItem.itemID == 166) {
-		unsigned short totalCBox = 0;
-		for (const auto& inv : killer->GetUserInventory()) {
-			if (inv.itemID == 166) {
-				totalCBox += inv.count;
-			}
-		}
-		packet_UpdateInfoManager.SendPacket_UserUpdateInfo_CBoxCount(connection, userID, totalCBox);
 	}
 
 	// 4. In-game Chat Notice (Purple Type 63)

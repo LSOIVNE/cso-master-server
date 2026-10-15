@@ -340,6 +340,7 @@ bool ScenarioRewardManager::GrantScenarioReward(User* user, const ScenarioMapRew
 	vector<AwardItem> awardItems;
 	vector<InventoryItem> newItemsToAdd;
 	vector<InventoryItem> deltaUpdatedItems;
+	bool hasCBoxAward = false;
 
 	for (const auto& item : resolvedItems) {
 		if (item.itemID == 0) continue;
@@ -362,6 +363,16 @@ bool ScenarioRewardManager::GrantScenarioReward(User* user, const ScenarioMapRew
 		aItem.itemID = item.itemID;
 		aItem.count = item.count > 0 ? item.count : 1;
 		aItem.flags = 0;
+
+		if (item.itemID == 166) {
+			// C-Box (itemID 166) is stored in user_characters.cboxCount, never in inventory
+			unsigned short addedCount = item.count > 0 ? item.count : 1;
+			databaseManager.AddUserCBoxCount(userID, addedCount);
+			hasCBoxAward = true;
+			aItem.duration = 0;
+			awardItems.push_back(aItem);
+			continue;
+		}
 
 		if (item.duration <= 0 && isCountItem) {
 			// Consumable count item (e.g. C-Box 166, decoders, craft materials)
@@ -436,8 +447,12 @@ bool ScenarioRewardManager::GrantScenarioReward(User* user, const ScenarioMapRew
 		databaseManager.AddUserInventoryItems(userID, newItemsToAdd);
 	}
 
-	// Realtime sync inventory (Delta 增量同步，若包含 166 亦由底層自動同步 Packet 157 CBoxCount)
+	// Realtime sync inventory
 	packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, {});
+
+	if (hasCBoxAward) {
+		packet_UpdateInfoManager.SendPacket_UserUpdateInfo_CBoxCount(connection, userID, (unsigned short)user->GetCBoxCount());
+	}
 
 	// Send ItemAwardNotice dialog (Packet 67 Type 60)
 	if (!awardItems.empty() || totalBonusPoints > 0 || reward->bonusExp > 0) {
