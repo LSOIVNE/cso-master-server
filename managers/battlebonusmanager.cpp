@@ -161,8 +161,49 @@ bool BattleBonusManager::LoadConfig(const std::string& configPath) {
 			_mapSeqMaxPercent = mObj.value("max_percent", (unsigned short)10);
 		}
 
-		serverConsole.Print(PrefixType::Info, format("[ BattleBonusManager ] Loaded {} pass items, {} classes, {} decorations, {} scheduled events (stackGeneralAndZombie: {}, mapSeq: {})\n",
-			_passItems.size(), _classes.size(), _decorations.size(), _scheduledEvents.size(), _stackGeneralAndZombie, _mapSeqBonusEnabled));
+		// 6. Base rewards (Default & Mode overrides)
+		_baseRewards = BaseRewardsConfig();
+		if (root.contains("base_rewards") && root["base_rewards"].is_object()) {
+			const auto& br = root["base_rewards"];
+			_baseRewards.botModeMultiplier = br.value("bot_mode_multiplier", 0.5f);
+
+			auto parseRule = [](const json& j, RewardRule& rule) {
+				if (!j.is_object()) return;
+				rule.base = j.value("base", rule.base);
+				rule.perKill = j.value("per_kill", rule.perKill);
+				rule.maxKillBonus = j.value("max_kill_bonus", rule.maxKillBonus);
+				rule.winBonus = j.value("win_bonus", rule.winBonus);
+			};
+
+			if (br.contains("default") && br["default"].is_object()) {
+				const auto& def = br["default"];
+				if (def.contains("exp")) parseRule(def["exp"], _baseRewards.defaultExp);
+				if (def.contains("points")) parseRule(def["points"], _baseRewards.defaultPoints);
+			}
+
+			if (br.contains("mode_overrides") && br["mode_overrides"].is_array()) {
+				for (const auto& ovVal : br["mode_overrides"]) {
+					if (!ovVal.is_object()) continue;
+					ModeRewardConfig mc;
+					mc.name = ovVal.value("name", "");
+					if (ovVal.contains("mode_ids") && ovVal["mode_ids"].is_array()) {
+						for (const auto& mId : ovVal["mode_ids"]) {
+							if (mId.is_number_integer()) {
+								mc.modeIDs.push_back((unsigned char)mId.get<int>());
+							}
+						}
+					}
+					mc.exp = _baseRewards.defaultExp;
+					mc.points = _baseRewards.defaultPoints;
+					if (ovVal.contains("exp")) parseRule(ovVal["exp"], mc.exp);
+					if (ovVal.contains("points")) parseRule(ovVal["points"], mc.points);
+					_baseRewards.modeOverrides.push_back(mc);
+				}
+			}
+		}
+
+		serverConsole.Print(PrefixType::Info, format("[ BattleBonusManager ] Loaded {} pass items, {} classes, {} decorations, {} scheduled events, {} base mode overrides (stackGeneralAndZombie: {}, mapSeq: {})\n",
+			_passItems.size(), _classes.size(), _decorations.size(), _scheduledEvents.size(), _baseRewards.modeOverrides.size(), _stackGeneralAndZombie, _mapSeqBonusEnabled));
 
 		return true;
 	}
@@ -170,6 +211,47 @@ bool BattleBonusManager::LoadConfig(const std::string& configPath) {
 		serverConsole.Print(PrefixType::Error, format("[ BattleBonusManager ] Exception parsing {}: {}\n", resolvedPath, e.what()));
 		return false;
 	}
+}
+
+BaseRewardResult BattleBonusManager::CalculateBaseRewards(unsigned char gameModeID, unsigned short kills, bool isWin) const {
+	BaseRewardResult res;
+
+	const RewardRule* expRule = &_baseRewards.defaultExp;
+	const RewardRule* pointsRule = &_baseRewards.defaultPoints;
+
+	for (const auto& overrideCfg : _baseRewards.modeOverrides) {
+		if (std::find(overrideCfg.modeIDs.begin(), overrideCfg.modeIDs.end(), gameModeID) != overrideCfg.modeIDs.end()) {
+			expRule = &overrideCfg.exp;
+			pointsRule = &overrideCfg.points;
+			break;
+		}
+	}
+
+	// EXP calculation
+	float killExpBonus = (float)kills * expRule->perKill;
+	if (expRule->maxKillBonus > 0 && killExpBonus > (float)expRule->maxKillBonus) {
+		killExpBonus = (float)expRule->maxKillBonus;
+	}
+	float totalExp = (float)expRule->base + killExpBonus + (isWin ? (float)expRule->winBonus : 0.0f);
+
+	// Points calculation
+	float killPointsBonus = (float)kills * pointsRule->perKill;
+	if (pointsRule->maxKillBonus > 0 && killPointsBonus > (float)pointsRule->maxKillBonus) {
+		killPointsBonus = (float)pointsRule->maxKillBonus;
+	}
+	float totalPoints = (float)pointsRule->base + killPointsBonus + (isWin ? (float)pointsRule->winBonus : 0.0f);
+
+	// Bot mode multiplier (modes 3, 4, 5, 24)
+	bool isBotMode = ((gameModeID >= 3 && gameModeID <= 5) || gameModeID == 24);
+	if (isBotMode && _baseRewards.botModeMultiplier > 0.0f) {
+		totalExp *= _baseRewards.botModeMultiplier;
+		totalPoints *= _baseRewards.botModeMultiplier;
+	}
+
+	res.exp = (unsigned short)std::max(0.0f, totalExp);
+	res.points = (unsigned short)std::max(0.0f, totalPoints);
+
+	return res;
 }
 
 bool BattleBonusManager::IsEventActive(const ScheduledEventBonus& evt, const tm& localTm) {

@@ -78,6 +78,32 @@ struct BattleBonusResult {
 	}
 };
 
+struct RewardRule {
+	unsigned short base = 20;
+	float perKill = 3.0f;
+	unsigned short maxKillBonus = 300;
+	unsigned short winBonus = 15;
+};
+
+struct ModeRewardConfig {
+	std::string name;
+	std::vector<unsigned char> modeIDs;
+	RewardRule exp;
+	RewardRule points;
+};
+
+struct BaseRewardsConfig {
+	RewardRule defaultExp{ 20, 3.0f, 300, 15 };
+	RewardRule defaultPoints{ 50, 5.0f, 500, 30 };
+	std::vector<ModeRewardConfig> modeOverrides;
+	float botModeMultiplier = 0.5f;
+};
+
+struct BaseRewardResult {
+	unsigned short exp = 0;
+	unsigned short points = 0;
+};
+
 class BattleBonusManager {
 public:
 	BattleBonusManager();
@@ -85,13 +111,16 @@ public:
 
 	bool Init();
 	bool LoadConfig(const std::string& configPath);
+	bool Reload(const std::string& configPath = "configs/battle_bonus.json") { return LoadConfig(configPath); }
 
+	BaseRewardResult CalculateBaseRewards(unsigned char gameModeID, unsigned short kills, bool isWin) const;
 	BattleBonusResult CalculateBonus(User* user, GameMatchUser* gmu, unsigned char gameModeID, unsigned short baseExp, unsigned short basePoints);
 	bool HasClassBonus(unsigned short itemID) const;
 
 private:
 	static bool IsEventActive(const ScheduledEventBonus& evt, const tm& localTm);
 
+	BaseRewardsConfig _baseRewards;
 	bool _stackGeneralAndZombie = false;
 	std::unordered_map<unsigned short, PassItemBonus> _passItems;
 	std::unordered_map<unsigned short, ClassBonus> _classes;

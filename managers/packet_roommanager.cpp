@@ -647,8 +647,9 @@ void Packet_RoomManager::parsePacket_Room_LeaveRoom(User* user, TCPConnection::P
 						}
 					}
 
-					unsigned short earnedExp = 100 + kills * 10;
-					unsigned short earnedPoints = 200 + kills * 15;
+					BaseRewardResult baseRewards = battleBonusManager.CalculateBaseRewards(gameModeID, kills, false);
+					unsigned short earnedExp = baseRewards.exp;
+					unsigned short earnedPoints = baseRewards.points;
 					BattleBonusResult bonusResult = battleBonusManager.CalculateBonus(user, gameMatchUser, gameModeID, earnedExp, earnedPoints);
 					unsigned short totalEarnedExp = earnedExp + bonusResult.bonusExp;
 					unsigned short totalEarnedPoints = earnedPoints + bonusResult.bonusPoints;
@@ -703,8 +704,9 @@ void Packet_RoomManager::parsePacket_Room_LeaveRoom(User* user, TCPConnection::P
 						}
 					}
 
-					unsigned short earnedExp = 100 + kills * 10;
-					unsigned short earnedPoints = 200 + kills * 15;
+					BaseRewardResult baseRewards = battleBonusManager.CalculateBaseRewards(gameModeID, kills, false);
+					unsigned short earnedExp = baseRewards.exp;
+					unsigned short earnedPoints = baseRewards.points;
 					BattleBonusResult bonusResult = battleBonusManager.CalculateBonus(user, gameMatchUser, gameModeID, earnedExp, earnedPoints);
 					unsigned short totalEarnedExp = earnedExp + bonusResult.bonusExp;
 					unsigned short totalEarnedPoints = earnedPoints + bonusResult.bonusPoints;

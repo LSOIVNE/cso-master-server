@@ -736,8 +736,9 @@ void Packet_HostManager::ProcessEndGame(Room* room, unsigned char winTeam, unsig
 			}
 		}
 
-		unsigned short earnedExp = 100 + kills * 10 + (isWin ? 50 : 0);
-		unsigned short earnedPoints = 200 + kills * 15 + (isWin ? 100 : 0);
+		BaseRewardResult baseRewards = battleBonusManager.CalculateBaseRewards(gameModeID, kills, isWin);
+		unsigned short earnedExp = baseRewards.exp;
+		unsigned short earnedPoints = baseRewards.points;
 
 		// Check scenario custom clear rewards (Gamemode 15 & 17)
 		const ScenarioMapReward* scenReward = nullptr;

@@ -18,6 +18,7 @@
 #include "packet_messengermanager.h"
 #include "serverconfig.h"
 #include "scenariorewardmanager.h"
+#include "battlebonusmanager.h"
 #include <sstream>
 #include <unordered_set>
 #include <algorithm>
@@ -2172,6 +2173,15 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		}
 		else {
 			SendNotice("[系統] 重載災厄之章獎勵配置失敗，請檢查 configs/scenario_reward.json 格式！");
+		}
+		return true;
+	}
+	else if (cmdLower == "/reloadbonus") {
+		if (battleBonusManager.Reload()) {
+			SendNotice("[系統] 對局結算獎勵與加成配置已成功重載！(configs/battle_bonus.json)");
+		}
+		else {
+			SendNotice("[系統] 重載對局獎勵配置失敗，請檢查 configs/battle_bonus.json 格式！");
 		}
 		return true;
 	}

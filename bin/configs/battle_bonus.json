@@ -112,5 +112,40 @@
     "start_percent": 4,
     "step_percent": 2,
     "max_percent": 10
+  },
+  "base_rewards": {
+    "default": {
+      "exp": {
+        "base": 20,
+        "per_kill": 3.0,
+        "max_kill_bonus": 300,
+        "win_bonus": 15
+      },
+      "points": {
+        "base": 50,
+        "per_kill": 5.0,
+        "max_kill_bonus": 500,
+        "win_bonus": 30
+      }
+    },
+    "mode_overrides": [
+      {
+        "name": "PVE殺怪模式 (15 災厄之章 / 17 戰神之章 / 26 夜襲生存戰)",
+        "mode_ids": [ 15, 17, 26 ],
+        "exp": {
+          "base": 30,
+          "per_kill": 0.05,
+          "max_kill_bonus": 100,
+          "win_bonus": 30
+        },
+        "points": {
+          "base": 60,
+          "per_kill": 0.1,
+          "max_kill_bonus": 200,
+          "win_bonus": 50
+        }
+      }
+    ],
+    "bot_mode_multiplier": 0.5
   }
 }
