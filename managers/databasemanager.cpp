@@ -1777,6 +1777,101 @@ bool DatabaseManager::SaveUserBattleResult(unsigned long userID, unsigned long l
     return true;
 }
 
+bool DatabaseManager::RecordUserLeavePenalty(unsigned long userID, bool deductPoints, unsigned long pointAmount, bool recordDefeat, unsigned short frags, unsigned short deaths) {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    vector<string> updates;
+    if (deductPoints && pointAmount > 0) {
+        updates.push_back(format("points = IF(points >= {}, points - {}, 0)", pointAmount, pointAmount));
+    }
+    if (recordDefeat) {
+        updates.push_back("battles = battles + 1");
+        if (frags > 0) {
+            updates.push_back(format("frags = frags + {}", frags));
+        }
+        if (deaths > 0) {
+            updates.push_back(format("deaths = deaths + {}", deaths));
+        }
+    }
+
+    if (updates.empty()) {
+        return true;
+    }
+
+    string query = "UPDATE user_characters SET ";
+    for (size_t i = 0; i < updates.size(); ++i) {
+        query += updates[i];
+        if (i + 1 < updates.size()) {
+            query += ", ";
+        }
+    }
+    query += format(" WHERE userID = {};", userID);
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on RecordUserLeavePenalty: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Recorded leave penalty for userID {}: deductPoints={}, amount={}, recordDefeat={}, frags={}, deaths={}\n",
+        userID, deductPoints, pointAmount, recordDefeat, frags, deaths));
+    return true;
+}
+
+bool DatabaseManager::SaveUserLeaveExpAndPoints(unsigned long userID, unsigned long long addedExp, unsigned long long addedPoints, unsigned short frags, unsigned short deaths, bool recordDefeat) {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    UserCharacterResult ucr = GetUserCharacter(userID, USERCHARACTER_FLAG_LEVEL | USERCHARACTER_FLAG_EXP);
+    unsigned char oldLevel = ucr.result ? (ucr.userCharacter.level ? ucr.userCharacter.level : 1) : 1;
+    unsigned long long newExp = ucr.result ? (ucr.userCharacter.exp + addedExp) : addedExp;
+    unsigned char newLevel = max(oldLevel, User::CalculateLevel(newExp));
+
+    vector<string> updates;
+    if (addedExp > 0) {
+        updates.push_back(format("exp = exp + {}", addedExp));
+    }
+    if (addedPoints > 0) {
+        updates.push_back(format("points = points + {}", addedPoints));
+    }
+    if (recordDefeat) {
+        updates.push_back("battles = battles + 1");
+    }
+    if (frags > 0) {
+        updates.push_back(format("frags = frags + {}", frags));
+    }
+    if (deaths > 0) {
+        updates.push_back(format("deaths = deaths + {}", deaths));
+    }
+    if (newLevel > 0) {
+        updates.push_back(format("level = {}", (int)newLevel));
+    }
+
+    if (updates.empty()) {
+        return true;
+    }
+
+    string query = "UPDATE user_characters SET ";
+    for (size_t i = 0; i < updates.size(); ++i) {
+        query += updates[i];
+        if (i + 1 < updates.size()) {
+            query += ", ";
+        }
+    }
+    query += format(" WHERE userID = {};", userID);
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on SaveUserLeaveExpAndPoints: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Saved leave exp & points for userID {}: +{} exp, +{} points, recordDefeat={}, level={}\n",
+        userID, addedExp, addedPoints, recordDefeat, (int)newLevel));
+    return true;
+}
+
 bool DatabaseManager::AddUserExp(unsigned long userID, unsigned long long addedExp, unsigned char* outNewLevel) {
     if (_connection == NULL) {
         return false;

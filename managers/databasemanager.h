@@ -135,6 +135,8 @@ public:
 	bool RemoveExpiredInventoryItems(unsigned long userID, vector<ExpiredItemRecord>& outExpiredItems);
 	bool SetUserInventoryItemExpirationSeconds(unsigned long userID, unsigned short itemID, unsigned int seconds);
 	bool SaveUserBattleResult(unsigned long userID, unsigned long long addedExp, unsigned long long addedPoints, unsigned short addedFrags, unsigned short addedDeaths, bool isWin, unsigned char newLevel, bool recordStats = true, unsigned int addedZombieKills = 0, unsigned int addedSurvivals = 0);
+	bool RecordUserLeavePenalty(unsigned long userID, bool deductPoints, unsigned long pointAmount, bool recordDefeat, unsigned short frags, unsigned short deaths);
+	bool SaveUserLeaveExpAndPoints(unsigned long userID, unsigned long long addedExp, unsigned long long addedPoints, unsigned short frags, unsigned short deaths, bool recordDefeat);
 	bool AddUserExp(unsigned long userID, unsigned long long addedExp, unsigned char* outNewLevel = nullptr);
 	bool SetUserLevel(unsigned long userID, unsigned char newLevel);
 	bool DeductUserFunds(unsigned long userID, bool isPoints, unsigned long long amount);

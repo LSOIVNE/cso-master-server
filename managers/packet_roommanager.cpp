@@ -7,6 +7,8 @@
 #include "serverconsole.h"
 #include "serverconfig.h"
 #include "packet_updateinfomanager.h"
+#include "databasemanager.h"
+#include "battlebonusmanager.h"
 
 Packet_RoomManager packet_RoomManager;
 
@@ -605,9 +607,119 @@ void Packet_RoomManager::parsePacket_Room_LeaveRoom(User* user, TCPConnection::P
 		return;
 	}
 
-	unsigned char unk = packet->ReadUInt8();
+	unsigned char leaveOption = packet->ReadUInt8();
 
-	serverConsole.Print(PrefixType::Info, format("[ Packet_RoomManager ] User ({}) has sent Packet_Room LeaveRoom - unk: {}\n", user->GetUserLogName(), unk));
+	serverConsole.Print(PrefixType::Info, format("[ Packet_RoomManager ] User ({}) has sent Packet_Room LeaveRoom - leaveOption: {}\n", user->GetUserLogName(), leaveOption));
+
+	string warningKey = "";
+
+	if (user->GetUserStatus() == UserStatus::InGame) {
+		GameMatch* gameMatch = room->GetGameMatch();
+		GameMatchUser* gameMatchUser = gameMatch ? gameMatch->GetGameMatchUserByUser(user) : nullptr;
+		unsigned char gameModeID = room->GetRoomSettings().gameModeID;
+		bool isBotMode = ((gameModeID >= 3 && gameModeID <= 5) || gameModeID == 24);
+		bool isCompetitiveMode = (gameModeID == 0 || gameModeID == 1 || gameModeID == 2 || 
+		                          gameModeID == 6 || gameModeID == 7 || 
+		                          gameModeID == 22 || gameModeID == 23);
+
+		if (gameMatch && gameMatchUser && !isBotMode && leaveOption != 0) {
+			unsigned long userID = user->GetUserID();
+			unsigned short kills = gameMatchUser->GetKills();
+			unsigned short deaths = gameMatchUser->GetDeaths();
+
+			if (leaveOption == 1) { // 離開進行中的遊戲，無道具
+				databaseManager.RecordUserLeavePenalty(userID, true, 50, isCompetitiveMode, kills, deaths);
+				warningKey = "ROOM_LEAVE_PENALTY";
+			}
+			else if (leaveOption == 2) { // 使用道具 106 離場優惠券-經驗值,Point保留
+				unsigned short slotID = 0;
+				bool deleted = false;
+				if (databaseManager.ConsumeUserInventoryItem(userID, 106, 1, slotID, deleted)) {
+					if (deleted) {
+						packetManager.SendPacket_InventoryDelta(connection, {}, { slotID });
+					}
+					else {
+						const auto inv = databaseManager.GetUserInventory(userID);
+						for (const auto& it : inv) {
+							if (it.slotID == slotID) {
+								packetManager.SendPacket_InventoryDelta(connection, { it }, {});
+								break;
+							}
+						}
+					}
+
+					unsigned short earnedExp = 100 + kills * 10;
+					unsigned short earnedPoints = 200 + kills * 15;
+					BattleBonusResult bonusResult = battleBonusManager.CalculateBonus(user, gameMatchUser, gameModeID, earnedExp, earnedPoints);
+					unsigned short totalEarnedExp = earnedExp + bonusResult.bonusExp;
+					unsigned short totalEarnedPoints = earnedPoints + bonusResult.bonusPoints;
+
+					databaseManager.SaveUserLeaveExpAndPoints(userID, totalEarnedExp, totalEarnedPoints, kills, deaths, isCompetitiveMode);
+					warningKey = "ROOM_LEAVE_NOPENALTY_ITEM_OK";
+				}
+				else {
+					databaseManager.RecordUserLeavePenalty(userID, true, 50, isCompetitiveMode, kills, deaths);
+					warningKey = "ROOM_LEAVE_NOPENALTY_ITEM_FAIL";
+				}
+			}
+			else if (leaveOption == 3) { // 使用道具 105 離場優惠券-勝敗不計
+				unsigned short slotID = 0;
+				bool deleted = false;
+				if (databaseManager.ConsumeUserInventoryItem(userID, 105, 1, slotID, deleted)) {
+					if (deleted) {
+						packetManager.SendPacket_InventoryDelta(connection, {}, { slotID });
+					}
+					else {
+						const auto inv = databaseManager.GetUserInventory(userID);
+						for (const auto& it : inv) {
+							if (it.slotID == slotID) {
+								packetManager.SendPacket_InventoryDelta(connection, { it }, {});
+								break;
+							}
+						}
+					}
+
+					databaseManager.RecordUserLeavePenalty(userID, true, 50, false, kills, deaths);
+					warningKey = "ROOM_LEAVE_NODEFEAT_ITEM_OK";
+				}
+				else {
+					databaseManager.RecordUserLeavePenalty(userID, true, 50, isCompetitiveMode, kills, deaths);
+					warningKey = "ROOM_LEAVE_NODEFEAT_ITEM_FAIL";
+				}
+			}
+			else if (leaveOption == 4) { // 使用道具 107 離場全優惠券
+				unsigned short slotID = 0;
+				bool deleted = false;
+				if (databaseManager.ConsumeUserInventoryItem(userID, 107, 1, slotID, deleted)) {
+					if (deleted) {
+						packetManager.SendPacket_InventoryDelta(connection, {}, { slotID });
+					}
+					else {
+						const auto inv = databaseManager.GetUserInventory(userID);
+						for (const auto& it : inv) {
+							if (it.slotID == slotID) {
+								packetManager.SendPacket_InventoryDelta(connection, { it }, {});
+								break;
+							}
+						}
+					}
+
+					unsigned short earnedExp = 100 + kills * 10;
+					unsigned short earnedPoints = 200 + kills * 15;
+					BattleBonusResult bonusResult = battleBonusManager.CalculateBonus(user, gameMatchUser, gameModeID, earnedExp, earnedPoints);
+					unsigned short totalEarnedExp = earnedExp + bonusResult.bonusExp;
+					unsigned short totalEarnedPoints = earnedPoints + bonusResult.bonusPoints;
+
+					databaseManager.SaveUserLeaveExpAndPoints(userID, totalEarnedExp, totalEarnedPoints, kills, deaths, false);
+					warningKey = "ROOM_LEAVE_NOPENALTYDEFEAT_ITEM_OK";
+				}
+				else {
+					databaseManager.RecordUserLeavePenalty(userID, true, 50, isCompetitiveMode, kills, deaths);
+					warningKey = "ROOM_LEAVE_NOPENALTYDEFEAT_ITEM_FAIL";
+				}
+			}
+		}
+	}
 
 	room->RemoveRoomUser(user);
 	userManager.SendAddUserPacketToAll(user);
@@ -620,6 +732,10 @@ void Packet_RoomManager::parsePacket_Room_LeaveRoom(User* user, TCPConnection::P
 	const UserCharacterResult& ucr = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
 	if (ucr.result) {
 		packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, ucr.userCharacter });
+	}
+
+	if (!warningKey.empty()) {
+		packet_UMsgManager.SendPacket_UMsg_ServerMessage(connection, Packet_UMsgType::WarningMessage, warningKey);
 	}
 
 	userManager.CheckAndProcessUserExpiredItems(user, false);
