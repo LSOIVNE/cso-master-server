@@ -11,6 +11,7 @@ Room::Room(unsigned short roomID, User* roomHostUser) : _roomID(roomID), _roomHo
 
 	_roomSettings.lowFlag = ROOMSETTINGS_LFLAG_ALL;
 	_roomSettings.highFlag = ROOMSETTINGS_HFLAG_ALL;
+	_roomSettings.unkh80 = 0;
 	_roomSettings.unkh200.clear();
 	_roomSettings.unkh400 = 0;
 	SetGameMatch(NULL);
@@ -122,6 +123,8 @@ void Room::RemoveRoomUser(User* user) {
 					RoomSettings roomSettings;
 					roomSettings.lowFlag = ROOMSETTINGS_LFLAG_ROOMSTATE;
 					roomSettings.roomState = RoomState::Waiting;
+					roomSettings.highFlag = ROOMSETTINGS_HFLAG_UNK80;
+					roomSettings.unkh80 = 0;
 					UpdateRoomSettings(roomSettings);
 
 					roomManager.SendUpdateRoomPacketToAll(this, ROOMLIST_FLAG_ROOMSTATE);
@@ -297,6 +300,10 @@ void Room::UpdateRoomSettings(const RoomSettings& roomSettings) {
 	}
 	if (roomSettings.lowFlag & ROOMSETTINGS_LFLAG_ROOMSTATE) {
 		_roomSettings.roomState = roomSettings.roomState;
+		if (!(roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK80)) {
+			_roomSettings.highFlag |= ROOMSETTINGS_HFLAG_UNK80;
+			_roomSettings.unkh80 = (_roomSettings.roomState == RoomState::Playing) ? 3 : 0;
+		}
 	}
 	if (roomSettings.lowFlag & ROOMSETTINGS_LFLAG_UNK80000000) {
 		_roomSettings.unk80000000_1 = roomSettings.unk80000000_1;

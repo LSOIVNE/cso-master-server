@@ -482,7 +482,8 @@ void Packet_RoomManager::parsePacket_Room_CreateRoom(User* user, TCPConnection::
 	serverConsole.Print(PrefixType::Info, format("[ Packet_RoomManager ] User ({}) has sent Packet_Room CreateRoom - roomName: {}, unk2: {}, maxPlayers: {}, gameModeID: {}, mapID: {}, winLimit: {}, killLimit: {}, timeLimit: {}, roundTime: {}, password: {}, unk11: {}, unk12: {}, fastStart: {}, unk14: {}, unk15: {}, unk16: {}\n", user->GetUserLogName(), Cp950ToUtf8(roomSettings.roomName), unk2, roomSettings.maxPlayers, roomSettings.gameModeID, roomSettings.mapID, roomSettings.winLimit, roomSettings.killLimit, roomSettings.timeLimit, roomSettings.roundTime, Cp950ToUtf8(roomSettings.password), unk11, unk12, fastStart, unk14, unk15, unk16));
 
 	unsigned char modeSubFlag = calculateModeSubFlag(user, roomSettings.gameModeID, false);
-	roomSettings.highFlag |= ROOMSETTINGS_HFLAG_UNK200 | ROOMSETTINGS_HFLAG_UNK400 | ROOMSETTINGS_HFLAG_UNK1000;
+	roomSettings.highFlag |= ROOMSETTINGS_HFLAG_UNK80 | ROOMSETTINGS_HFLAG_UNK200 | ROOMSETTINGS_HFLAG_UNK400 | ROOMSETTINGS_HFLAG_UNK1000;
+	roomSettings.unkh80 = 0;
 	roomSettings.unkh200.clear();
 	roomSettings.unkh400 = 0;
 	roomSettings.unkh1000 = modeSubFlag;
@@ -776,6 +777,8 @@ void Packet_RoomManager::parsePacket_Room_StartGame(User* user) {
 	if (roomHostUser == user) {
 		RoomSettings roomSettings = room->GetRoomSettings();
 		roomSettings.roomState = RoomState::Playing;
+		roomSettings.highFlag |= ROOMSETTINGS_HFLAG_UNK80;
+		roomSettings.unkh80 = 3;
 		room->SetRoomSettings(roomSettings);
 		packet_HostManager.SendPacket_Host_HostStart(user);
 	}
@@ -917,6 +920,10 @@ void Packet_RoomManager::parsePacket_Room_UpdateRoomSettings(User* user, TCPConn
 	}
 	if (roomSettings.lowFlag & ROOMSETTINGS_LFLAG_ROOMSTATE) {
 		roomSettings.roomState = (RoomState)packet->ReadUInt8();
+		if (!(roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK80)) {
+			roomSettings.highFlag |= ROOMSETTINGS_HFLAG_UNK80;
+			roomSettings.unkh80 = (roomSettings.roomState == RoomState::Playing) ? 3 : 0;
+		}
 		roomListFlag |= ROOMLIST_FLAG_ROOMSTATE;
 	}
 	if (roomSettings.lowFlag & ROOMSETTINGS_LFLAG_UNK80000000) {
@@ -1169,6 +1176,8 @@ void Packet_RoomManager::parsePacket_Room_ReturnToRoom(User* user) {
 			RoomSettings roomSettings;
 			roomSettings.lowFlag = ROOMSETTINGS_LFLAG_ROOMSTATE;
 			roomSettings.roomState = RoomState::Waiting;
+			roomSettings.highFlag = ROOMSETTINGS_HFLAG_UNK80;
+			roomSettings.unkh80 = 0;
 			room->UpdateRoomSettings(roomSettings);
 
 			roomManager.SendUpdateRoomPacketToAll(room, ROOMLIST_FLAG_ROOMSTATE);

@@ -838,6 +838,8 @@ void Packet_HostManager::ProcessEndGame(Room* room, unsigned char winTeam, unsig
 	RoomSettings roomSettings;
 	roomSettings.lowFlag = ROOMSETTINGS_LFLAG_ROOMSTATE;
 	roomSettings.roomState = RoomState::Waiting;
+	roomSettings.highFlag = ROOMSETTINGS_HFLAG_UNK80;
+	roomSettings.unkh80 = 0;
 
 	unsigned char roomListFlag = ROOMLIST_FLAG_ROOMSTATE;
 
