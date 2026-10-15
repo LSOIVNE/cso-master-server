@@ -1244,14 +1244,14 @@ const vector<InventoryItem> DatabaseManager::GetUserInventory(unsigned long user
     while ((row = mysql_fetch_row(res)))
     {
         InventoryItem item{
-            (unsigned short)atoi(row[0]),
-            (unsigned short)atoi(row[1]),
-            (unsigned short)atoi(row[2]),
-            (unsigned char)atoi(row[3]),
-            (bool)atoi(row[4]),
-            (unsigned long)strtoul(row[5], NULL, 10),
-            (unsigned long)strtoul(row[6], NULL, 10),
-            (unsigned long)strtoul(row[7], NULL, 10)
+            (unsigned short)(row[0] ? atoi(row[0]) : 0),
+            (unsigned short)(row[1] ? atoi(row[1]) : 0),
+            (unsigned short)(row[2] ? atoi(row[2]) : 0),
+            (unsigned char)(row[3] ? atoi(row[3]) : 0),
+            (bool)(row[4] ? atoi(row[4]) : 0),
+            (unsigned long)(row[5] ? strtoul(row[5], NULL, 10) : 0),
+            (unsigned long)(row[6] ? strtoul(row[6], NULL, 10) : 0),
+            (unsigned long)(row[7] ? strtoul(row[7], NULL, 10) : 0)
         };
 
         userInventory.push_back(item);
