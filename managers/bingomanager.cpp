@@ -1,4 +1,6 @@
 #include "bingomanager.h"
+#include "coineventmanager.h"
+#include "baseballeventmanager.h"
 #include "usermanager.h"
 #include "serverconsole.h"
 #include "packetmanager.h"
@@ -731,8 +733,19 @@ void BingoManager::SendEventActive(TCPConnection::pointer connection) {
 	auto packet = TCPConnection::Packet::Create(PacketSource::Server, connection, { (unsigned char)PacketID::Event });
 	if (!packet) return;
 
+	unsigned int activeMask = 0;
+	if (_settings.active) {
+		activeMask |= (1 << 0); // Bit 0: Bingo
+	}
+	if (coinEventManager.IsActive()) {
+		activeMask |= (1 << 3); // Bit 3: Coin Event (抓錢活動)
+	}
+	if (baseballEventManager.IsActive()) {
+		activeMask |= (1 << 4); // Bit 4: Baseball Event (CSO棒球經典賽)
+	}
+
 	packet->WriteUInt8(1); // subType 1 (Event active mask)
-	packet->WriteUInt32_LE(_settings.active ? 1 : 0); // Bit 0 = Bingo active flag!
+	packet->WriteUInt32_LE(activeMask);
 
 	packet->Send();
 }

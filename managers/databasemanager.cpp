@@ -44,6 +44,8 @@ bool DatabaseManager::Init(const string& server, const string& user, const strin
         EnsureGiftTables();
         EnsureBookmarkTables();
         EnsureShelterTables();
+        EnsureCoinEventTables();
+        EnsureBaseballEventTables();
     }
 
     return success;
@@ -3201,4 +3203,245 @@ bool DatabaseManager::SetUserZombieStats(unsigned long userID, unsigned int zomb
     serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Set zombie stats for userID {}: zombieKills = {}, survivals = {}\n", userID, zombieKills, survivals));
     return true;
 }
+
+bool DatabaseManager::EnsureCoinEventTables() {
+    if (_connection == NULL) {
+        return false;
+    }
+
+    const char* queries[] = {
+        "CREATE TABLE IF NOT EXISTS user_coin_event ("
+        "    userID INT UNSIGNED NOT NULL PRIMARY KEY,"
+        "    coinCount TINYINT UNSIGNED NOT NULL DEFAULT 0,"
+        "    playtimeSeconds INT UNSIGNED NOT NULL DEFAULT 0,"
+        "    FOREIGN KEY (userID) REFERENCES user_characters(userID) ON DELETE CASCADE"
+        ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
+
+        "CREATE TABLE IF NOT EXISTS coin_event_pool ("
+        "    slotIdx TINYINT UNSIGNED NOT NULL PRIMARY KEY,"
+        "    imageName VARCHAR(64) NOT NULL DEFAULT '',"
+        "    itemName VARCHAR(64) NOT NULL DEFAULT '',"
+        "    totalCount INT UNSIGNED NOT NULL DEFAULT 0,"
+        "    remainCount INT UNSIGNED NOT NULL DEFAULT 0,"
+        "    itemID INT UNSIGNED NOT NULL DEFAULT 0,"
+        "    count SMALLINT UNSIGNED NOT NULL DEFAULT 1,"
+        "    duration INT UNSIGNED NOT NULL DEFAULT 0,"
+        "    winRate INT NOT NULL DEFAULT 10,"
+        "    latestWinner VARCHAR(64) NOT NULL DEFAULT ''"
+        ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;"
+    };
+
+    for (const char* q : queries) {
+        if (mysql_query(_connection, q)) {
+            serverConsole.Print(PrefixType::Warn, format("[ DatabaseManager ] EnsureCoinEventTables warning: {}\n", mysql_error(_connection)));
+        }
+    }
+
+    return true;
+}
+
+bool DatabaseManager::GetUserCoinData(unsigned long userID, UserCoinEventData& outData) {
+    if (_connection == NULL) return false;
+
+    string query = format("SELECT coinCount, playtimeSeconds FROM user_coin_event WHERE userID = {};", userID);
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on GetUserCoinData: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    MYSQL_RES* result = mysql_store_result(_connection);
+    if (!result) return false;
+
+    MYSQL_ROW row = mysql_fetch_row(result);
+    if (!row) {
+        mysql_free_result(result);
+        outData.userID = userID;
+        outData.coinCount = 0;
+        outData.playtimeSeconds = 0;
+        SaveUserCoinData(outData);
+        return true;
+    }
+
+    outData.userID = userID;
+    outData.coinCount = row[0] ? (unsigned char)atoi(row[0]) : 0;
+    outData.playtimeSeconds = row[1] ? (unsigned int)atoi(row[1]) : 0;
+    mysql_free_result(result);
+    return true;
+}
+
+bool DatabaseManager::SaveUserCoinData(const UserCoinEventData& data) {
+    if (_connection == NULL) return false;
+
+    string query = format(
+        "INSERT INTO user_coin_event (userID, coinCount, playtimeSeconds) VALUES ({}, {}, {}) "
+        "ON DUPLICATE KEY UPDATE coinCount = VALUES(coinCount), playtimeSeconds = VALUES(playtimeSeconds);",
+        data.userID, (int)data.coinCount, data.playtimeSeconds);
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on SaveUserCoinData: {}\n", mysql_error(_connection)));
+        return false;
+    }
+    return true;
+}
+
+bool DatabaseManager::GetCoinEventPool(vector<CoinEventPoolItem>& outPool) {
+    if (_connection == NULL) return false;
+
+    string query = "SELECT slotIdx, imageName, itemName, totalCount, remainCount, itemID, count, duration, winRate, latestWinner FROM coin_event_pool ORDER BY slotIdx ASC;";
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on GetCoinEventPool: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    MYSQL_RES* result = mysql_store_result(_connection);
+    if (!result) return false;
+
+    outPool.clear();
+    MYSQL_ROW row;
+    while ((row = mysql_fetch_row(result)) != NULL) {
+        CoinEventPoolItem item;
+        item.slotIdx = row[0] ? (unsigned char)atoi(row[0]) : 0;
+        item.imageName = row[1] ? row[1] : "";
+        item.itemName = row[2] ? row[2] : "";
+        item.totalCount = row[3] ? (unsigned int)strtoul(row[3], NULL, 10) : 0;
+        item.remainCount = row[4] ? (unsigned int)strtoul(row[4], NULL, 10) : 0;
+        item.itemID = row[5] ? (unsigned short)atoi(row[5]) : 0;
+        item.count = row[6] ? (unsigned short)atoi(row[6]) : 1;
+        item.duration = row[7] ? (unsigned int)atoi(row[7]) : 0;
+        item.winRate = row[8] ? atoi(row[8]) : 10;
+        item.latestWinner = row[9] ? row[9] : "";
+        outPool.push_back(item);
+    }
+    mysql_free_result(result);
+    return true;
+}
+
+bool DatabaseManager::InitOrUpdateCoinEventPool(const vector<CoinEventPoolItem>& pool) {
+    if (_connection == NULL) return false;
+
+    for (const auto& item : pool) {
+        char escapedImg[128] = {};
+        char escapedName[128] = {};
+        char escapedWinner[128] = {};
+        mysql_real_escape_string(_connection, escapedImg, item.imageName.c_str(), (unsigned long)item.imageName.size());
+        mysql_real_escape_string(_connection, escapedName, item.itemName.c_str(), (unsigned long)item.itemName.size());
+        mysql_real_escape_string(_connection, escapedWinner, item.latestWinner.c_str(), (unsigned long)item.latestWinner.size());
+
+        string query = format(
+            "INSERT INTO coin_event_pool (slotIdx, imageName, itemName, totalCount, remainCount, itemID, count, duration, winRate, latestWinner) "
+            "VALUES ({}, '{}', '{}', {}, {}, {}, {}, {}, {}, '{}') "
+            "ON DUPLICATE KEY UPDATE imageName = VALUES(imageName), itemName = VALUES(itemName), totalCount = VALUES(totalCount), "
+            "itemID = VALUES(itemID), count = VALUES(count), duration = VALUES(duration), winRate = VALUES(winRate);",
+            (int)item.slotIdx, escapedImg, escapedName, item.totalCount, item.remainCount, item.itemID, item.count, item.duration, item.winRate, escapedWinner);
+
+        if (mysql_query(_connection, query.c_str())) {
+            serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on InitOrUpdateCoinEventPool: {}\n", mysql_error(_connection)));
+        }
+    }
+    return true;
+}
+
+bool DatabaseManager::UpdateCoinEventPoolSlot(unsigned char slotIdx, unsigned int remainCount, const string& latestWinner) {
+    if (_connection == NULL) return false;
+
+    char escapedWinner[128] = {};
+    mysql_real_escape_string(_connection, escapedWinner, latestWinner.c_str(), (unsigned long)latestWinner.size());
+
+    string query = format(
+        "UPDATE coin_event_pool SET remainCount = {}, latestWinner = '{}' WHERE slotIdx = {};",
+        remainCount, escapedWinner, (int)slotIdx);
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on UpdateCoinEventPoolSlot: {}\n", mysql_error(_connection)));
+        return false;
+    }
+    return true;
+}
+
+bool DatabaseManager::EnsureBaseballEventTables() {
+    if (_connection == NULL) return false;
+
+    const char* queries[] = {
+        "CREATE TABLE IF NOT EXISTS user_baseball_event ("
+        "    userID INT UNSIGNED NOT NULL PRIMARY KEY,"
+        "    ballCount TINYINT UNSIGNED NOT NULL DEFAULT 0,"
+        "    todayScore TINYINT UNSIGNED NOT NULL DEFAULT 0,"
+        "    totalScore SMALLINT UNSIGNED NOT NULL DEFAULT 0,"
+        "    outCount TINYINT UNSIGNED NOT NULL DEFAULT 0,"
+        "    baseStatus TINYINT UNSIGNED NOT NULL DEFAULT 0,"
+        "    playtimeSeconds INT UNSIGNED NOT NULL DEFAULT 0,"
+        "    lastResetDate VARCHAR(16) NOT NULL DEFAULT '',"
+        "    FOREIGN KEY (userID) REFERENCES user_characters(userID) ON DELETE CASCADE"
+        ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;"
+    };
+
+    for (const char* q : queries) {
+        if (mysql_query(_connection, q)) {
+            serverConsole.Print(PrefixType::Warn, format("[ DatabaseManager ] EnsureBaseballEventTables warning: {}\n", mysql_error(_connection)));
+        }
+    }
+
+    return true;
+}
+
+bool DatabaseManager::GetUserBaseballData(unsigned long userID, UserBaseballData& outData) {
+    if (_connection == NULL) return false;
+
+    string query = format("SELECT ballCount, todayScore, totalScore, outCount, baseStatus, playtimeSeconds, lastResetDate FROM user_baseball_event WHERE userID = {};", userID);
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on GetUserBaseballData: {}\n", mysql_error(_connection)));
+        return false;
+    }
+
+    MYSQL_RES* result = mysql_store_result(_connection);
+    if (!result) return false;
+
+    MYSQL_ROW row = mysql_fetch_row(result);
+    if (!row) {
+        mysql_free_result(result);
+        outData.userID = userID;
+        outData.ballCount = 0;
+        outData.todayScore = 0;
+        outData.totalScore = 0;
+        outData.outCount = 0;
+        outData.baseStatus = 0;
+        outData.playtimeSeconds = 0;
+        outData.lastResetDate = "";
+        SaveUserBaseballData(outData);
+        return true;
+    }
+
+    outData.userID = userID;
+    outData.ballCount = row[0] ? (unsigned char)atoi(row[0]) : 0;
+    outData.todayScore = row[1] ? (unsigned char)atoi(row[1]) : 0;
+    outData.totalScore = row[2] ? (unsigned short)atoi(row[2]) : 0;
+    outData.outCount = row[3] ? (unsigned char)atoi(row[3]) : 0;
+    outData.baseStatus = row[4] ? (unsigned char)atoi(row[4]) : 0;
+    outData.playtimeSeconds = row[5] ? (unsigned int)atoi(row[5]) : 0;
+    outData.lastResetDate = row[6] ? row[6] : "";
+    mysql_free_result(result);
+    return true;
+}
+
+bool DatabaseManager::SaveUserBaseballData(const UserBaseballData& data) {
+    if (_connection == NULL) return false;
+
+    char escapedDate[32] = {};
+    mysql_real_escape_string(_connection, escapedDate, data.lastResetDate.c_str(), (unsigned long)data.lastResetDate.size());
+
+    string query = format(
+        "INSERT INTO user_baseball_event (userID, ballCount, todayScore, totalScore, outCount, baseStatus, playtimeSeconds, lastResetDate) "
+        "VALUES ({}, {}, {}, {}, {}, {}, {}, '{}') "
+        "ON DUPLICATE KEY UPDATE ballCount = VALUES(ballCount), todayScore = VALUES(todayScore), totalScore = VALUES(totalScore), "
+        "outCount = VALUES(outCount), baseStatus = VALUES(baseStatus), playtimeSeconds = VALUES(playtimeSeconds), lastResetDate = VALUES(lastResetDate);",
+        data.userID, (int)data.ballCount, (int)data.todayScore, (int)data.totalScore,
+        (int)data.outCount, (int)data.baseStatus, data.playtimeSeconds, escapedDate);
+
+    if (mysql_query(_connection, query.c_str())) {
+        serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on SaveUserBaseballData: {}\n", mysql_error(_connection)));
+        return false;
+    }
+    return true;
+}
+
 

@@ -20,6 +20,8 @@
 #include "scenariorewardmanager.h"
 #include "killdropmanager.h"
 #include "battlebonusmanager.h"
+#include "coineventmanager.h"
+#include "baseballeventmanager.h"
 #include "registration_server.h"
 
 HANDLE hMutex;
@@ -83,6 +85,8 @@ int main() {
 	scenarioRewardManager.Init();
 	killDropManager.Init();
 	battleBonusManager.Init();
+	coinEventManager.Init();
+	baseballEventManager.Init();
 
 	hMutex = CreateMutexA(NULL, FALSE, format("cso-master-server-{}-{}", serverConfig.serverID, serverConfig.channelID).c_str());
 	if (hMutex) {
@@ -95,6 +99,7 @@ int main() {
 
 			databaseManager.RemoveAllUserSessions();
 			databaseManager.RemoveAllUserTransfers();
+			coinEventManager.InitPoolFromDatabase();
 		}
 		else {
 			serverConsole.Print(PrefixType::Fatal, "[ Main ] This server channel is already running in another process!\n");

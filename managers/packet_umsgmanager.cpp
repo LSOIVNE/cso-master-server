@@ -19,6 +19,9 @@
 #include "serverconfig.h"
 #include "scenariorewardmanager.h"
 #include "battlebonusmanager.h"
+#include "bingomanager.h"
+#include "coineventmanager.h"
+#include "baseballeventmanager.h"
 #include <sstream>
 #include <unordered_set>
 #include <algorithm>
@@ -634,7 +637,14 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		cmdLower != "/qe" &&
 		cmdLower != "/questevent" &&
 		cmdLower != "/setexpire" &&
-		cmdLower != "/additemsec") {
+		cmdLower != "/additemsec" &&
+		cmdLower != "/addcoin" &&
+		cmdLower != "/setcoin" &&
+		cmdLower != "/addball" &&
+		cmdLower != "/setball" &&
+		cmdLower != "/resetball" &&
+		cmdLower != "/setscore" &&
+		cmdLower != "/reloadevent") {
 		return false;
 	}
 
@@ -2265,6 +2275,80 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		else {
 			SendNotice("[系統] 重載對局獎勵配置失敗，請檢查 configs/battle_bonus.json 格式！");
 		}
+		return true;
+	}
+	else if (cmdLower == "/addcoin") {
+		int count = 1;
+		string arg;
+		if (ss >> arg) {
+			try { count = stoi(arg); } catch (...) {}
+		}
+		coinEventManager.AddUserCoins(user, count);
+		UserCoinEventData cd;
+		coinEventManager.GetUserCoinData(user->GetUserID(), cd);
+		SendNotice(format("[抓錢活動] 成功增加硬幣！目前持有：{} 個", (int)cd.coinCount));
+		return true;
+	}
+	else if (cmdLower == "/setcoin") {
+		int count = 0;
+		string arg;
+		if (ss >> arg) {
+			try { count = stoi(arg); } catch (...) {}
+		}
+		coinEventManager.SetUserCoins(user, (unsigned char)count);
+		UserCoinEventData cd;
+		coinEventManager.GetUserCoinData(user->GetUserID(), cd);
+		SendNotice(format("[抓錢活動] 已設置硬幣數量為：{} 個", (int)cd.coinCount));
+		return true;
+	}
+	else if (cmdLower == "/addball") {
+		int count = 1;
+		string arg;
+		if (ss >> arg) {
+			try { count = stoi(arg); } catch (...) {}
+		}
+		baseballEventManager.AddUserBalls(user, count);
+		UserBaseballData bd;
+		baseballEventManager.GetOrInitUserData(user, bd);
+		SendNotice(format("[CSO棒球經典賽] 成功增加棒球！目前持有：{} 顆", (int)bd.ballCount));
+		return true;
+	}
+	else if (cmdLower == "/setball") {
+		int count = 0;
+		string arg;
+		if (ss >> arg) {
+			try { count = stoi(arg); } catch (...) {}
+		}
+		UserBaseballData bd;
+		baseballEventManager.GetOrInitUserData(user, bd);
+		bd.ballCount = (unsigned char)std::clamp(count, 0, 99);
+		databaseManager.SaveUserBaseballData(bd);
+		if (user->GetConnection()) baseballEventManager.SendPacket_Status(user->GetConnection(), bd);
+		SendNotice(format("[CSO棒球經典賽] 已設置棒球數量為：{} 顆", (int)bd.ballCount));
+		return true;
+	}
+	else if (cmdLower == "/resetball") {
+		baseballEventManager.ResetUserToday(user);
+		SendNotice("[CSO棒球經典賽] 今日出局數與跑壘狀態已重置，可以再次進行揮棒！");
+		return true;
+	}
+	else if (cmdLower == "/setscore") {
+		int today = 0, total = 0;
+		string a1, a2;
+		if (ss >> a1) { try { today = stoi(a1); } catch (...) {} }
+		if (ss >> a2) { try { total = stoi(a2); } catch (...) {} }
+		baseballEventManager.SetUserScore(user, (unsigned char)today, (unsigned short)total);
+		SendNotice(format("[CSO棒球經典賽] 分數已設置：今日 {} 分，累計 {} 分！", today, total));
+		return true;
+	}
+	else if (cmdLower == "/reloadevent") {
+		coinEventManager.LoadConfig("configs/coinevent.json");
+		coinEventManager.InitPoolFromDatabase();
+		baseballEventManager.LoadConfig("configs/baseballevent.json");
+		if (user->GetConnection()) {
+			bingoManager.SendEventActive(user->GetConnection());
+		}
+		SendNotice("[活動系統] 抓錢活動與CSO棒球經典賽配置已成功重載！");
 		return true;
 	}
 

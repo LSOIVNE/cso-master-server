@@ -94,6 +94,12 @@
     <ClCompile Include="managers\bingomanager.cpp">
       <Filter>managers</Filter>
     </ClCompile>
+    <ClCompile Include="managers\coineventmanager.cpp">
+      <Filter>managers</Filter>
+    </ClCompile>
+    <ClCompile Include="managers\baseballeventmanager.cpp">
+      <Filter>managers</Filter>
+    </ClCompile>
     <ClCompile Include="managers\attendancemanager.cpp">
       <Filter>managers</Filter>
     </ClCompile>
@@ -243,6 +249,12 @@
       <Filter>managers</Filter>
     </ClInclude>
     <ClInclude Include="managers\bingomanager.h">
+      <Filter>managers</Filter>
+    </ClInclude>
+    <ClInclude Include="managers\coineventmanager.h">
+      <Filter>managers</Filter>
+    </ClInclude>
+    <ClInclude Include="managers\baseballeventmanager.h">
       <Filter>managers</Filter>
     </ClInclude>
     <ClInclude Include="managers\attendancemanager.h">

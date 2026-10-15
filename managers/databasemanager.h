@@ -75,6 +75,36 @@ struct UserGift {
 	unsigned char claimed = 0;
 };
 
+struct UserCoinEventData {
+	unsigned long userID = 0;
+	unsigned char coinCount = 0;
+	unsigned int playtimeSeconds = 0;
+};
+
+struct CoinEventPoolItem {
+	unsigned char slotIdx = 0;
+	std::string imageName = "";
+	std::string itemName = "";
+	unsigned int totalCount = 0;
+	unsigned int remainCount = 0;
+	unsigned short itemID = 0;
+	unsigned short count = 1;
+	unsigned int duration = 0;
+	int winRate = 10;
+	std::string latestWinner = "";
+};
+
+struct UserBaseballData {
+	unsigned long userID = 0;
+	unsigned char ballCount = 0;
+	unsigned char todayScore = 0;
+	unsigned short totalScore = 0;
+	unsigned char outCount = 0;
+	unsigned char baseStatus = 0;
+	unsigned int playtimeSeconds = 0;
+	std::string lastResetDate = "";
+};
+
 class DatabaseManager {
 public:
 	DatabaseManager();
@@ -191,6 +221,19 @@ public:
 	bool UpdateUserShelterStats(unsigned long userID, unsigned int matchDays, unsigned int matchRescuee,
 		unsigned int& outTotalDays, unsigned int& outAccumRescuee);
 	bool SetUserZombieStats(unsigned long userID, unsigned int zombieKills, unsigned int survivals);
+
+	// Coin Event
+	bool EnsureCoinEventTables();
+	bool GetUserCoinData(unsigned long userID, UserCoinEventData& outData);
+	bool SaveUserCoinData(const UserCoinEventData& data);
+	bool GetCoinEventPool(std::vector<CoinEventPoolItem>& outPool);
+	bool InitOrUpdateCoinEventPool(const std::vector<CoinEventPoolItem>& pool);
+	bool UpdateCoinEventPoolSlot(unsigned char slotIdx, unsigned int remainCount, const std::string& latestWinner);
+
+	// Baseball Event
+	bool EnsureBaseballEventTables();
+	bool GetUserBaseballData(unsigned long userID, UserBaseballData& outData);
+	bool SaveUserBaseballData(const UserBaseballData& data);
 
 private:
 	MYSQL* _connection;

@@ -1,0 +1,48 @@
+{
+  "Settings": {
+    "Active": true,
+    "PlaytimeSecondsPerBall": 1200,
+    "MaxBalls": 99,
+    "HitWeights": {
+      "Out": 38,
+      "Single": 32,
+      "Double": 18,
+      "Triple": 8,
+      "HomeRun": 4
+    }
+  },
+  "DailyScoreRewards": [
+    {
+      "MinScore": 1,
+      "MaxScore": 5,
+      "ItemID": 165,
+      "Count": 1,
+      "Duration": 0,
+      "Name": "電子解碼器 (1個)"
+    },
+    {
+      "MinScore": 6,
+      "MaxScore": 10,
+      "ItemID": 165,
+      "Count": 3,
+      "Duration": 0,
+      "Name": "電子解碼器 (3個)"
+    },
+    {
+      "MinScore": 11,
+      "MaxScore": 20,
+      "ItemID": 396,
+      "Count": 3,
+      "Duration": 0,
+      "Name": "A世代解碼器 (3個)"
+    },
+    {
+      "MinScore": 21,
+      "MaxScore": 999,
+      "ItemID": 396,
+      "Count": 5,
+      "Duration": 0,
+      "Name": "A世代解碼器 (5個)"
+    }
+  ]
+}

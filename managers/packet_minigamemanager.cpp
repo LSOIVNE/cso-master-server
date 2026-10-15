@@ -1,5 +1,7 @@
 #include "packet_minigamemanager.h"
 #include "bingomanager.h"
+#include "coineventmanager.h"
+#include "baseballeventmanager.h"
 #include "usermanager.h"
 #include "serverconsole.h"
 
@@ -25,6 +27,14 @@ void Packet_MiniGameManager::ParsePacket_MiniGame(TCPConnection::Packet::pointer
 	switch (gameType) {
 		case 0: { // Bingo
 			parsePacket_MiniGame_Bingo(user, packet);
+			break;
+		}
+		case 3: { // Coin Event (抓錢活動)
+			coinEventManager.ParsePacket(user, packet);
+			break;
+		}
+		case 4: { // Baseball Event (CSO棒球經典賽)
+			baseballEventManager.ParsePacket(user, packet);
 			break;
 		}
 		default: {

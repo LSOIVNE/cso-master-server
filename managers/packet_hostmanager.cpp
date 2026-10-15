@@ -13,6 +13,8 @@
 #include "killdropmanager.h"
 #include "itemdefinitionmanager.h"
 #include "battlebonusmanager.h"
+#include "coineventmanager.h"
+#include "baseballeventmanager.h"
 #include <set>
 #include <map>
 #include <algorithm>
@@ -787,6 +789,10 @@ void Packet_HostManager::ProcessEndGame(Room* room, unsigned char winTeam, unsig
 
 		// Quest progression hook
 		questManager.OnMatchEnd(u, isWin, kills, deaths, (unsigned int)matchDuration);
+
+		// Event playtime progression (Coin Event & Baseball Event)
+		coinEventManager.OnMatchEnd(u, (unsigned int)matchDuration);
+		baseballEventManager.OnMatchEnd(u, (unsigned int)matchDuration);
 
 		// Note: DO NOT send UpdateInfo here!
 		// The client settlement dialog (CResultCurrentPlayerInfoPanel) expects localPlayer in memory
