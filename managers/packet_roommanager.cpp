@@ -625,10 +625,9 @@ void Packet_RoomManager::parsePacket_Room_LeaveRoom(User* user, TCPConnection::P
 		if (gameMatch && gameMatchUser && !isBotMode && leaveOption != 0) {
 			unsigned long userID = user->GetUserID();
 			unsigned short kills = gameMatchUser->GetKills();
-			unsigned short deaths = gameMatchUser->GetDeaths();
 
 			if (leaveOption == 1) { // 離開進行中的遊戲，無道具
-				databaseManager.RecordUserLeavePenalty(userID, true, 50, isCompetitiveMode, kills, deaths);
+				databaseManager.RecordUserLeavePenalty(userID, true, 50, isCompetitiveMode);
 				warningKey = "ROOM_LEAVE_PENALTY";
 			}
 			else if (leaveOption == 2) { // 使用道具 106 離場優惠券-經驗值,Point保留
@@ -654,11 +653,11 @@ void Packet_RoomManager::parsePacket_Room_LeaveRoom(User* user, TCPConnection::P
 					unsigned short totalEarnedExp = earnedExp + bonusResult.bonusExp;
 					unsigned short totalEarnedPoints = earnedPoints + bonusResult.bonusPoints;
 
-					databaseManager.SaveUserLeaveExpAndPoints(userID, totalEarnedExp, totalEarnedPoints, kills, deaths, isCompetitiveMode);
+					databaseManager.SaveUserLeaveExpAndPoints(userID, totalEarnedExp, totalEarnedPoints, isCompetitiveMode);
 					warningKey = "ROOM_LEAVE_NOPENALTY_ITEM_OK";
 				}
 				else {
-					databaseManager.RecordUserLeavePenalty(userID, true, 50, isCompetitiveMode, kills, deaths);
+					databaseManager.RecordUserLeavePenalty(userID, true, 50, isCompetitiveMode);
 					warningKey = "ROOM_LEAVE_NOPENALTY_ITEM_FAIL";
 				}
 			}
@@ -679,11 +678,11 @@ void Packet_RoomManager::parsePacket_Room_LeaveRoom(User* user, TCPConnection::P
 						}
 					}
 
-					databaseManager.RecordUserLeavePenalty(userID, true, 50, false, 0, 0);
+					databaseManager.RecordUserLeavePenalty(userID, true, 50, false);
 					warningKey = "ROOM_LEAVE_NODEFEAT_ITEM_OK";
 				}
 				else {
-					databaseManager.RecordUserLeavePenalty(userID, true, 50, isCompetitiveMode, kills, deaths);
+					databaseManager.RecordUserLeavePenalty(userID, true, 50, isCompetitiveMode);
 					warningKey = "ROOM_LEAVE_NODEFEAT_ITEM_FAIL";
 				}
 			}
@@ -710,11 +709,11 @@ void Packet_RoomManager::parsePacket_Room_LeaveRoom(User* user, TCPConnection::P
 					unsigned short totalEarnedExp = earnedExp + bonusResult.bonusExp;
 					unsigned short totalEarnedPoints = earnedPoints + bonusResult.bonusPoints;
 
-					databaseManager.SaveUserLeaveExpAndPoints(userID, totalEarnedExp, totalEarnedPoints, 0, 0, false);
+					databaseManager.SaveUserLeaveExpAndPoints(userID, totalEarnedExp, totalEarnedPoints, false);
 					warningKey = "ROOM_LEAVE_NOPENALTYDEFEAT_ITEM_OK";
 				}
 				else {
-					databaseManager.RecordUserLeavePenalty(userID, true, 50, isCompetitiveMode, kills, deaths);
+					databaseManager.RecordUserLeavePenalty(userID, true, 50, isCompetitiveMode);
 					warningKey = "ROOM_LEAVE_NOPENALTYDEFEAT_ITEM_FAIL";
 				}
 			}
