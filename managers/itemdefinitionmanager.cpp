@@ -106,6 +106,12 @@ bool ItemDefinitionManager::Init() {
 			itemDef.className = className;
 			itemDef.category = category;
 			itemDef.isPeriod = isPeriod;
+			if (fields.size() > 5 && !fields[5].empty()) {
+				try { itemDef.inGameID = (unsigned char)std::stoul(fields[5]); } catch (...) {}
+			}
+			if (fields.size() > 7 && !fields[7].empty()) {
+				try { itemDef.team = (unsigned char)std::stoul(fields[7]); } catch (...) {}
+			}
 			if (fields.size() > 8 && !fields[8].empty()) {
 				try { itemDef.level = (unsigned char)std::stoul(fields[8]); } catch (...) {}
 			}

@@ -1,0 +1,116 @@
+{
+  "pass_items": {
+    "stack_general_and_zombie": false,
+    "general": [
+      {
+        "itemID": 108,
+        "name": "Point加倍券",
+        "pointPercent": 100,
+        "expPercent": 0,
+        "exclusiveGroup": "general_pass"
+      },
+      {
+        "itemID": 59,
+        "name": "經驗值加倍券",
+        "pointPercent": 0,
+        "expPercent": 100,
+        "exclusiveGroup": "general_pass"
+      },
+      {
+        "itemID": 73,
+        "name": "雙重加倍券",
+        "pointPercent": 100,
+        "expPercent": 100,
+        "exclusiveGroup": "general_pass"
+      }
+    ],
+    "zombie": [
+      {
+        "itemID": 181,
+        "name": "殭屍Point加倍券",
+        "pointPercent": 100,
+        "expPercent": 0,
+        "exclusiveGroup": "zombie_pass",
+        "validModes": [ 8, 9, 11, 13, 14 ]
+      },
+      {
+        "itemID": 182,
+        "name": "殭屍經驗值加倍券",
+        "pointPercent": 0,
+        "expPercent": 100,
+        "exclusiveGroup": "zombie_pass",
+        "validModes": [ 8, 9, 11, 13, 14 ]
+      },
+      {
+        "itemID": 180,
+        "name": "殭屍雙重加倍券",
+        "pointPercent": 100,
+        "expPercent": 100,
+        "exclusiveGroup": "zombie_pass",
+        "validModes": [ 8, 9, 11, 13, 14 ]
+      }
+    ]
+  },
+  "classes": [
+    { "itemID": 253, "name": "卡爾(CT)",             "pointPercent": 20, "expPercent": 20 },
+    { "itemID": 254, "name": "卡爾(TR)",             "pointPercent": 20, "expPercent": 20 },
+    { "itemID": 45,  "name": "皇家特勤隊(RBC)",       "pointPercent": 30, "expPercent": 30 },
+    { "itemID": 46,  "name": "多國籍傭兵(VC)",         "pointPercent": 20, "expPercent": 10 },
+    { "itemID": 47,  "name": "獵狐基地(NLC)",         "pointPercent": 10, "expPercent": 20 },
+    { "itemID": 48,  "name": "赤色分子(ARA)",         "pointPercent": 20, "expPercent": 20 },
+    { "itemID": 54,  "name": "707特戰隊",             "pointPercent": 20, "expPercent": 20 },
+    { "itemID": 55,  "name": "葛蕾斯(Sozo)",           "pointPercent": 30, "expPercent": 30 },
+    { "itemID": 56,  "name": "魔鬼部隊(Magui)",       "pointPercent": 20, "expPercent": 10 },
+    { "itemID": 57,  "name": "特種防禦部隊(Sdefence)", "pointPercent": 10, "expPercent": 20 },
+    { "itemID": 151, "name": "娜塔莎(Natasha)",       "pointPercent": 20, "expPercent": 25 },
+    { "itemID": 153, "name": "伊琳娜(Jennifer)",       "pointPercent": 20, "expPercent": 25 },
+    { "itemID": 328, "name": "崔智云(CHNGirl01)",     "pointPercent": 10, "expPercent": 10 },
+    { "itemID": 329, "name": "麻生亞子(JPNGirl01)",   "pointPercent": 10, "expPercent": 10 },
+    { "itemID": 510, "name": "麻生亞子海盜(yuri2)",   "pointPercent": 20, "expPercent": 25 },
+    { "itemID": 511, "name": "崔智云海盜(alice2)",   "pointPercent": 20, "expPercent": 25 }
+  ],
+  "decorations": [
+    { "itemID": 373, "name": "黑煞紋身", "pointPercent": 5, "expPercent": 5 },
+    { "itemID": 374, "name": "虎嘯紋身", "pointPercent": 5, "expPercent": 5 },
+    { "itemID": 375, "name": "龍紋紋身", "pointPercent": 5, "expPercent": 5 },
+    { "itemID": 386, "name": "墨竹紋身", "pointPercent": 5, "expPercent": 5 }
+  ],
+  "global_bonus": {
+    "pcbang": { "pointPercent": 0, "expPercent": 0 },
+    "base_event": { "pointPercent": 0, "expPercent": 0 },
+    "scheduled_events": [
+      {
+        "name": "週末狂歡夜(特定時間段: 每日20:00-23:00)",
+        "pointPercent": 50,
+        "expPercent": 50,
+        "timeRange": "20:00-23:00"
+      },
+      {
+        "name": "特定節日全天加倍(特定日期)",
+        "pointPercent": 100,
+        "expPercent": 100,
+        "date": "2026-12-25"
+      },
+      {
+        "name": "活動週加倍(日期範圍)",
+        "pointPercent": 100,
+        "expPercent": 100,
+        "dateRange": "2026-10-01~2026-10-07"
+      },
+      {
+        "name": "限時狂歡(日期範圍+時間段: 指定期間內每日14:00-16:00)",
+        "pointPercent": 50,
+        "expPercent": 50,
+        "dateRange": "2026-07-01~2026-08-31",
+        "timeRange": "14:00-16:00"
+      }
+    ]
+  },
+  "map_sequence": {
+    "enabled": true,
+    "start_map": 2,
+    "start_percent": 4,
+    "step_percent": 2,
+    "max_percent": 10
+  }
+}

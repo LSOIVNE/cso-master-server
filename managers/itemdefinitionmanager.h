@@ -18,7 +18,9 @@ struct ItemDefinition {
 	std::string name;
 	std::string className;
 	unsigned char category = 0;
+	unsigned char inGameID = 0;
 	unsigned char level = 0;
+	unsigned char team = 0; // 1 = TR, 2 = CT, 0 = All
 	bool isPeriod = false; // true: duration-based (Period=1), false: count-based (Period=0)
 	unsigned short disReward1 = 0;
 	unsigned short disReward2 = 0;
@@ -30,6 +32,10 @@ struct ItemDefinition {
 
 	bool IsCostume() const {
 		return category == 12;
+	}
+
+	bool IsClass() const {
+		return category == 7 || className == "Class";
 	}
 
 	bool IsFabItem() const {

@@ -263,9 +263,9 @@ void Packet_RoomManager::SendPacket_Room_GameResult(TCPConnection::pointer conne
 		}
 
 		unsigned short earnedExp = gmu->GetExp();
-		unsigned short bonusExp = 0;
+		unsigned short bonusExp = gmu->GetBonusExp();
 		unsigned short earnedPoints = gmu->GetPoints();
-		unsigned short bonusPoints = 0;
+		unsigned short bonusPoints = gmu->GetBonusPoints();
 		unsigned char levelUp = gmu->GetLevelUp();
 
 		// 54 bytes common player block
@@ -282,8 +282,9 @@ void Packet_RoomManager::SendPacket_Room_GameResult(TCPConnection::pointer conne
 		packet->WriteUInt8(rank);
 		packet->WriteUInt8(levelUp);
 
+		const auto& bonusPcts = gmu->GetBonusPercentages();
 		for (int b = 0; b < 14; ++b) {
-			packet->WriteUInt16_LE(0); // 14 x UInt16_LE bonus percentages
+			packet->WriteUInt16_LE(bonusPcts[b]); // 14 x UInt16_LE bonus percentages
 		}
 
 		unsigned char teamBonus = 0;

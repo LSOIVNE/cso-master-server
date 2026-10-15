@@ -116,6 +116,11 @@ void Packet_ItemManager::parsePacket_Item_SelectClass(User* user, TCPConnection:
 	unsigned char classItemID = packet->ReadUInt8();
 
 	serverConsole.Print(PrefixType::Info, format("[ Packet_ItemManager ] User ({}) has sent Packet_Item SelectClass - classItemID: {}\n", user->GetUserLogName(), classItemID));
+
+	GameMatchUser* gmu = gameMatch->GetGameMatchUserByUser(user);
+	if (gmu) {
+		gmu->SetClassItemID(classItemID);
+	}
 }
 
 void Packet_ItemManager::parsePacket_Item_BuyWeapon(User* user, TCPConnection::Packet::pointer packet) {

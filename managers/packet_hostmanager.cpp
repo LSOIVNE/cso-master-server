@@ -11,6 +11,8 @@
 #include "questmanager.h"
 #include "scenariorewardmanager.h"
 #include "killdropmanager.h"
+#include "itemdefinitionmanager.h"
+#include "battlebonusmanager.h"
 #include <set>
 #include <map>
 #include <algorithm>
@@ -101,6 +103,35 @@ void Packet_HostManager::ParsePacket_Host(TCPConnection::Packet::pointer packet)
 			unsigned short itemID = packet->ReadUInt16_LE();
 			unsigned char count = packet->ReadUInt8();
 			serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] User ({}) PlayerBuyItem - userID: {}, itemID: {}, count: {}\n", user->GetUserLogName(), userID, itemID, (int)count));
+
+			if (itemID > 0) {
+				const ItemDefinition* itemDef = itemDefinitionManager.GetItem(itemID);
+				bool isClass = (itemDef && itemDef->IsClass()) || battleBonusManager.HasClassBonus(itemID);
+				if (isClass) {
+					Room* room = roomManager.GetRoomByRoomID(user->GetCurrentRoomID());
+					if (room) {
+						GameMatch* gameMatch = room->GetGameMatch();
+						if (gameMatch) {
+							User* targetUser = userManager.GetUserByUserID(userID);
+							if (targetUser) {
+								GameMatchUser* gmu = gameMatch->GetGameMatchUserByUser(targetUser);
+								if (gmu == NULL) {
+									gmu = new GameMatchUser(targetUser);
+									RoomUser* ru = room->GetRoomUser(targetUser);
+									if (ru) {
+										gmu->SetMapSequence(ru->mapSequence);
+									}
+									gameMatch->AddGameMatchUser(gmu);
+								}
+								gmu->SetClassItemID(itemID);
+								std::string defName = itemDef ? itemDef->name : std::string();
+								serverConsole.Print(PrefixType::Info, format("[ Packet_HostManager ] Set in-game class for User ({}) to itemID: {} ({})\n",
+									targetUser->GetUserLogName(), itemID, defName));
+							}
+						}
+					}
+				}
+			}
 			break;
 		}
 		case Packet_HostType::FlyerFlock: {
@@ -257,6 +288,7 @@ void Packet_HostManager::parsePacket_Host_ServerIsActivated(User* user) {
 			RoomUser* ru = room->GetRoomUser(u);
 			if (ru) {
 				gmu->SetTeam((Team)ru->team);
+				gmu->SetMapSequence(ru->mapSequence);
 			}
 			newGameMatch->AddGameMatchUser(gmu);
 		}
@@ -722,11 +754,20 @@ void Packet_HostManager::ProcessEndGame(Room* room, unsigned char winTeam, unsig
 		gmu->SetPoints(earnedPoints);
 		gmu->SetRank((unsigned char)(i + 1));
 
+		// Calculate BattleBonus (Pass items, Class, Decorations, PCBang, Event)
+		BattleBonusResult bonusResult = battleBonusManager.CalculateBonus(u, gmu, gameModeID, earnedExp, earnedPoints);
+		gmu->SetBonusExp(bonusResult.bonusExp);
+		gmu->SetBonusPoints(bonusResult.bonusPoints);
+		gmu->SetBonusPercentages(bonusResult.ToPacketArray());
+
+		unsigned short totalEarnedExp = earnedExp + bonusResult.bonusExp;
+		unsigned short totalEarnedPoints = earnedPoints + bonusResult.bonusPoints;
+
 		// Fetch current character stats from database
 		UserCharacterResult ucr = u->GetUserCharacter(USERCHARACTER_FLAG_ALL);
 		unsigned char oldLevel = ucr.userCharacter.level ? ucr.userCharacter.level : 1;
-		unsigned long long newExp = ucr.userCharacter.exp + earnedExp;
-		unsigned long long newPoints = ucr.userCharacter.points + earnedPoints;
+		unsigned long long newExp = ucr.userCharacter.exp + totalEarnedExp;
+		unsigned long long newPoints = ucr.userCharacter.points + totalEarnedPoints;
 		unsigned char newLevel = max(oldLevel, User::CalculateLevel(newExp));
 		unsigned char levelUp = (newLevel > oldLevel) ? 1 : 0;
 
@@ -741,7 +782,7 @@ void Packet_HostManager::ProcessEndGame(Room* room, unsigned char winTeam, unsig
 		}
 
 		// Save battle result to database (recordStats only for competitive modes)
-		databaseManager.SaveUserBattleResult(u->GetUserID(), earnedExp, earnedPoints, kills, deaths, isWin, newLevel, recordStats, addedZombieKills, addedSurvivals);
+		databaseManager.SaveUserBattleResult(u->GetUserID(), totalEarnedExp, totalEarnedPoints, kills, deaths, isWin, newLevel, recordStats, addedZombieKills, addedSurvivals);
 
 		// Quest progression hook
 		questManager.OnMatchEnd(u, isWin, kills, deaths, (unsigned int)matchDuration);
@@ -773,6 +814,18 @@ void Packet_HostManager::ProcessEndGame(Room* room, unsigned char winTeam, unsig
 
 		// Scenario 3: Pop up expired items notice on the settlement screen
 		userManager.CheckAndProcessUserExpiredItems(u, true);
+	}
+
+	// Increment consecutive map sequence for all room users who completed this match
+	for (auto& gameMatchUser : gameMatchUsers) {
+		User* u = gameMatchUser->GetUser();
+		if (u && room) {
+			RoomUser* ru = room->GetRoomUser(u);
+			if (ru) {
+				ru->mapSequence++;
+				serverConsole.Print(PrefixType::Info, format("[ Room ] User ({}) consecutive map sequence incremented to {}\n", u->GetUserLogName(), ru->mapSequence));
+			}
+		}
 	}
 
 	delete gameMatch;
@@ -1059,6 +1112,10 @@ void Packet_HostManager::parsePacket_Host_SelectTeam(User* user, TCPConnection::
 	GameMatchUser* gameMatchUser = gameMatch->GetGameMatchUserByUser(targetUser);
 	if (gameMatchUser == NULL) {
 		gameMatchUser = new GameMatchUser(targetUser);
+		RoomUser* ru = room->GetRoomUser(targetUser);
+		if (ru) {
+			gameMatchUser->SetMapSequence(ru->mapSequence);
+		}
 		gameMatch->AddGameMatchUser(gameMatchUser);
 	}
 

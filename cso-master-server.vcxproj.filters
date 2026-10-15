@@ -70,6 +70,9 @@
     <ClCompile Include="managers\killdropmanager.cpp">
       <Filter>managers</Filter>
     </ClCompile>
+    <ClCompile Include="managers\battlebonusmanager.cpp">
+      <Filter>managers</Filter>
+    </ClCompile>
     <ClCompile Include="managers\craftmanager.cpp">
       <Filter>managers</Filter>
     </ClCompile>
@@ -216,6 +219,9 @@
       <Filter>managers</Filter>
     </ClInclude>
     <ClInclude Include="managers\killdropmanager.h">
+      <Filter>managers</Filter>
+    </ClInclude>
+    <ClInclude Include="managers\battlebonusmanager.h">
       <Filter>managers</Filter>
     </ClInclude>
     <ClInclude Include="managers\craftmanager.h">

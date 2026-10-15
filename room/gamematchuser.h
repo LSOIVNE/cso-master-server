@@ -1,5 +1,7 @@
 #pragma once
 #include "user.h"
+#include <array>
+#include <cstdint>
 
 enum Team {
 	None = 0,
@@ -70,6 +72,21 @@ public:
 	void SetRank(unsigned char rank) noexcept {
 		_rank = rank;
 	}
+
+	unsigned short GetBonusExp() const noexcept { return _bonusExp; }
+	void SetBonusExp(unsigned short v) noexcept { _bonusExp = v; }
+
+	unsigned short GetBonusPoints() const noexcept { return _bonusPoints; }
+	void SetBonusPoints(unsigned short v) noexcept { _bonusPoints = v; }
+
+	const std::array<uint16_t, 14>& GetBonusPercentages() const noexcept { return _bonusPercentages; }
+	void SetBonusPercentages(const std::array<uint16_t, 14>& v) noexcept { _bonusPercentages = v; }
+
+	unsigned short GetClassItemID() const noexcept { return _classItemID; }
+	void SetClassItemID(unsigned short v) noexcept { _classItemID = v; }
+
+	unsigned short GetMapSequence() const noexcept { return _mapSequence; }
+	void SetMapSequence(unsigned short v) noexcept { _mapSequence = v; }
 
 	// General Battle Stats
 	unsigned char GetHeadshots() const noexcept { return _headshots; }
@@ -188,6 +205,11 @@ private:
 	unsigned short _points;
 	unsigned char _levelUp;
 	unsigned char _rank;
+	unsigned short _bonusExp;
+	unsigned short _bonusPoints;
+	std::array<uint16_t, 14> _bonusPercentages;
+	unsigned short _classItemID;
+	unsigned short _mapSequence;
 
 	// General Battle Stats
 	unsigned char _headshots;

@@ -167,6 +167,7 @@ struct RoomUser {
 	unsigned char team = RoomTeam::Terrorist;
 	unsigned char status = 0; // 0 = Waiting, 2 = Ready
 	unsigned char slot = 0;
+	unsigned short mapSequence = 1; // 連續地圖場次計數 (第1張地圖為1)
 };
 
 class Room {
