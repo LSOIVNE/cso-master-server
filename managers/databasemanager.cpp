@@ -1230,7 +1230,7 @@ const vector<BookMark> DatabaseManager::GetUserBookMarks(unsigned long userID) {
 }
 
 const vector<InventoryItem> DatabaseManager::GetUserInventory(unsigned long userID) {
-    string query = format("SELECT slotID, itemID, count, activeFlag, inUse, obtainTime, expirationTime, enhanceBits FROM user_inventory WHERE userID = {};", userID);
+    string query = format("SELECT slotID, itemID, count, activeFlag, inUse, obtainTime, expirationTime, enhanceBits FROM user_inventory WHERE userID = {} AND itemID != 166 ORDER BY slotID ASC;", userID);
 
     if (mysql_query(_connection, query.c_str())) {
         serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on GetUserInventory: {}\n", mysql_error(_connection)));
@@ -1497,8 +1497,9 @@ bool DatabaseManager::ResetUserInventory(unsigned long userID) {
     return res;
 }
 
-bool DatabaseManager::DeleteUserInventoryItem(unsigned long userID, unsigned short itemID, unsigned short count, vector<unsigned short>& outDeletedSlots, unsigned short& outActualDeletedCount) {
+bool DatabaseManager::DeleteUserInventoryItem(unsigned long userID, unsigned short itemID, unsigned short count, vector<unsigned short>& outDeletedSlots, vector<unsigned short>& outUpdatedSlots, unsigned short& outActualDeletedCount) {
     outDeletedSlots.clear();
+    outUpdatedSlots.clear();
     outActualDeletedCount = 0;
     if (_connection == NULL) {
         return false;
@@ -1569,6 +1570,7 @@ bool DatabaseManager::DeleteUserInventoryItem(unsigned long userID, unsigned sho
                 serverConsole.Print(PrefixType::Error, format("[ DatabaseManager ] Query error on DeleteUserInventoryItem UPDATE: {}\n", mysql_error(_connection)));
                 return false;
             }
+            outUpdatedSlots.push_back(s.slotID);
             outActualDeletedCount += remainingToDelete;
             remainingToDelete = 0;
             break;

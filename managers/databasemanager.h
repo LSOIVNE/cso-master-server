@@ -124,7 +124,7 @@ public:
 	bool UpdateUserInventoryExpiration(unsigned long userID, unsigned short itemID, unsigned long newExpirationTime);
 	bool UpdateUserInventoryItemEnhance(unsigned long userID, unsigned short slotID, unsigned long enhanceBits);
 	bool ResetUserInventory(unsigned long userID);
-	bool DeleteUserInventoryItem(unsigned long userID, unsigned short itemID, unsigned short count, vector<unsigned short>& outDeletedSlots, unsigned short& outActualDeletedCount);
+	bool DeleteUserInventoryItem(unsigned long userID, unsigned short itemID, unsigned short count, vector<unsigned short>& outDeletedSlots, vector<unsigned short>& outUpdatedSlots, unsigned short& outActualDeletedCount);
 	unsigned long GetUserCBoxCount(unsigned long userID);
 	bool SetUserCBoxCount(unsigned long userID, unsigned long count);
 	bool AddUserCBoxCount(unsigned long userID, long delta, unsigned long* outNewCount = nullptr);

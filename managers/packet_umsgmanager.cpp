@@ -741,6 +741,38 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 			catch (...) {}
 		}
 
+		if (itemID == 166) {
+			unsigned short addCount = 1;
+			if (hasP2 && p2Val > 0) {
+				addCount = (unsigned short)min(p2Val, 9999UL);
+			}
+
+			unsigned long newCount = 0;
+			if (user->AddCBoxCount((long)addCount, &newCount)) {
+				// Clean up any residual fake C-Box slots in user_inventory if they existed
+				vector<unsigned short> fakeDeletedSlots;
+				vector<unsigned short> dummyUpd;
+				unsigned short dummyDel = 0;
+				databaseManager.DeleteUserInventoryItem(userID, 166, 0, fakeDeletedSlots, dummyUpd, dummyDel);
+				if (!fakeDeletedSlots.empty()) {
+					packetManager.SendPacket_InventoryDelta(connection, {}, fakeDeletedSlots);
+				}
+
+				packet_UpdateInfoManager.SendPacket_UserUpdateInfo_CBoxCount(connection, userID, (unsigned short)min(newCount, 65535UL));
+				SendNotice(format("[系統] 成功添加密碼箱 (C-Box)，數量：{} 個，當前總計：{} 個。", addCount, newCount));
+				AwardItem award;
+				award.itemID = 166;
+				award.count = addCount;
+				award.duration = 0;
+				award.flags = 0;
+				SendPacket_UMsg_ItemAwardNotice(connection, { award }, "CSO_Warning_HSCENARIO_MONSTER_DROP_ITEM_TITLE", "CSO_Warning_HSCENARIO_MONSTER_DROP_ITEM_GIVE");
+			}
+			else {
+				SendNotice("[系統] 添加密碼箱失敗，數據庫寫入錯誤！");
+			}
+			return true;
+		}
+
 		auto inventory = user->GetUserInventory();
 		bool alreadyOwned = false;
 		InventoryItem ownedItem;
@@ -1000,6 +1032,10 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 		size_t permanentSkippedCount = 0;
 
 		for (const auto& def : candidates) {
+			if (def.id == 166) {
+				continue; // C-Box is stored in user_characters.cboxCount, never in inventory
+			}
+
 			auto it = ownedMap.find(def.id);
 			if (it != ownedMap.end()) {
 				// Already owned
@@ -1197,6 +1233,52 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 			return true;
 		}
 
+		string p2Str;
+		bool hasP2 = false;
+		unsigned short countToDelete = 0;
+		if (ss >> p2Str) {
+			try {
+				countToDelete = (unsigned short)min(stoul(p2Str), 65535UL);
+				hasP2 = true;
+			}
+			catch (...) {}
+		}
+
+		if (itemID == 166) {
+			unsigned long currentCBox = user->GetCBoxCount();
+			// Also clean up any residual fake C-Box slots in inventory if they existed
+			vector<unsigned short> fakeDeletedSlots;
+			vector<unsigned short> dummyUpd;
+			unsigned short dummyDel = 0;
+			databaseManager.DeleteUserInventoryItem(userID, 166, 0, fakeDeletedSlots, dummyUpd, dummyDel);
+			if (!fakeDeletedSlots.empty()) {
+				packetManager.SendPacket_InventoryDelta(connection, {}, fakeDeletedSlots);
+			}
+
+			if (currentCBox == 0 && fakeDeletedSlots.empty()) {
+				SendNotice("[系統] 您的倉庫中沒有密碼箱 (C-Box)！");
+				return true;
+			}
+
+			unsigned long delCount = (hasP2 && countToDelete > 0) ? (unsigned long)countToDelete : currentCBox;
+			if (delCount > currentCBox) {
+				delCount = currentCBox;
+			}
+
+			unsigned long newCount = 0;
+			if (user->AddCBoxCount(-(long)delCount, &newCount)) {
+				packet_UpdateInfoManager.SendPacket_UserUpdateInfo_CBoxCount(connection, userID, (unsigned short)min(newCount, 65535UL));
+				if (newCount == 0) {
+					SendPacket_UMsg_ItemExpireNotice(connection, { 166 });
+				}
+				SendNotice(format("[系統] 成功刪除密碼箱 (C-Box)，數量：{} 個，剩餘：{} 個。", delCount, newCount));
+			}
+			else {
+				SendNotice("[系統] 刪除密碼箱失敗，數據庫操作錯誤！");
+			}
+			return true;
+		}
+
 		auto inventory = user->GetUserInventory();
 		bool owned = false;
 		for (const auto& item : inventory) {
@@ -1211,25 +1293,29 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 			return true;
 		}
 
-		string p2Str;
-		bool hasP2 = false;
-		unsigned short countToDelete = 0;
-		if (ss >> p2Str) {
-			try {
-				countToDelete = (unsigned short)min(stoul(p2Str), 65535UL);
-				hasP2 = true;
-			}
-			catch (...) {}
-		}
-
 		vector<unsigned short> deletedSlots;
+		vector<unsigned short> updatedSlots;
 		unsigned short actualDeleted = 0;
-		if (databaseManager.DeleteUserInventoryItem(userID, itemID, hasP2 ? countToDelete : 0, deletedSlots, actualDeleted)) {
-			// 1. Realtime sync updated inventory to client (Delta 增量同步)
-			packetManager.SendPacket_InventoryDelta(connection, {}, deletedSlots);
+		if (databaseManager.DeleteUserInventoryItem(userID, itemID, hasP2 ? countToDelete : 0, deletedSlots, updatedSlots, actualDeleted)) {
+			// Find the updated items to send in delta
+			vector<InventoryItem> deltaUpdatedItems;
+			if (!updatedSlots.empty()) {
+				auto currentInventory = user->GetUserInventory();
+				unordered_set<unsigned short> updSet(updatedSlots.begin(), updatedSlots.end());
+				for (const auto& item : currentInventory) {
+					if (updSet.count(item.slotID)) {
+						deltaUpdatedItems.push_back(item);
+					}
+				}
+			}
 
-			// 2. Pop up native ItemExpireNotice dialog (Packet 67 Type 62: CSO_ItemExpireTitle / CSO_ItemExpireMsg with item icon)
-			SendPacket_UMsg_ItemExpireNotice(connection, { itemID });
+			// 1. Realtime sync updated inventory to client (Delta 增量同步)
+			packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, deletedSlots);
+
+			// 2. Pop up native ItemExpireNotice dialog if item was completely removed
+			if (!deletedSlots.empty()) {
+				SendPacket_UMsg_ItemExpireNotice(connection, { itemID });
+			}
 
 			// 3. Send system notice in chat
 			const ItemDefinition* itemDef = itemDefinitionManager.GetItem(itemID);
