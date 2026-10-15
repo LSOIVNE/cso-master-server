@@ -1268,9 +1268,7 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 			unsigned long newCount = 0;
 			if (user->AddCBoxCount(-(long)delCount, &newCount)) {
 				packet_UpdateInfoManager.SendPacket_UserUpdateInfo_CBoxCount(connection, userID, (unsigned short)min(newCount, 65535UL));
-				if (newCount == 0) {
-					SendPacket_UMsg_ItemExpireNotice(connection, { 166 });
-				}
+				SendPacket_UMsg_ItemExpireNotice(connection, { 166 });
 				SendNotice(format("[系統] 成功刪除密碼箱 (C-Box)，數量：{} 個，剩餘：{} 個。", delCount, newCount));
 			}
 			else {
@@ -1312,10 +1310,8 @@ bool Packet_UMsgManager::HandleChatCommand(User* user, TCPConnection::pointer co
 			// 1. Realtime sync updated inventory to client (Delta 增量同步)
 			packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, deletedSlots);
 
-			// 2. Pop up native ItemExpireNotice dialog if item was completely removed
-			if (!deletedSlots.empty()) {
-				SendPacket_UMsg_ItemExpireNotice(connection, { itemID });
-			}
+			// 2. Pop up native ItemExpireNotice dialog (Packet 67 Type 62: CSO_ItemExpireTitle / CSO_ItemExpireMsg with item icon)
+			SendPacket_UMsg_ItemExpireNotice(connection, { itemID });
 
 			// 3. Send system notice in chat
 			const ItemDefinition* itemDef = itemDefinitionManager.GetItem(itemID);
