@@ -817,14 +817,17 @@ void Packet_HostManager::ProcessEndGame(Room* room, unsigned char winTeam, unsig
 		userManager.CheckAndProcessUserExpiredItems(u, true);
 	}
 
-	// Increment consecutive map sequence for all room users who completed this match
-	for (auto& gameMatchUser : gameMatchUsers) {
-		User* u = gameMatchUser->GetUser();
-		if (u && room) {
-			RoomUser* ru = room->GetRoomUser(u);
-			if (ru) {
-				ru->mapSequence++;
-				serverConsole.Print(PrefixType::Info, format("[ Room ] User ({}) consecutive map sequence incremented to {}\n", u->GetUserLogName(), ru->mapSequence));
+	const auto& seqMaps = room->GetRoomSettings().unkh200;
+	if (!seqMaps.empty()) {
+		// Increment consecutive map sequence for all room users who completed this match
+		for (auto& gameMatchUser : gameMatchUsers) {
+			User* u = gameMatchUser->GetUser();
+			if (u && room) {
+				RoomUser* ru = room->GetRoomUser(u);
+				if (ru) {
+					ru->mapSequence++;
+					serverConsole.Print(PrefixType::Info, format("[ Room ] User ({}) consecutive map sequence incremented to {}\n", u->GetUserLogName(), ru->mapSequence));
+				}
 			}
 		}
 	}
@@ -835,9 +838,53 @@ void Packet_HostManager::ProcessEndGame(Room* room, unsigned char winTeam, unsig
 	RoomSettings roomSettings;
 	roomSettings.lowFlag = ROOMSETTINGS_LFLAG_ROOMSTATE;
 	roomSettings.roomState = RoomState::Waiting;
+
+	unsigned char roomListFlag = ROOMLIST_FLAG_ROOMSTATE;
+
+	if (!seqMaps.empty()) {
+		size_t currentIndex = room->GetMapSequenceIndex();
+		if (currentIndex == 0) {
+			currentIndex = 1;
+		}
+
+		if (currentIndex < seqMaps.size()) {
+			// Advance to next map in sequence
+			size_t nextIndex = currentIndex + 1;
+			room->SetMapSequenceIndex(nextIndex);
+
+			unsigned char nextMapID = seqMaps[nextIndex - 1].second;
+			roomSettings.mapID = nextMapID;
+			roomSettings.unkh400 = (unsigned char)nextIndex;
+			roomSettings.lowFlag |= ROOMSETTINGS_LFLAG_MAPID;
+			roomSettings.highFlag |= ROOMSETTINGS_HFLAG_UNK400;
+			roomListFlag |= ROOMLIST_FLAG_MAPID;
+
+			serverConsole.Print(PrefixType::Info, format("[ Room ] Consecutive map advancing to map {}/{} (mapID: {})\n",
+				nextIndex, seqMaps.size(), nextMapID));
+		}
+		else {
+			// Sequence complete, reset to map 1
+			room->SetMapSequenceIndex(1);
+
+			unsigned char firstMapID = seqMaps[0].second;
+			roomSettings.mapID = firstMapID;
+			roomSettings.unkh400 = 1;
+			roomSettings.lowFlag |= ROOMSETTINGS_LFLAG_MAPID;
+			roomSettings.highFlag |= ROOMSETTINGS_HFLAG_UNK400;
+			roomListFlag |= ROOMLIST_FLAG_MAPID;
+
+			for (auto& ru : room->GetRoomUsersData()) {
+				ru.mapSequence = 1;
+			}
+
+			serverConsole.Print(PrefixType::Info, format("[ Room ] Consecutive map sequence completed ({} maps). Reset to map 1 (mapID: {})\n",
+				seqMaps.size(), firstMapID));
+		}
+	}
+
 	room->UpdateRoomSettings(roomSettings);
 
-	roomManager.SendUpdateRoomPacketToAll(room, ROOMLIST_FLAG_ROOMSTATE);
+	roomManager.SendUpdateRoomPacketToAll(room, roomListFlag);
 
 	vector<User*> roomUsers = room->GetRoomUsers();
 

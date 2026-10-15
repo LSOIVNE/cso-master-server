@@ -49,7 +49,7 @@ constexpr auto ROOMSETTINGS_HFLAG_UNK200 =			0x200;
 constexpr auto ROOMSETTINGS_HFLAG_UNK400 =			0x400;
 constexpr auto ROOMSETTINGS_HFLAG_UNK800 =			0x800;
 constexpr auto ROOMSETTINGS_HFLAG_UNK1000 =			0x1000;
-constexpr auto ROOMSETTINGS_HFLAG_ALL =				ROOMSETTINGS_HFLAG_UNK1000;
+constexpr auto ROOMSETTINGS_HFLAG_ALL =				ROOMSETTINGS_HFLAG_UNK200 | ROOMSETTINGS_HFLAG_UNK400 | ROOMSETTINGS_HFLAG_UNK1000;
 
 enum class RoomState {
 	Waiting = 0,
@@ -233,6 +233,23 @@ public:
 		_bigheadDisabled = disabled;
 	}
 
+	size_t GetMapSequenceIndex() const noexcept {
+		return _mapSequenceIndex;
+	}
+
+	void SetMapSequenceIndex(size_t index) noexcept {
+		_mapSequenceIndex = index;
+	}
+
+	void ResetMapSequence() noexcept {
+		_mapSequenceIndex = 0;
+		_roomSettings.unkh200.clear();
+		_roomSettings.unkh400 = 0;
+		for (auto& ru : _roomUsers) {
+			ru.mapSequence = 1;
+		}
+	}
+
 private:
 	unsigned short _roomID;
 	User* _roomHostUser;
@@ -240,4 +257,5 @@ private:
 	vector<RoomUser> _roomUsers;
 	GameMatch* _gameMatch;
 	bool _bigheadDisabled = false;
+	size_t _mapSequenceIndex = 0;
 };

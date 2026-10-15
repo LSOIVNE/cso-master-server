@@ -3,7 +3,7 @@
 #include "packet_hostmanager.h"
 #include "serverconsole.h"
 
-Room::Room(unsigned short roomID, User* roomHostUser) : _roomID(roomID), _roomHostUser(roomHostUser) {
+Room::Room(unsigned short roomID, User* roomHostUser) : _roomID(roomID), _roomHostUser(roomHostUser), _mapSequenceIndex(0) {
 	if (_roomHostUser == NULL) {
 		delete this;
 		return;
@@ -11,6 +11,8 @@ Room::Room(unsigned short roomID, User* roomHostUser) : _roomID(roomID), _roomHo
 
 	_roomSettings.lowFlag = ROOMSETTINGS_LFLAG_ALL;
 	_roomSettings.highFlag = ROOMSETTINGS_HFLAG_ALL;
+	_roomSettings.unkh200.clear();
+	_roomSettings.unkh400 = 0;
 	SetGameMatch(NULL);
 }
 

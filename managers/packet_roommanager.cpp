@@ -482,9 +482,12 @@ void Packet_RoomManager::parsePacket_Room_CreateRoom(User* user, TCPConnection::
 	serverConsole.Print(PrefixType::Info, format("[ Packet_RoomManager ] User ({}) has sent Packet_Room CreateRoom - roomName: {}, unk2: {}, maxPlayers: {}, gameModeID: {}, mapID: {}, winLimit: {}, killLimit: {}, timeLimit: {}, roundTime: {}, password: {}, unk11: {}, unk12: {}, fastStart: {}, unk14: {}, unk15: {}, unk16: {}\n", user->GetUserLogName(), Cp950ToUtf8(roomSettings.roomName), unk2, roomSettings.maxPlayers, roomSettings.gameModeID, roomSettings.mapID, roomSettings.winLimit, roomSettings.killLimit, roomSettings.timeLimit, roomSettings.roundTime, Cp950ToUtf8(roomSettings.password), unk11, unk12, fastStart, unk14, unk15, unk16));
 
 	unsigned char modeSubFlag = calculateModeSubFlag(user, roomSettings.gameModeID, false);
-	roomSettings.highFlag |= ROOMSETTINGS_HFLAG_UNK1000;
+	roomSettings.highFlag |= ROOMSETTINGS_HFLAG_UNK200 | ROOMSETTINGS_HFLAG_UNK400 | ROOMSETTINGS_HFLAG_UNK1000;
+	roomSettings.unkh200.clear();
+	roomSettings.unkh400 = 0;
 	roomSettings.unkh1000 = modeSubFlag;
 
+	newRoom->SetMapSequenceIndex(0);
 	newRoom->SetRoomSettings(roomSettings);
 
 	newRoom->AddRoomUser(user);
@@ -980,6 +983,56 @@ void Packet_RoomManager::parsePacket_Room_UpdateRoomSettings(User* user, TCPConn
 	}
 	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK1000) {
 		roomSettings.unkh1000 = packet->ReadUInt8();
+	}
+
+	// Check if mode changed
+	if (roomSettings.lowFlag & ROOMSETTINGS_LFLAG_GAMEMODEID) {
+		if (roomSettings.gameModeID != room->GetRoomSettings().gameModeID) {
+			if (!(roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK200)) {
+				room->SetMapSequenceIndex(0);
+				roomSettings.unkh200.clear();
+				roomSettings.unkh400 = 0;
+				roomSettings.highFlag |= ROOMSETTINGS_HFLAG_UNK200 | ROOMSETTINGS_HFLAG_UNK400;
+				for (auto& ru : room->GetRoomUsersData()) {
+					ru.mapSequence = 1;
+				}
+			}
+		}
+	}
+	// Check if map changed to a single map (MAPID provided without UNK200) while room previously had consecutive maps
+	else if ((roomSettings.lowFlag & ROOMSETTINGS_LFLAG_MAPID) && !(roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK200)) {
+		if (!room->GetRoomSettings().unkh200.empty()) {
+			room->SetMapSequenceIndex(0);
+			roomSettings.unkh200.clear();
+			roomSettings.unkh400 = 0;
+			roomSettings.highFlag |= ROOMSETTINGS_HFLAG_UNK200 | ROOMSETTINGS_HFLAG_UNK400;
+			for (auto& ru : room->GetRoomUsersData()) {
+				ru.mapSequence = 1;
+			}
+		}
+	}
+
+	// Check if consecutive maps were explicitly updated
+	if (roomSettings.highFlag & ROOMSETTINGS_HFLAG_UNK200) {
+		if (!roomSettings.unkh200.empty()) {
+			room->SetMapSequenceIndex(1);
+			roomSettings.unkh400 = 1;
+			roomSettings.highFlag |= ROOMSETTINGS_HFLAG_UNK400;
+			roomSettings.mapID = roomSettings.unkh200[0].second;
+			roomSettings.lowFlag |= ROOMSETTINGS_LFLAG_MAPID;
+			roomListFlag |= ROOMLIST_FLAG_MAPID;
+			for (auto& ru : room->GetRoomUsersData()) {
+				ru.mapSequence = 1;
+			}
+		}
+		else {
+			room->SetMapSequenceIndex(0);
+			roomSettings.unkh400 = 0;
+			roomSettings.highFlag |= ROOMSETTINGS_HFLAG_UNK400;
+			for (auto& ru : room->GetRoomUsersData()) {
+				ru.mapSequence = 1;
+			}
+		}
 	}
 
 	unsigned char currentMode = (roomSettings.lowFlag & ROOMSETTINGS_LFLAG_GAMEMODEID) ? roomSettings.gameModeID : room->GetRoomSettings().gameModeID;
