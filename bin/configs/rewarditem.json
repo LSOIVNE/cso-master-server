@@ -2353,6 +2353,32 @@
           "name": "完美彈匣強化零件"
         }
       ]
+    },
+	{
+      "itemID": 994,
+      "name": "SL8精密改造零件",
+      "titleKey": "HSCENARIO_MONSTER_DROP_ITEM_TITLE",
+      "msgKey": "HSCENARIO_MONSTER_DROP_ITEM_GIVE",
+	  "failMsgKey": "SCENARIO_BLACKBOX_REWARD_FAIL",
+	  "requireItems": [
+        {
+          "itemID": 994,
+          "count": 1,
+          "name": "SL8精密改造零件"
+        },
+        {
+          "itemID": 187,
+          "count": 1,
+          "name": "審判之眼-SL8"
+        }
+      ],
+      "rewards": [
+        {
+          "itemID": 383,
+          "count": 1,
+          "name": "末日審判-SL8 EX"
+        }
+      ]
     }
   ]
 }

@@ -245,6 +245,24 @@ std::vector<unsigned char> BingoManager::CheckNewlyCompletedLines(BingoBoard& bo
 void BingoManager::GrantBingoPrize(User* user, const BingoPrize& prize, InventoryItem* outItem) {
 	if (!user) return;
 	unsigned long userID = user->GetUserID();
+
+	// Special handling for C-Box (itemID 166): Stored in user_characters.cboxCount, never in inventory
+	if (prize.itemID == 166) {
+		unsigned short addCount = prize.count > 0 ? prize.count : 1;
+		unsigned long newTotal = 0;
+		user->AddCBoxCount(addCount, &newTotal);
+		auto conn = user->GetConnection();
+		if (conn) {
+			packet_UpdateInfoManager.SendPacket_UserUpdateInfo_CBoxCount(conn, userID, (unsigned short)newTotal);
+			auto charResult = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
+			packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, charResult.userCharacter });
+		}
+		if (outItem != nullptr) {
+			*outItem = InventoryItem{};
+		}
+		return;
+	}
+
 	auto inv = user->GetUserInventory();
 
 	unsigned short maxSlotID = 0;

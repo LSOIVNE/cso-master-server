@@ -46,6 +46,14 @@ bool DatabaseManager::Init(const string& server, const string& user, const strin
         EnsureShelterTables();
         EnsureCoinEventTables();
         EnsureBaseballEventTables();
+
+        // Migrate historical C-Box (itemID 166) mistakenly inserted into user_inventory into user_characters.cboxCount
+        mysql_query(_connection,
+            "UPDATE user_characters c "
+            "JOIN (SELECT userID, SUM(count) AS totalCount FROM user_inventory WHERE itemID = 166 GROUP BY userID) i "
+            "ON c.userID = i.userID "
+            "SET c.cboxCount = c.cboxCount + i.totalCount;");
+        mysql_query(_connection, "DELETE FROM user_inventory WHERE itemID = 166;");
     }
 
     return success;
@@ -1303,15 +1311,34 @@ bool DatabaseManager::AddUserInventoryItems(unsigned long userID, const vector<I
         return true;
     }
 
+    vector<InventoryItem> filteredItems;
+    unsigned long cboxTotalToAdd = 0;
+    for (const auto& item : newItems) {
+        if (item.itemID == 166) {
+            cboxTotalToAdd += (item.count > 0 ? item.count : 1);
+        }
+        else {
+            filteredItems.push_back(item);
+        }
+    }
+
+    if (cboxTotalToAdd > 0) {
+        AddUserCBoxCount(userID, (long)cboxTotalToAdd);
+    }
+
+    if (filteredItems.empty()) {
+        return true;
+    }
+
     string query = "INSERT INTO user_inventory (userID, slotID, itemID, count, activeFlag, inUse, obtainTime, expirationTime, enhanceBits) VALUES ";
-    for (size_t i = 0; i < newItems.size(); i++) {
-        const auto& item = newItems[i];
+    for (size_t i = 0; i < filteredItems.size(); i++) {
+        const auto& item = filteredItems[i];
         query += format("({}, {}, {}, {}, {}, {}, {}, {}, {})",
             userID, item.slotID, item.itemID, item.count,
             (unsigned int)(item.activeFlag == 0 ? 1 : item.activeFlag),
             item.inUse ? 1 : 0,
             item.obtainTime, item.expirationTime, item.enhanceBits);
-        if (i + 1 < newItems.size()) {
+        if (i + 1 < filteredItems.size()) {
             query += ", ";
         }
         else {
@@ -1324,13 +1351,17 @@ bool DatabaseManager::AddUserInventoryItems(unsigned long userID, const vector<I
         return false;
     }
 
-    serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Successfully added {} items to inventory for userID {}\n", newItems.size(), userID));
+    serverConsole.Print(PrefixType::Info, format("[ DatabaseManager ] Successfully added {} items to inventory for userID {}\n", filteredItems.size(), userID));
     return true;
 }
 
 bool DatabaseManager::UpdateUserInventoryItemCount(unsigned long userID, unsigned short itemID, unsigned short addedCount) {
     if (_connection == NULL) {
         return false;
+    }
+
+    if (itemID == 166) {
+        return AddUserCBoxCount(userID, (long)(addedCount > 0 ? addedCount : 1));
     }
 
     string query = format("UPDATE user_inventory SET count = LEAST(count + {}, 999) WHERE userID = {} AND itemID = {};", addedCount, userID, itemID);

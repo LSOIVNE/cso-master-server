@@ -3,6 +3,7 @@
 #include "roommanager.h"
 #include "serverconsole.h"
 #include "packetmanager.h"
+#include "packet_updateinfomanager.h"
 #include "packet_umsgmanager.h"
 #include "itemdefinitionmanager.h"
 #include "nlohmann/json.hpp"
@@ -753,6 +754,24 @@ bool BaseballEventManager::SetUserScore(User* user, unsigned char todayScore, un
 void BaseballEventManager::GrantPrize(User* user, unsigned short itemID, unsigned short count, unsigned int durationDays, InventoryItem* outItem) {
 	if (!user) return;
 	unsigned long userID = user->GetUserID();
+
+	// Special handling for C-Box (itemID 166): Stored in user_characters.cboxCount, never in inventory
+	if (itemID == 166) {
+		unsigned short addCount = count > 0 ? count : 1;
+		unsigned long newTotal = 0;
+		user->AddCBoxCount(addCount, &newTotal);
+		auto conn = user->GetConnection();
+		if (conn) {
+			packet_UpdateInfoManager.SendPacket_UserUpdateInfo_CBoxCount(conn, userID, (unsigned short)newTotal);
+			auto charResult = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
+			packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, charResult.userCharacter });
+		}
+		if (outItem != nullptr) {
+			*outItem = InventoryItem{};
+		}
+		return;
+	}
+
 	auto inv = user->GetUserInventory();
 
 	unsigned short maxSlotID = 0;

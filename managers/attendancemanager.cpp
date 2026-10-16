@@ -187,7 +187,12 @@ bool AttendanceManager::grantRewardItem(User* user, const AttendanceRewardItem& 
 
 	if (item.itemID == 166) {
 		unsigned short addedCount = item.count > 0 ? item.count : 1;
-		databaseManager.AddUserCBoxCount(userID, addedCount);
+		unsigned long newTotal = 0;
+		user->AddCBoxCount(addedCount, &newTotal);
+		auto conn = user->GetConnection();
+		if (conn) {
+			packet_UpdateInfoManager.SendPacket_UserUpdateInfo_CBoxCount(conn, userID, (unsigned short)newTotal);
+		}
 		return true;
 	}
 
@@ -435,7 +440,9 @@ void AttendanceManager::ClaimAttendanceReward(User* user) {
 	ClearUserCandidates(userID);
 
 	// Sync inventory and currency (Delta 增量同步，若包含 166 亦由底層自動同步 Packet 157 CBoxCount)
-	packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, {});
+	if (!deltaUpdatedItems.empty()) {
+		packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, {});
+	}
 	auto charResult = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
 	packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, charResult.userCharacter });
 

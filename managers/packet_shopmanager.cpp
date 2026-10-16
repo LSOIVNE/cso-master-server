@@ -324,11 +324,21 @@ void Packet_ShopManager::parsePacket_Shop_Buy(User* user, TCPConnection::Packet:
 		std::vector<InventoryItem> itemsToAdd;
 		std::vector<std::string> rewardedNames;
 		std::vector<InventoryItem> deltaUpdatedItems;
+		bool cboxUpdated = false;
+		unsigned long newCBoxCount = 0;
 
 		for (const auto& reward : offer.packageItems) {
 			const ItemDefinition* itemDef = itemDefinitionManager.GetItem(reward.itemID);
 			std::string itemName = (itemDef != nullptr) ? itemDef->name : format("ID:{}", reward.itemID);
 			rewardedNames.push_back(itemName);
+
+			// Special handling for C-Box (itemID 166): Stored in user_characters.cboxCount, never in inventory
+			if (reward.itemID == 166) {
+				unsigned short addCount = reward.count > 0 ? reward.count : 1;
+				user->AddCBoxCount(addCount, &newCBoxCount);
+				cboxUpdated = true;
+				continue;
+			}
 
 			bool itemOwned = false;
 			InventoryItem ownedItem;
@@ -423,9 +433,14 @@ void Packet_ShopManager::parsePacket_Shop_Buy(User* user, TCPConnection::Packet:
 		sendPacket_Shop_BuyReply(connection, 1, "", purchasedItemIDs);
 
 		// 2. Immediately sync updated inventory to client (Delta 增量同步)
-		packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, {});
+		if (!deltaUpdatedItems.empty()) {
+			packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, {});
+		}
 
 		// 3. Immediately sync updated Points and Cash balance to client HUD (Packet 157 & 69)
+		if (cboxUpdated) {
+			packet_UpdateInfoManager.SendPacket_UserUpdateInfo_CBoxCount(connection, userID, (unsigned short)newCBoxCount);
+		}
 		auto charResult = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
 		packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, charResult.userCharacter });
 
@@ -457,6 +472,43 @@ void Packet_ShopManager::parsePacket_Shop_Buy(User* user, TCPConnection::Packet:
 	}
 
 	// Single item purchase
+	if (offer.productID == 166) {
+		unsigned short addCount = offer.count > 0 ? offer.count : 1;
+		unsigned long newCBoxCount = 0;
+		user->AddCBoxCount(addCount, &newCBoxCount);
+
+		if (offer.additionalPoints > 0) {
+			databaseManager.AddUserFunds(userID, true, offer.additionalPoints);
+		}
+
+		// 1. Send successful BuyReply to client
+		sendPacket_Shop_BuyReply(connection, 1, "", { (unsigned short)offer.productID });
+
+		// 2. Immediately sync updated C-Box count to client
+		packet_UpdateInfoManager.SendPacket_UserUpdateInfo_CBoxCount(connection, userID, (unsigned short)newCBoxCount);
+
+		// 3. Immediately sync updated Points and Cash balance to client HUD (Packet 157 & 69)
+		auto charResult = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
+		packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, charResult.userCharacter });
+
+		// 4. Send informative chat notice to user
+		std::string currencyName = offer.isPoints ? "Points" : "GASH";
+		std::string durationText = format("{} 個", addCount);
+		std::string bonusNotice;
+		if (offer.additionalPoints > 0) {
+			bonusNotice += format("，額外獲贈 +{} Points", offer.additionalPoints);
+		}
+		if (offer.additionalClanPoints > 0) {
+			bonusNotice += format("，額外獲贈 +{} 軍團點數", offer.additionalClanPoints);
+		}
+		std::string notice = format("[系統] 成功購買「{}」({})！扣除 {} {}{}。", offer.productName, durationText, offer.price, currencyName, bonusNotice);
+		packet_UMsgManager.SendPacket_UMsg_PublicNotice(connection, notice);
+
+		serverConsole.Print(PrefixType::Info, format("[ Packet_ShopManager ] User ({}) successfully purchased C-Box offer {} ('{}', {}, {} {}{})\n",
+			user->GetUserLogName(), offer.subProductID, offer.productName, durationText, offer.price, currencyName, bonusNotice));
+		return;
+	}
+
 	bool alreadyOwned = false;
 	InventoryItem ownedItem;
 	unsigned short maxSlotID = 0;
@@ -1026,7 +1078,9 @@ void Packet_ShopManager::parsePacket_Shop_ClaimGift(User* user, TCPConnection::P
 	sendPacket_Shop_ClaimGiftReply(connection, 1, giftID_low, giftID_high, claimCount, awardedItemIDs);
 
 	// Sync updated inventory immediately to client (Delta 增量同步)
-	packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, {});
+	if (!deltaUpdatedItems.empty()) {
+		packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, {});
+	}
 
 	// Immediately sync updated Points and Cash balance to client HUD (Packet 157 & 69)
 	auto charResult = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
@@ -1133,6 +1187,19 @@ bool Packet_ShopManager::grantProductRewardToUser(
 		std::vector<InventoryItem> itemsToAdd;
 		for (const auto& reward : prod->packageItems) {
 			outAwardedItemIDs.push_back(reward.itemID);
+
+			// Special handling for C-Box (itemID 166): Stored in user_characters.cboxCount, never in inventory
+			if (reward.itemID == 166) {
+				unsigned short addCount = reward.count * (count > 0 ? count : 1);
+				unsigned long newTotal = 0;
+				databaseManager.AddUserCBoxCount(userID, addCount, &newTotal);
+				User* onlineUser = userManager.GetUserByUserID(userID);
+				if (onlineUser && onlineUser->GetConnection()) {
+					packet_UpdateInfoManager.SendPacket_UserUpdateInfo_CBoxCount(onlineUser->GetConnection(), userID, (unsigned short)newTotal);
+				}
+				continue;
+			}
+
 			const ItemDefinition* itemDef = itemDefinitionManager.GetItem(reward.itemID);
 
 			bool itemOwned = false;
@@ -1228,6 +1295,18 @@ bool Packet_ShopManager::grantProductRewardToUser(
 		// Single item
 		unsigned short itemID = (unsigned short)productID;
 		outAwardedItemIDs.push_back(itemID);
+
+		// Special handling for C-Box (itemID 166): Stored in user_characters.cboxCount, never in inventory
+		if (itemID == 166) {
+			unsigned short addCount = count > 0 ? count : 1;
+			unsigned long newTotal = 0;
+			databaseManager.AddUserCBoxCount(userID, addCount, &newTotal);
+			User* onlineUser = userManager.GetUserByUserID(userID);
+			if (onlineUser && onlineUser->GetConnection()) {
+				packet_UpdateInfoManager.SendPacket_UserUpdateInfo_CBoxCount(onlineUser->GetConnection(), userID, (unsigned short)newTotal);
+			}
+			return true;
+		}
 
 		bool alreadyOwned = false;
 		InventoryItem ownedItem;

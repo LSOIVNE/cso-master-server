@@ -717,11 +717,14 @@ void Packet_ItemManager::parsePacket_Item_UseRewardItem(User* user, const Invent
 
 	time_t now = time(nullptr);
 	std::vector<InventoryItem> newItemsToAdd;
+	bool cboxUpdated = false;
+	unsigned long newCBoxCount = 0;
 
 	for (const auto& g : itemsToGrant) {
 		if (g.itemID == 166) {
 			unsigned short addedCount = g.count > 0 ? g.count : 1;
-			databaseManager.AddUserCBoxCount(userID, addedCount);
+			user->AddCBoxCount(addedCount, &newCBoxCount);
+			cboxUpdated = true;
 			continue;
 		}
 
@@ -817,7 +820,10 @@ void Packet_ItemManager::parsePacket_Item_UseRewardItem(User* user, const Invent
 	// 5. Sync updated inventory to client (Delta 增量同步)
 	packetManager.SendPacket_InventoryDelta(connection, deltaUpdatedItems, deletedSlots);
 
-	// 6. Sync updated character (Points, EXP, Level)
+	// 6. Sync updated character (Points, EXP, Level, C-Box)
+	if (cboxUpdated) {
+		packet_UpdateInfoManager.SendPacket_UserUpdateInfo_CBoxCount(connection, userID, (unsigned short)newCBoxCount);
+	}
 	auto updatedChar = user->GetUserCharacter(USERCHARACTER_FLAG_ALL);
 	if (updatedChar.result) {
 		packet_UpdateInfoManager.SendPacket_UpdateInfo({ user, updatedChar.userCharacter });
